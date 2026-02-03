@@ -20,7 +20,7 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       id: fields[0] as String,
       title: fields[1] as String,
       description: fields[2] as String?,
-      weight: fields[3] as int,
+      durationMinutes: fields[3] as int,
       isCompleted: fields[4] as bool,
       createdDate: fields[5] as String,
       originalDate: fields[6] as String,
@@ -45,7 +45,7 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       ..writeByte(2)
       ..write(obj.description)
       ..writeByte(3)
-      ..write(obj.weight)
+      ..write(obj.durationMinutes)
       ..writeByte(4)
       ..write(obj.isCompleted)
       ..writeByte(5)

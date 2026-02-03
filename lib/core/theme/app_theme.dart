@@ -13,9 +13,15 @@ class AppTheme {
   static const Color accentColor = Color(0xFF2DD4BF);       // Accent
 
   static const Color backgroundLight = Color(0xFFF0FDFA);   // Background
-  static const Color backgroundDark = Color(0xFFF0FDFA);    // Background (same for dark)
+  static const Color backgroundDark = Color(0xFF121212);    // Dark background
   static const Color surfaceLight = Color(0xFFF0FDFA);      // Background
-  static const Color surfaceDark = Color(0xFF0F766E);       // Base for dark surface
+  static const Color surfaceDark = Color(0xFF1E1E1E);       // Dark surface
+  
+  // Text colors for dark mode
+  static const Color textLight = Color(0xFF1F2937);         // Dark text for light mode
+  static const Color textDark = Color(0xFFE5E5E5);          // Light text for dark mode
+  static const Color textSecondaryLight = Color(0xFF6B7280);// Secondary text light
+  static const Color textSecondaryDark = Color(0xFF9CA3AF); // Secondary text dark
   
   // Status colors - muted versions
   static const Color success = Color(0xFF2E7D4A);
@@ -232,9 +238,9 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: backgroundDark,
+      backgroundColor: surfaceDark,
       selectedItemColor: accentColor,
-      unselectedItemColor: primaryColor,
+      unselectedItemColor: Colors.grey[400],
       type: BottomNavigationBarType.fixed,
       elevation: 4,
     ),
@@ -250,5 +256,41 @@ class AppTheme {
       color: accentColor.withOpacity(0.3),
       thickness: 1,
     ),
+    textTheme: const TextTheme(
+      bodyLarge: TextStyle(color: textDark),
+      bodyMedium: TextStyle(color: textDark),
+      bodySmall: TextStyle(color: textSecondaryDark),
+      titleLarge: TextStyle(color: textDark),
+      titleMedium: TextStyle(color: textDark),
+      titleSmall: TextStyle(color: textDark),
+      headlineLarge: TextStyle(color: textDark),
+      headlineMedium: TextStyle(color: textDark),
+      headlineSmall: TextStyle(color: textDark),
+    ),
   );
+  
+  // Helper methods for theme-aware colors
+  static Color getSecondaryTextColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? textSecondaryDark
+        : textSecondaryLight;
+  }
+  
+  static Color getCardBorderColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey.shade700
+        : Colors.grey.shade200;
+  }
+  
+  static Color getShimmerColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey.shade800
+        : Colors.grey.shade200;
+  }
+  
+  static Color getProgressBackgroundColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey.shade700
+        : Colors.grey.shade200;
+  }
 }

@@ -11,9 +11,9 @@ class DashboardStats {
   final DaySummaryEntity? todaySummary;
   final int streak;
   final Map<String, dynamic> weeklyStats;
-  final int dailyLimit;
-  final int usedWeight;
-  final int remainingWeight;
+  final int dailyLimitMinutes;
+  final int usedMinutes;
+  final int remainingMinutes;
   final double progressPercentage;
   final bool isOverLimit;
   
@@ -22,25 +22,65 @@ class DashboardStats {
     this.todaySummary,
     required this.streak,
     required this.weeklyStats,
-    required this.dailyLimit,
-    required this.usedWeight,
-    required this.remainingWeight,
+    required this.dailyLimitMinutes,
+    required this.usedMinutes,
+    required this.remainingMinutes,
     required this.progressPercentage,
     required this.isOverLimit,
   });
   
-  factory DashboardStats.empty(String todayDate, int dailyLimit) {
+  factory DashboardStats.empty(String todayDate, int dailyLimitMinutes) {
     return DashboardStats(
       todayDate: todayDate,
       todaySummary: null,
       streak: 0,
       weeklyStats: {},
-      dailyLimit: dailyLimit,
-      usedWeight: 0,
-      remainingWeight: dailyLimit,
+      dailyLimitMinutes: dailyLimitMinutes,
+      usedMinutes: 0,
+      remainingMinutes: dailyLimitMinutes,
       progressPercentage: 0.0,
       isOverLimit: false,
     );
+  }
+  
+  /// Get formatted used time
+  String get formattedUsedTime {
+    final hours = usedMinutes ~/ 60;
+    final mins = usedMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
+  }
+  
+  /// Get formatted remaining time
+  String get formattedRemainingTime {
+    if (remainingMinutes <= 0) return '0m';
+    final hours = remainingMinutes ~/ 60;
+    final mins = remainingMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
+  }
+  
+  /// Get formatted daily limit
+  String get formattedDailyLimit {
+    final hours = dailyLimitMinutes ~/ 60;
+    final mins = dailyLimitMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
   }
 }
 
@@ -59,24 +99,26 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
     final streak = summaryRepo.calculateStreak();
     final weeklyStats = summaryRepo.getWeeklyStats();
     
-    // Use task state for today's weight if viewing today
-    final usedWeight = taskState.selectedDate == today 
-        ? taskState.totalWeight 
-        : (todaySummary?.totalWeight ?? 0);
-    final remainingWeight = settings.dailyWeightLimit - usedWeight;
-    final progressPercentage = settings.dailyWeightLimit > 0
-        ? (usedWeight / settings.dailyWeightLimit) * 100
+    // Use task state for today's minutes if viewing today
+    final usedMinutes = taskState.selectedDate == today 
+        ? taskState.totalMinutes 
+        : (todaySummary?.totalMinutes ?? 0);
+    // Clamp to 0 minimum (can't have negative remaining time)
+    final remainingMinutes = (settings.dailyTimeLimitMinutes - usedMinutes).clamp(0, settings.dailyTimeLimitMinutes);
+    // Clamp to 100% maximum for display purposes
+    final progressPercentage = settings.dailyTimeLimitMinutes > 0
+        ? ((usedMinutes / settings.dailyTimeLimitMinutes) * 100).clamp(0.0, 100.0)
         : 0.0;
-    final isOverLimit = usedWeight > settings.dailyWeightLimit;
+    final isOverLimit = usedMinutes > settings.dailyTimeLimitMinutes;
     
     return DashboardStats(
       todayDate: today,
       todaySummary: todaySummary,
       streak: streak,
       weeklyStats: weeklyStats,
-      dailyLimit: settings.dailyWeightLimit,
-      usedWeight: usedWeight,
-      remainingWeight: remainingWeight,
+      dailyLimitMinutes: settings.dailyTimeLimitMinutes,
+      usedMinutes: usedMinutes,
+      remainingMinutes: remainingMinutes,
       progressPercentage: progressPercentage,
       isOverLimit: isOverLimit,
     );
@@ -84,7 +126,7 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
     // Return empty stats if box not initialized yet
     final settings = ref.watch(settingsProvider);
     final today = DateHelper.formatDate(DateHelper.getToday());
-    return DashboardStats.empty(today, settings.dailyWeightLimit);
+    return DashboardStats.empty(today, settings.dailyTimeLimitMinutes);
   }
 });
 

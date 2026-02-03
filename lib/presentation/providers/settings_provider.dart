@@ -48,9 +48,9 @@ class SettingsStateNotifier extends StateNotifier<SettingsEntity> {
     }
   }
   
-  /// Update daily weight limit
-  Future<void> updateDailyWeightLimit(int limit) async {
-    await _repository.updateDailyWeightLimit(limit);
+  /// Update daily time limit in minutes
+  Future<void> updateDailyTimeLimit(int limitMinutes) async {
+    await _repository.updateDailyTimeLimit(limitMinutes);
     state = _repository.getSettings();
   }
   

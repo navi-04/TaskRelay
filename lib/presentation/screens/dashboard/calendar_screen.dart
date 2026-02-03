@@ -149,7 +149,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           _buildLegendItem(context, 'Completed', AppTheme.success),
           _buildLegendItem(context, 'Partial', AppTheme.warning),
           _buildLegendItem(context, 'Missed', AppTheme.error),
-          _buildLegendItem(context, 'No Tasks', Colors.grey[300]!),
+          _buildLegendItem(context, 'No Tasks', 
+              Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[600]! 
+                  : Colors.grey[300]!),
         ],
       ),
     );

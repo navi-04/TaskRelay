@@ -21,17 +21,17 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _weightLimitController;
+  int? _selectedHours;
+  int? _selectedMinutes;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _weightLimitController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _weightLimitController.dispose();
     super.dispose();
   }
 
@@ -40,8 +40,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final settings = ref.watch(settingsProvider);
     final dashboard = ref.watch(dashboardProvider);
 
-    if (_weightLimitController.text.isEmpty) {
-      _weightLimitController.text = settings.dailyWeightLimit.toString();
+    // Initialize hours and minutes from settings only once
+    if (!_initialized) {
+      _selectedHours = settings.dailyTimeLimitMinutes ~/ 60;
+      // Round minutes to nearest valid option (0, 15, 30, 45)
+      final rawMinutes = settings.dailyTimeLimitMinutes % 60;
+      _selectedMinutes = (rawMinutes ~/ 15) * 15;
+      _initialized = true;
     }
 
     return Scaffold(
@@ -67,8 +72,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildSectionHeader(context, 'Settings', Icons.settings),
             const SizedBox(height: 12),
 
-            // Daily Weight Limit
-            _buildWeightLimitCard(context, settings),
+            // Daily Time Limit
+            _buildTimeLimitCard(context, settings),
             const SizedBox(height: 12),
 
             // Notifications Card
@@ -234,9 +239,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           child: _buildStatCard(
             context,
             'Daily Limit',
-            '${dashboard.dailyLimit}',
-            'pts',
-            Icons.fitness_center,
+            dashboard.formattedDailyLimit,
+            '',
+            Icons.schedule,
             AppTheme.info,
           ),
         ),
@@ -290,7 +295,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[400] 
+                  : Colors.grey[600],
             ),
           ),
         ],
@@ -298,7 +305,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildWeightLimitCard(BuildContext context, settings) {
+  Widget _buildTimeLimitCard(BuildContext context, settings) {
+    // Ensure we have valid initial values
+    final currentHours = _selectedHours ?? (settings.dailyTimeLimitMinutes ~/ 60);
+    final rawMinutes = settings.dailyTimeLimitMinutes % 60;
+    final currentMinutes = _selectedMinutes ?? ((rawMinutes ~/ 15) * 15);
+    
     return GradientCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +323,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   color: AppTheme.info.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.fitness_center, color: AppTheme.info),
+                child: const Icon(Icons.schedule, color: AppTheme.info),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -319,15 +331,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Daily Weight Limit',
+                      'Daily Time Limit',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      'Max points per day to avoid burnout',
+                      'Max hours per day to avoid burnout',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.grey[400] 
+                            : Colors.grey[600],
                       ),
                     ),
                   ],
@@ -336,40 +350,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Form(
-            key: _formKey,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _weightLimitController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter limit',
-                      suffixText: 'points',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      final intValue = int.tryParse(value);
-                      if (intValue == null || intValue < 1) {
-                        return 'Invalid';
-                      }
-                      if (intValue > 100) {
-                        return 'Max 100';
-                      }
-                      return null;
-                    },
+          Row(
+            children: [
+              // Hours dropdown
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: currentHours.clamp(0, 24),
+                  decoration: const InputDecoration(
+                    labelText: 'Hours',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
+                  items: List.generate(25, (index) => index).map((hour) {
+                    return DropdownMenuItem(
+                      value: hour,
+                      child: Text('$hour h'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedHours = value!;
+                    });
+                  },
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _updateWeightLimit,
-                  child: const Text('Save'),
+              ),
+              const SizedBox(width: 12),
+              // Minutes dropdown
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: currentMinutes,
+                  decoration: const InputDecoration(
+                    labelText: 'Minutes',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: [0, 15, 30, 45].map((minute) {
+                    return DropdownMenuItem(
+                      value: minute,
+                      child: Text('$minute m'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedMinutes = value!;
+                    });
+                  },
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () => _updateTimeLimit(_selectedHours ?? currentHours, _selectedMinutes ?? currentMinutes),
+                child: const Text('Save'),
+              ),
+            ],
           ),
         ],
       ),
@@ -503,7 +534,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.grey[600]),
+            Icon(icon, size: 20, color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.grey[400] 
+                : Colors.grey[600]),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -518,7 +551,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.grey[400] 
+                          : Colors.grey[600],
                     ),
                   ),
                 ],
@@ -569,7 +604,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 'Task Types',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.grey[400] 
+                      : Colors.grey[600],
                 ),
               ),
               TextButton.icon(
@@ -605,7 +642,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 'Priorities',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.grey[400] 
+                      : Colors.grey[600],
                 ),
               ),
               TextButton.icon(
@@ -636,7 +675,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               icon: const Icon(Icons.restore, size: 16, color: Colors.grey),
               label: Text(
                 'Reset to Defaults',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey[400] 
+                        : Colors.grey[600], 
+                    fontSize: 12),
               ),
             ),
           ),
@@ -646,14 +689,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
   
   Widget _buildEditableTypeChip(BuildContext context, CustomTaskType type) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => _showEditTaskTypeDialog(context, type),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: isDark ? Colors.grey[800] : Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: isDark ? Colors.grey[600]! : Colors.grey[300]!),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -667,7 +711,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(width: 6),
             GestureDetector(
               onTap: () => _showDeleteTaskTypeDialog(context, type),
-              child: Icon(Icons.close, size: 14, color: Colors.grey[500]),
+              child: Icon(Icons.close, size: 14, color: isDark ? Colors.grey[400] : Colors.grey[500]),
             ),
           ],
         ),
@@ -1227,7 +1271,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Theme.of(context).brightness == Brightness.dark 
+            ? Colors.grey[800] 
+            : Colors.grey[100],
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -1300,7 +1346,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[400] 
+                  : Colors.grey[600],
             ),
           ),
           Text(
@@ -1350,7 +1398,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(
                       'Permanently delete tasks within a date range',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.grey[400] 
+                            : Colors.grey[600],
                       ),
                     ),
                   ],
@@ -1403,6 +1453,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required VoidCallback onTap,
     bool isDestructive = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1411,19 +1462,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         decoration: BoxDecoration(
           color: isDestructive 
             ? AppTheme.error.withOpacity(0.1) 
-            : Colors.white,
+            : (isDark ? Colors.grey[800] : Colors.white),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isDestructive 
               ? AppTheme.error.withOpacity(0.5) 
-              : Colors.grey[300]!,
+              : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
           ),
         ),
         child: Row(
           children: [
             Icon(
               icon, 
-              color: isDestructive ? AppTheme.error : Colors.grey[700],
+              color: isDestructive ? AppTheme.error : (isDark ? Colors.grey[400] : Colors.grey[700]),
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -1435,13 +1486,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: isDestructive ? AppTheme.error : Colors.grey[800],
+                      color: isDestructive ? AppTheme.error : (isDark ? Colors.grey[300] : Colors.grey[800]),
                     ),
                   ),
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[500],
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
                     ),
                   ),
                 ],
@@ -1449,7 +1500,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             Icon(
               Icons.chevron_right,
-              color: isDestructive ? AppTheme.error : Colors.grey[400],
+              color: isDestructive ? AppTheme.error : (isDark ? Colors.grey[500] : Colors.grey[400]),
             ),
           ],
         ),
@@ -1980,20 +2031,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _updateWeightLimit() {
-    if (_formKey.currentState!.validate()) {
-      final newLimit = int.parse(_weightLimitController.text);
-      ref.read(settingsProvider.notifier).updateDailyWeightLimit(newLimit);
-
+  void _updateTimeLimit(int hours, int minutes) {
+    final totalMinutes = (hours * 60) + minutes;
+    
+    if (totalMinutes < 30) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Daily weight limit updated to $newLimit points'),
-          backgroundColor: AppTheme.success,
+          content: const Text('Minimum time limit is 30 minutes'),
+          backgroundColor: AppTheme.warning,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
+      return;
     }
+    
+    if (totalMinutes > 24 * 60) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Maximum time limit is 24 hours'),
+          backgroundColor: AppTheme.warning,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+    
+    ref.read(settingsProvider.notifier).updateDailyTimeLimit(totalMinutes);
+    
+    // Update local state to reflect the saved value
+    setState(() {
+      _selectedHours = hours;
+      _selectedMinutes = minutes;
+    });
+
+    // Format display
+    String timeStr;
+    if (hours > 0 && minutes > 0) {
+      timeStr = '${hours}h ${minutes}m';
+    } else if (hours > 0) {
+      timeStr = '${hours}h';
+    } else {
+      timeStr = '${minutes}m';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Daily time limit updated to $timeStr'),
+        backgroundColor: AppTheme.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   Future<void> _selectNotificationTime() async {

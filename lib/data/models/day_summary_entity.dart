@@ -7,7 +7,7 @@ part 'day_summary_entity.g.dart';
 /// 
 /// This entity caches daily statistics to optimize performance:
 /// - Task counts and completion status
-/// - Weight calculations
+/// - Time/duration calculations
 /// - Streak tracking
 @HiveType(typeId: 2)
 class DaySummaryEntity extends Equatable {
@@ -23,13 +23,13 @@ class DaySummaryEntity extends Equatable {
   @HiveField(2)
   final int completedTasks;
   
-  /// Total weight of all tasks
+  /// Total duration of all tasks in minutes
   @HiveField(3)
-  final int totalWeight;
+  final int totalMinutes;
   
-  /// Weight of completed tasks
+  /// Duration of completed tasks in minutes
   @HiveField(4)
-  final int completedWeight;
+  final int completedMinutes;
   
   /// Number of carried over tasks
   @HiveField(5)
@@ -51,8 +51,8 @@ class DaySummaryEntity extends Equatable {
     required this.date,
     required this.totalTasks,
     required this.completedTasks,
-    required this.totalWeight,
-    required this.completedWeight,
+    required this.totalMinutes,
+    required this.completedMinutes,
     required this.carriedOverTasks,
     required this.isFullyCompleted,
     required this.hasTasks,
@@ -65,8 +65,8 @@ class DaySummaryEntity extends Equatable {
       date: date,
       totalTasks: 0,
       completedTasks: 0,
-      totalWeight: 0,
-      completedWeight: 0,
+      totalMinutes: 0,
+      completedMinutes: 0,
       carriedOverTasks: 0,
       isFullyCompleted: false,
       hasTasks: false,
@@ -80,20 +80,34 @@ class DaySummaryEntity extends Equatable {
     return (completedTasks / totalTasks) * 100;
   }
   
-  /// Calculate weight percentage used (0-100)
-  double weightPercentage(int dailyLimit) {
-    if (dailyLimit == 0) return 0;
-    return (totalWeight / dailyLimit) * 100;
+  /// Calculate time percentage used (0-100)
+  double timePercentage(int dailyLimitMinutes) {
+    if (dailyLimitMinutes == 0) return 0;
+    return (totalMinutes / dailyLimitMinutes) * 100;
   }
   
-  /// Get remaining weight capacity
-  int remainingWeight(int dailyLimit) {
-    return dailyLimit - totalWeight;
+  /// Get remaining time capacity in minutes (minimum 0)
+  int remainingMinutes(int dailyLimitMinutes) {
+    final remaining = dailyLimitMinutes - totalMinutes;
+    return remaining < 0 ? 0 : remaining;
   }
   
   /// Check if day is over capacity
-  bool isOverCapacity(int dailyLimit) {
-    return totalWeight > dailyLimit;
+  bool isOverCapacity(int dailyLimitMinutes) {
+    return totalMinutes > dailyLimitMinutes;
+  }
+  
+  /// Get formatted total time string
+  String get formattedTotalTime {
+    final hours = totalMinutes ~/ 60;
+    final mins = totalMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
   }
   
   /// Get day status for calendar coloring
@@ -109,8 +123,8 @@ class DaySummaryEntity extends Equatable {
     String? date,
     int? totalTasks,
     int? completedTasks,
-    int? totalWeight,
-    int? completedWeight,
+    int? totalMinutes,
+    int? completedMinutes,
     int? carriedOverTasks,
     bool? isFullyCompleted,
     bool? hasTasks,
@@ -120,8 +134,8 @@ class DaySummaryEntity extends Equatable {
       date: date ?? this.date,
       totalTasks: totalTasks ?? this.totalTasks,
       completedTasks: completedTasks ?? this.completedTasks,
-      totalWeight: totalWeight ?? this.totalWeight,
-      completedWeight: completedWeight ?? this.completedWeight,
+      totalMinutes: totalMinutes ?? this.totalMinutes,
+      completedMinutes: completedMinutes ?? this.completedMinutes,
       carriedOverTasks: carriedOverTasks ?? this.carriedOverTasks,
       isFullyCompleted: isFullyCompleted ?? this.isFullyCompleted,
       hasTasks: hasTasks ?? this.hasTasks,
@@ -134,8 +148,8 @@ class DaySummaryEntity extends Equatable {
         date,
         totalTasks,
         completedTasks,
-        totalWeight,
-        completedWeight,
+        totalMinutes,
+        completedMinutes,
         carriedOverTasks,
         isFullyCompleted,
         hasTasks,

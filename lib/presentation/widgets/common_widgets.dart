@@ -23,13 +23,16 @@ class GradientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade200;
+    
     final card = Container(
       padding: padding,
       decoration: BoxDecoration(
         gradient: gradient,
         color: gradient == null ? (backgroundColor ?? Theme.of(context).cardColor) : null,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: borderColor),
       ),
       child: child,
     );
@@ -92,7 +95,9 @@ class StatCard extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[400] 
+                  : Colors.grey[600],
               fontSize: 11,
             ),
             maxLines: 1,
@@ -155,7 +160,9 @@ class CircularProgressCard extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.grey[600],
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.grey[400] 
+                : Colors.grey[600],
           ),
           textAlign: TextAlign.center,
         ),
@@ -211,7 +218,9 @@ class EmptyStateWidget extends StatelessWidget {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? Colors.grey[400] 
+                    : Colors.grey[600],
               ),
               textAlign: TextAlign.center,
             ),
@@ -262,13 +271,18 @@ class AchievementBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isUnlocked ? color.withOpacity(0.05) : Colors.grey[100],
+        color: isUnlocked 
+            ? color.withOpacity(0.05) 
+            : (isDark ? Colors.grey[800] : Colors.grey[100]),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isUnlocked ? color.withOpacity(0.3) : Colors.grey[300]!,
+          color: isUnlocked 
+              ? color.withOpacity(0.3) 
+              : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
           width: 1,
         ),
       ),
@@ -293,7 +307,13 @@ class AchievementBadge extends StatelessWidget {
           Text(
             description,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: isUnlocked ? Colors.grey[600] : Colors.grey[400],
+              color: isUnlocked 
+                  ? (Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.grey[400] 
+                      : Colors.grey[600]) 
+                  : (Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.grey[500] 
+                      : Colors.grey[400]),
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -320,12 +340,13 @@ class ShimmerLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
-        color: Colors.grey[200],
+        color: isDark ? Colors.grey[800] : Colors.grey[200],
       ),
     );
   }

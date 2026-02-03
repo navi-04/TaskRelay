@@ -11,7 +11,7 @@ class AppConstants {
   static const int daySummaryEntityTypeId = 2;
   
   // Default Settings
-  static const int defaultDailyWeightLimit = 10;
+  static const int defaultDailyTimeLimitMinutes = 480; // 8 hours
   static const int defaultNotificationHour = 9;
   static const int defaultNotificationMinute = 0;
   

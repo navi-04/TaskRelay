@@ -118,30 +118,30 @@ class TaskRepository {
     }
   }
   
-  /// Get total weight for a specific date
-  int getTotalWeightForDate(String date) {
+  /// Get total duration for a specific date in minutes
+  int getTotalMinutesForDate(String date) {
     try {
       final tasks = getTasksForDate(date);
-      return tasks.fold(0, (sum, task) => sum + task.weight);
+      return tasks.fold(0, (sum, task) => sum + task.durationMinutes);
     } catch (e) {
       // If box not initialized, return 0
       return 0;
     }
   }
   
-  /// Get completed weight for a specific date
-  int getCompletedWeightForDate(String date) {
+  /// Get completed duration for a specific date in minutes
+  int getCompletedMinutesForDate(String date) {
     final tasks = getTasksForDate(date);
     return tasks
         .where((task) => task.isCompleted)
-        .fold(0, (sum, task) => sum + task.weight);
+        .fold(0, (sum, task) => sum + task.durationMinutes);
   }
   
-  /// Check if adding a task would exceed daily limit
-  bool wouldExceedLimit(String date, int taskWeight, int dailyLimit) {
+  /// Check if adding a task would exceed daily time limit
+  bool wouldExceedLimit(String date, int taskDurationMinutes, int dailyLimitMinutes) {
     try {
-      final currentWeight = getTotalWeightForDate(date);
-      return (currentWeight + taskWeight) > dailyLimit;
+      final currentMinutes = getTotalMinutesForDate(date);
+      return (currentMinutes + taskDurationMinutes) > dailyLimitMinutes;
     } catch (e) {
       // If box not initialized, allow the task (return false)
       return false;

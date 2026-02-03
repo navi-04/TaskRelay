@@ -17,7 +17,7 @@ class SettingsEntityAdapter extends TypeAdapter<SettingsEntity> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return SettingsEntity(
-      dailyWeightLimit: fields[0] as int,
+      dailyTimeLimitMinutes: fields[0] as int,
       notificationsEnabled: fields[1] as bool,
       notificationHour: fields[2] as int,
       notificationMinute: fields[3] as int,
@@ -40,7 +40,7 @@ class SettingsEntityAdapter extends TypeAdapter<SettingsEntity> {
       ..writeByte(10)
       ..write(obj.profilePhoto)
       ..writeByte(0)
-      ..write(obj.dailyWeightLimit)
+      ..write(obj.dailyTimeLimitMinutes)
       ..writeByte(1)
       ..write(obj.notificationsEnabled)
       ..writeByte(2)

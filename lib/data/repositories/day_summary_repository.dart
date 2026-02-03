@@ -31,18 +31,18 @@ class DaySummaryRepository {
   ) async {
     final totalTasks = tasks.length;
     final completedTasks = tasks.where((t) => t.isCompleted).length;
-    final totalWeight = tasks.fold(0, (sum, t) => sum + t.weight);
-    final completedWeight = tasks
+    final totalMinutes = tasks.fold(0, (sum, t) => sum + t.durationMinutes);
+    final completedMinutes = tasks
         .where((t) => t.isCompleted)
-        .fold(0, (sum, t) => sum + t.weight);
+        .fold(0, (sum, t) => sum + t.durationMinutes);
     final carriedOverTasks = tasks.where((t) => t.isCarriedOver).length;
     
     final summary = DaySummaryEntity(
       date: date,
       totalTasks: totalTasks,
       completedTasks: completedTasks,
-      totalWeight: totalWeight,
-      completedWeight: completedWeight,
+      totalMinutes: totalMinutes,
+      completedMinutes: completedMinutes,
       carriedOverTasks: carriedOverTasks,
       isFullyCompleted: totalTasks > 0 && completedTasks == totalTasks,
       hasTasks: totalTasks > 0,
@@ -155,18 +155,18 @@ class DaySummaryRepository {
       
       final totalTasks = tasks.length;
       final completedTasks = tasks.where((t) => t.isCompleted).length;
-      final totalWeight = tasks.fold(0, (sum, t) => sum + t.weight);
-      final completedWeight = tasks
+      final totalMinutes = tasks.fold(0, (sum, t) => sum + t.durationMinutes);
+      final completedMinutes = tasks
           .where((t) => t.isCompleted)
-          .fold(0, (sum, t) => sum + t.weight);
+          .fold(0, (sum, t) => sum + t.durationMinutes);
       final carriedOverTasks = tasks.where((t) => t.isCarriedOver).length;
       
       summaries.add(DaySummaryEntity(
         date: date,
         totalTasks: totalTasks,
         completedTasks: completedTasks,
-        totalWeight: totalWeight,
-        completedWeight: completedWeight,
+        totalMinutes: totalMinutes,
+        completedMinutes: completedMinutes,
         carriedOverTasks: carriedOverTasks,
         isFullyCompleted: totalTasks > 0 && completedTasks == totalTasks,
         hasTasks: totalTasks > 0,

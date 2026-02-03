@@ -20,8 +20,8 @@ class DaySummaryEntityAdapter extends TypeAdapter<DaySummaryEntity> {
       date: fields[0] as String,
       totalTasks: fields[1] as int,
       completedTasks: fields[2] as int,
-      totalWeight: fields[3] as int,
-      completedWeight: fields[4] as int,
+      totalMinutes: fields[3] as int,
+      completedMinutes: fields[4] as int,
       carriedOverTasks: fields[5] as int,
       isFullyCompleted: fields[6] as bool,
       hasTasks: fields[7] as bool,
@@ -40,9 +40,9 @@ class DaySummaryEntityAdapter extends TypeAdapter<DaySummaryEntity> {
       ..writeByte(2)
       ..write(obj.completedTasks)
       ..writeByte(3)
-      ..write(obj.totalWeight)
+      ..write(obj.totalMinutes)
       ..writeByte(4)
-      ..write(obj.completedWeight)
+      ..write(obj.completedMinutes)
       ..writeByte(5)
       ..write(obj.carriedOverTasks)
       ..writeByte(6)

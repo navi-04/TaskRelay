@@ -82,7 +82,7 @@ class NotificationService {
     required int hour,
     required int minute,
     required int pendingTasksCount,
-    required int totalWeight,
+    required int totalMinutes,
     required int carriedOverCount,
   }) async {
     await cancelDailyReminder(); // Cancel existing first
@@ -97,8 +97,20 @@ class NotificationService {
     
     final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
     
+    // Format time display
+    final hours = totalMinutes ~/ 60;
+    final mins = totalMinutes % 60;
+    String timeStr;
+    if (hours > 0 && mins > 0) {
+      timeStr = '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      timeStr = '${hours}h';
+    } else {
+      timeStr = '${mins}m';
+    }
+    
     String title = 'Daily Task Reminder';
-    String body = 'You have $pendingTasksCount tasks ($totalWeight points) pending today.';
+    String body = 'You have $pendingTasksCount tasks ($timeStr) pending today.';
     
     if (carriedOverCount > 0) {
       body += '\n$carriedOverCount tasks carried over from previous days.';
@@ -147,8 +159,20 @@ class NotificationService {
   /// Shows when tasks are carried over (non-scheduled, immediate)
   Future<void> showCarryOverAlert({
     required int carriedCount,
-    required int totalWeight,
+    required int totalMinutes,
   }) async {
+    // Format time display
+    final hours = totalMinutes ~/ 60;
+    final mins = totalMinutes % 60;
+    String timeStr;
+    if (hours > 0 && mins > 0) {
+      timeStr = '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      timeStr = '${hours}h';
+    } else {
+      timeStr = '${mins}m';
+    }
+    
     const androidDetails = AndroidNotificationDetails(
       'carry_over_alert',
       'Carry Over Alerts',
@@ -173,7 +197,7 @@ class NotificationService {
     await _notifications.show(
       2, // Carry-over alert ID
       'Tasks Carried Over',
-      '$carriedCount incomplete tasks ($totalWeight points) have been carried over to today.',
+      '$carriedCount incomplete tasks ($timeStr) have been carried over to today.',
       details,
     );
   }

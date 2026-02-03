@@ -8,7 +8,7 @@ part 'settings_entity.g.dart';
 /// Settings Entity - Stores user preferences
 /// 
 /// This entity manages:
-/// - Daily task weight limit
+/// - Daily time limit (max hours per day)
 /// - Notification settings (enabled, time)
 /// - Theme preferences
 /// - First launch flag
@@ -21,9 +21,9 @@ class SettingsEntity extends Equatable {
     /// Profile photo path (local file path or base64)
     @HiveField(10)
     final String? profilePhoto;
-  /// Maximum total weight allowed per day
+  /// Maximum total time allowed per day in minutes (max 1440 = 24 hours)
   @HiveField(0)
-  final int dailyWeightLimit;
+  final int dailyTimeLimitMinutes;
   
   /// Whether daily reminder notifications are enabled
   @HiveField(1)
@@ -58,7 +58,7 @@ class SettingsEntity extends Equatable {
   final TaskPriority defaultPriority;
   
   const SettingsEntity({
-    required this.dailyWeightLimit,
+    required this.dailyTimeLimitMinutes,
     required this.notificationsEnabled,
     required this.notificationHour,
     required this.notificationMinute,
@@ -71,10 +71,10 @@ class SettingsEntity extends Equatable {
     this.profilePhoto,
   });
   
-  /// Default settings
+  /// Default settings (8 hours = 480 minutes)
   factory SettingsEntity.defaults() {
     return const SettingsEntity(
-      dailyWeightLimit: 10,
+      dailyTimeLimitMinutes: 480,
       notificationsEnabled: true,
       notificationHour: 9,
       notificationMinute: 0,
@@ -90,7 +90,7 @@ class SettingsEntity extends Equatable {
   
   /// Copy with method
   SettingsEntity copyWith({
-    int? dailyWeightLimit,
+    int? dailyTimeLimitMinutes,
     bool? notificationsEnabled,
     int? notificationHour,
     int? notificationMinute,
@@ -103,7 +103,7 @@ class SettingsEntity extends Equatable {
     String? profilePhoto,
   }) {
     return SettingsEntity(
-      dailyWeightLimit: dailyWeightLimit ?? this.dailyWeightLimit,
+      dailyTimeLimitMinutes: dailyTimeLimitMinutes ?? this.dailyTimeLimitMinutes,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       notificationHour: notificationHour ?? this.notificationHour,
       notificationMinute: notificationMinute ?? this.notificationMinute,
@@ -117,9 +117,22 @@ class SettingsEntity extends Equatable {
     );
   }
   
+  /// Get formatted time limit string
+  String get formattedTimeLimit {
+    final hours = dailyTimeLimitMinutes ~/ 60;
+    final minutes = dailyTimeLimitMinutes % 60;
+    if (hours > 0 && minutes > 0) {
+      return '${hours}h ${minutes}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${minutes}m';
+    }
+  }
+  
   @override
   List<Object?> get props => [
-        dailyWeightLimit,
+        dailyTimeLimitMinutes,
         notificationsEnabled,
         notificationHour,
         notificationMinute,

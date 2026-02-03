@@ -40,9 +40,22 @@ class TaskState {
   List<TaskEntity> get completedTasks => tasks.where((t) => t.isCompleted).toList();
   List<TaskEntity> get carriedOverTasks => tasks.where((t) => t.isCarriedOver).toList();
   
-  int get totalWeight => tasks.fold(0, (sum, t) => sum + t.weight);
-  int get completedWeight => completedTasks.fold(0, (sum, t) => sum + t.weight);
-  int get pendingWeight => pendingTasks.fold(0, (sum, t) => sum + t.weight);
+  int get totalMinutes => tasks.fold(0, (sum, t) => sum + t.durationMinutes);
+  int get completedMinutes => completedTasks.fold(0, (sum, t) => sum + t.durationMinutes);
+  int get pendingMinutes => pendingTasks.fold(0, (sum, t) => sum + t.durationMinutes);
+  
+  /// Get formatted total time
+  String get formattedTotalTime {
+    final hours = totalMinutes ~/ 60;
+    final mins = totalMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
+  }
 }
 
 /// Task State Notifier
@@ -97,7 +110,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       return result;
     } catch (e) {
       state = state.copyWith(error: e.toString());
-      return CarryOverResult(carriedCount: 0, totalWeight: 0, dates: []);
+      return CarryOverResult(carriedCount: 0, totalMinutes: 0, dates: []);
     }
   }
   
@@ -112,7 +125,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     required String id,
     required String title,
     String? description,
-    required int weight,
+    required int durationMinutes,
     TaskType taskType = TaskType.task,
     TaskPriority priority = TaskPriority.medium,
     String? notes,
@@ -123,7 +136,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         id: id,
         title: title,
         description: description,
-        weight: weight,
+        durationMinutes: durationMinutes,
         date: state.selectedDate,
         taskType: taskType,
         priority: priority,
@@ -178,9 +191,9 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     await _summaryRepository.calculateAndSaveSummary(state.selectedDate, tasks);
   }
   
-  /// Check if adding weight would exceed limit
-  bool wouldExceedLimit(int weight, int dailyLimit) {
-    return _taskRepository.wouldExceedLimit(state.selectedDate, weight, dailyLimit);
+  /// Check if adding duration would exceed limit
+  bool wouldExceedLimit(int durationMinutes, int dailyLimitMinutes) {
+    return _taskRepository.wouldExceedLimit(state.selectedDate, durationMinutes, dailyLimitMinutes);
   }
   
   /// Delete all tasks in date range

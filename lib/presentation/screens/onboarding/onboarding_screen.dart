@@ -24,9 +24,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       gradient: AppTheme.primaryGradient,
     ),
     OnboardingPage(
-      icon: Icons.fitness_center,
-      title: 'Weighted Tasks',
-      description: 'Assign weights to tasks based on their complexity. Stay within your daily limit to avoid burnout.',
+      icon: Icons.schedule,
+      title: 'Time-Based Tasks',
+      description: 'Assign duration to tasks in hours and minutes. Stay within your daily time limit to avoid burnout.',
       gradient: AppTheme.successGradient,
     ),
     OnboardingPage(
@@ -93,7 +93,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: Text(
                     'Skip',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.grey[400] 
+                          : Colors.grey[600],
                       fontSize: 16,
                     ),
                   ),
@@ -131,7 +133,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     decoration: BoxDecoration(
                       color: _currentPage == index
                           ? AppTheme.primaryColor
-                          : Colors.grey[300],
+                          : (Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[600] 
+                              : Colors.grey[300]),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -213,7 +217,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Text(
             page.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[400] 
+                  : Colors.grey[600],
               height: 1.5,
             ),
             textAlign: TextAlign.center,

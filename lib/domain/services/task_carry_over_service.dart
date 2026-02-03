@@ -47,7 +47,7 @@ class TaskCarryOverService {
     if (incompleteTasks.isEmpty) {
       return CarryOverResult(
         carriedCount: 0,
-        totalWeight: 0,
+        totalMinutes: 0,
         dates: [],
       );
     }
@@ -63,7 +63,7 @@ class TaskCarryOverService {
     if (earliestDate == null) {
       return CarryOverResult(
         carriedCount: 0,
-        totalWeight: 0,
+        totalMinutes: 0,
         dates: [],
       );
     }
@@ -90,22 +90,22 @@ class TaskCarryOverService {
     if (carriedTasks.isEmpty) {
       return CarryOverResult(
         carriedCount: 0,
-        totalWeight: 0,
+        totalMinutes: 0,
         dates: [],
       );
     }
     
-    final totalWeight = carriedTasks.fold(0, (sum, task) => sum + task.weight);
+    final totalMinutes = carriedTasks.fold(0, (sum, task) => sum + task.durationMinutes);
     
     // Update today's summary
     await _updateSummaryForDate(toDate);
     
     // Send notification if enabled
-    await _sendCarryOverNotification(carriedTasks.length, totalWeight);
+    await _sendCarryOverNotification(carriedTasks.length, totalMinutes);
     
     return CarryOverResult(
       carriedCount: carriedTasks.length,
-      totalWeight: totalWeight,
+      totalMinutes: totalMinutes,
       dates: [fromDate, toDate],
     );
   }
@@ -126,7 +126,7 @@ class TaskCarryOverService {
     final endDateTime = DateHelper.parseDate(endDate);
     
     int totalCarriedCount = 0;
-    int totalWeight = 0;
+    int totalMinutes = 0;
     
     // Process each day sequentially
     while (currentDate.isBefore(endDateTime)) {
@@ -137,7 +137,7 @@ class TaskCarryOverService {
       
       if (carriedTasks.isNotEmpty) {
         totalCarriedCount = carriedTasks.length;
-        totalWeight = carriedTasks.fold(0, (sum, task) => sum + task.weight);
+        totalMinutes = carriedTasks.fold(0, (sum, task) => sum + task.durationMinutes);
         processedDates.add(nextDateString);
         
         // Update summary for this date
@@ -149,12 +149,12 @@ class TaskCarryOverService {
     
     // Send notification for final carry-over to today
     if (totalCarriedCount > 0) {
-      await _sendCarryOverNotification(totalCarriedCount, totalWeight);
+      await _sendCarryOverNotification(totalCarriedCount, totalMinutes);
     }
     
     return CarryOverResult(
       carriedCount: totalCarriedCount,
-      totalWeight: totalWeight,
+      totalMinutes: totalMinutes,
       dates: processedDates,
     );
   }
@@ -166,13 +166,13 @@ class TaskCarryOverService {
   }
   
   /// Send carry-over notification if enabled
-  Future<void> _sendCarryOverNotification(int count, int weight) async {
+  Future<void> _sendCarryOverNotification(int count, int totalMinutes) async {
     final settings = _settingsRepository.getSettings();
     
     if (settings.notificationsEnabled && settings.showCarryOverAlerts) {
       await _notificationService.showCarryOverAlert(
         carriedCount: count,
-        totalWeight: weight,
+        totalMinutes: totalMinutes,
       );
     }
   }
@@ -189,14 +189,14 @@ class TaskCarryOverService {
     final today = DateHelper.formatDate(DateHelper.getToday());
     final todayTasks = _taskRepository.getTasksForDate(today);
     final pendingTasks = todayTasks.where((t) => !t.isCompleted).toList();
-    final totalWeight = pendingTasks.fold(0, (sum, t) => sum + t.weight);
+    final totalMinutes = pendingTasks.fold(0, (sum, t) => sum + t.durationMinutes);
     final carriedOver = pendingTasks.where((t) => t.isCarriedOver).length;
     
     await _notificationService.scheduleDailyReminder(
       hour: settings.notificationHour,
       minute: settings.notificationMinute,
       pendingTasksCount: pendingTasks.length,
-      totalWeight: totalWeight,
+      totalMinutes: totalMinutes,
       carriedOverCount: carriedOver,
     );
   }
@@ -207,29 +207,42 @@ class TaskCarryOverService {
     final today = DateHelper.formatDate(DateHelper.getToday());
     final todayTasks = _taskRepository.getTasksForDate(today);
     
-    final totalWeight = todayTasks.fold(0, (sum, t) => sum + t.weight);
+    final totalMinutes = todayTasks.fold(0, (sum, t) => sum + t.durationMinutes);
     final carriedOverTasks = todayTasks.where((t) => t.isCarriedOver).toList();
-    final carriedWeight = carriedOverTasks.fold(0, (sum, t) => sum + t.weight);
+    final carriedMinutes = carriedOverTasks.fold(0, (sum, t) => sum + t.durationMinutes);
     
-    final isOverLimit = totalWeight > settings.dailyWeightLimit;
-    final remainingCapacity = settings.dailyWeightLimit - totalWeight;
+    final isOverLimit = totalMinutes > settings.dailyTimeLimitMinutes;
+    final remainingMinutes = settings.dailyTimeLimitMinutes - totalMinutes;
+    
+    // Helper to format minutes
+    String formatTime(int mins) {
+      final hours = mins ~/ 60;
+      final minutes = mins % 60;
+      if (hours > 0 && minutes > 0) {
+        return '${hours}h ${minutes}m';
+      } else if (hours > 0) {
+        return '${hours}h';
+      } else {
+        return '${minutes}m';
+      }
+    }
     
     String? suggestion;
     if (isOverLimit && carriedOverTasks.isNotEmpty) {
-      suggestion = 'Your carried-over tasks ($carriedWeight points) '
+      suggestion = 'Your carried-over tasks (${formatTime(carriedMinutes)}) '
           'exceed your daily limit. Consider rescheduling some tasks '
           'to future dates or breaking them into smaller tasks.';
-    } else if (remainingCapacity < 2 && remainingCapacity > 0) {
-      suggestion = 'You have limited capacity remaining ($remainingCapacity points). '
-          'Avoid adding high-weight tasks today.';
+    } else if (remainingMinutes < 30 && remainingMinutes > 0) {
+      suggestion = 'You have limited capacity remaining (${formatTime(remainingMinutes)}). '
+          'Avoid adding long tasks today.';
     }
     
     return DailyLoadCheck(
-      totalWeight: totalWeight,
-      dailyLimit: settings.dailyWeightLimit,
-      remainingCapacity: remainingCapacity,
+      totalMinutes: totalMinutes,
+      dailyLimitMinutes: settings.dailyTimeLimitMinutes,
+      remainingMinutes: remainingMinutes,
       isOverLimit: isOverLimit,
-      carriedOverWeight: carriedWeight,
+      carriedOverMinutes: carriedMinutes,
       suggestion: suggestion,
     );
   }
@@ -238,33 +251,72 @@ class TaskCarryOverService {
 /// Result of carry-over operation
 class CarryOverResult {
   final int carriedCount;
-  final int totalWeight;
+  final int totalMinutes;
   final List<String> dates;
   
   CarryOverResult({
     required this.carriedCount,
-    required this.totalWeight,
+    required this.totalMinutes,
     required this.dates,
   });
   
   bool get hasCarriedTasks => carriedCount > 0;
+  
+  /// Get formatted time string
+  String get formattedTime {
+    final hours = totalMinutes ~/ 60;
+    final mins = totalMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
+  }
 }
 
 /// Daily load check result
 class DailyLoadCheck {
-  final int totalWeight;
-  final int dailyLimit;
-  final int remainingCapacity;
+  final int totalMinutes;
+  final int dailyLimitMinutes;
+  final int remainingMinutes;
   final bool isOverLimit;
-  final int carriedOverWeight;
+  final int carriedOverMinutes;
   final String? suggestion;
   
   DailyLoadCheck({
-    required this.totalWeight,
-    required this.dailyLimit,
-    required this.remainingCapacity,
+    required this.totalMinutes,
+    required this.dailyLimitMinutes,
+    required this.remainingMinutes,
     required this.isOverLimit,
-    required this.carriedOverWeight,
+    required this.carriedOverMinutes,
     this.suggestion,
   });
+  
+  /// Get formatted time strings
+  String get formattedTotalTime {
+    final hours = totalMinutes ~/ 60;
+    final mins = totalMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
+  }
+  
+  String get formattedRemainingTime {
+    if (remainingMinutes < 0) return '0m';
+    final hours = remainingMinutes ~/ 60;
+    final mins = remainingMinutes % 60;
+    if (hours > 0 && mins > 0) {
+      return '${hours}h ${mins}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${mins}m';
+    }
+  }
 }

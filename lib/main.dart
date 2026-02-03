@@ -80,7 +80,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       // Show carry-over notification if tasks were carried
       if (carryOverResult.hasCarriedTasks) {
         print('Carried over ${carryOverResult.carriedCount} tasks '
-            'with total weight ${carryOverResult.totalWeight}');
+            'with total time ${carryOverResult.formattedTime}');
       }
       
       // Invalidate providers to refresh UI with actual data

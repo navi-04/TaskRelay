@@ -26,13 +26,13 @@ class SettingsRepository {
     }
   }
   
-  /// Update daily weight limit
-  Future<void> updateDailyWeightLimit(int limit) async {
+  /// Update daily time limit in minutes
+  Future<void> updateDailyTimeLimit(int limitMinutes) async {
     try {
       final current = _dataSource.getSettings();
-      await _dataSource.updateSettings(current.copyWith(dailyWeightLimit: limit));
+      await _dataSource.updateSettings(current.copyWith(dailyTimeLimitMinutes: limitMinutes));
     } catch (e) {
-      print('Error updating daily weight limit: $e');
+      print('Error updating daily time limit: $e');
     }
   }
   

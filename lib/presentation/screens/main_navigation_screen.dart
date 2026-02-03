@@ -168,7 +168,9 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey[600] 
+                        : Colors.grey[300],
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -229,7 +231,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
       ref.read(taskStateProvider.notifier).addTask(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: _titleController.text.trim(),
-        weight: 1,
+        durationMinutes: 30, // Default 30 minutes
       );
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(

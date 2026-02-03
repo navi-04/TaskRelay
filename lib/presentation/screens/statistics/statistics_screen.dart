@@ -113,9 +113,9 @@ class StatisticsScreen extends ConsumerWidget {
           color: AppTheme.success,
         ),
         StatCard(
-          title: 'Weight Used',
-          value: '${dashboard.usedWeight}/${dashboard.dailyLimit}',
-          icon: Icons.fitness_center,
+          title: 'Time Used',
+          value: '${dashboard.formattedUsedTime}/${dashboard.formattedDailyLimit}',
+          icon: Icons.schedule,
           color: dashboard.isOverLimit ? AppTheme.error : AppTheme.info,
         ),
         StatCard(
@@ -182,7 +182,9 @@ class StatisticsScreen extends ConsumerWidget {
                 Text(
                   'Keep up the great work! 💪',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey[400] 
+                        : Colors.grey[600],
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -248,7 +250,11 @@ class StatisticsScreen extends ConsumerWidget {
                     width: 32,
                     height: 100 * height,
                     decoration: BoxDecoration(
-                      color: isToday ? AppTheme.primaryColor : Colors.grey[400],
+                      color: isToday 
+                          ? AppTheme.primaryColor 
+                          : (Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[600] 
+                              : Colors.grey[400]),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -257,7 +263,11 @@ class StatisticsScreen extends ConsumerWidget {
                     days[index],
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                      color: isToday ? AppTheme.primaryColor : Colors.grey[600],
+                      color: isToday 
+                          ? AppTheme.primaryColor 
+                          : (Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[400] 
+                              : Colors.grey[600]),
                     ),
                   ),
                 ],
@@ -313,7 +323,9 @@ class StatisticsScreen extends ConsumerWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.grey[600],
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.grey[400] 
+                : Colors.grey[600],
           ),
         ),
       ],

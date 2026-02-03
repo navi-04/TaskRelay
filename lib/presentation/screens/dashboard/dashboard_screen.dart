@@ -44,12 +44,13 @@ class DashboardScreen extends ConsumerWidget {
                   // Progress Overview
                   _buildProgressOverview(
                     context,
-                    dashboard.usedWeight,
-                    dashboard.dailyLimit,
-                    dashboard.remainingWeight,
+                    dashboard.usedMinutes,
+                    dashboard.dailyLimitMinutes,
+                    dashboard.remainingMinutes,
                     dashboard.progressPercentage,
                     dashboard.isOverLimit,
                     dashboard.todaySummary,
+                    dashboard,
                   ),
                   const SizedBox(height: 16),
                   
@@ -139,7 +140,9 @@ class DashboardScreen extends ConsumerWidget {
         Text(
           'Let\'s make today productive!',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: Colors.grey[600],
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.grey[400] 
+                : Colors.grey[600],
           ),
         ),
       ],
@@ -246,12 +249,13 @@ class DashboardScreen extends ConsumerWidget {
   
   Widget _buildProgressOverview(
     BuildContext context,
-    int used,
-    int limit,
-    int remaining,
+    int usedMinutes,
+    int limitMinutes,
+    int remainingMinutes,
     double percentage,
     bool isOverLimit,
     dynamic summary,
+    DashboardStats dashboard,
   ) {
     final totalTasks = summary?.totalTasks ?? 0;
     final completedTasks = summary?.completedTasks ?? 0;
@@ -292,7 +296,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           
-          // Weight Progress
+          // Time Progress
           Row(
             children: [
               Expanded(
@@ -302,9 +306,9 @@ class DashboardScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Weight Used'),
+                        const Text('Time Used'),
                         Text(
-                          '$used / $limit pts',
+                          '${dashboard.formattedUsedTime} / ${dashboard.formattedDailyLimit}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: isOverLimit ? AppTheme.error : AppTheme.primaryColor,
@@ -318,7 +322,9 @@ class DashboardScreen extends ConsumerWidget {
                       child: LinearProgressIndicator(
                         value: (percentage / 100).clamp(0.0, 1.0),
                         minHeight: 10,
-                        backgroundColor: Colors.grey[200],
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.grey[700] 
+                            : Colors.grey[200],
                         valueColor: AlwaysStoppedAnimation<Color>(
                           isOverLimit ? AppTheme.error : AppTheme.primaryColor,
                         ),
@@ -357,7 +363,9 @@ class DashboardScreen extends ConsumerWidget {
                       child: LinearProgressIndicator(
                         value: taskProgress,
                         minHeight: 10,
-                        backgroundColor: Colors.grey[200],
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.grey[700] 
+                            : Colors.grey[200],
                         valueColor: AlwaysStoppedAnimation<Color>(AppTheme.success),
                       ),
                     ),
@@ -436,7 +444,9 @@ class DashboardScreen extends ConsumerWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[400] 
+                  : Colors.grey[600],
             ),
           ),
         ],
@@ -476,7 +486,9 @@ class DashboardScreen extends ConsumerWidget {
             Text(
               'Add tasks from the Tasks tab to get started!',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? Colors.grey[400] 
+                    : Colors.grey[600],
               ),
               textAlign: TextAlign.center,
             ),
@@ -524,7 +536,9 @@ class DashboardScreen extends ConsumerWidget {
                     child: CircularProgressIndicator(
                       value: completed / total,
                       strokeWidth: 12,
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.grey[700] 
+                          : Colors.grey[200],
                       valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                     ),
                   ),
@@ -540,7 +554,9 @@ class DashboardScreen extends ConsumerWidget {
                       Text(
                         'of $total',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[400] 
+                              : Colors.grey[600],
                         ),
                       ),
                     ],
@@ -636,7 +652,9 @@ class DashboardScreen extends ConsumerWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.grey[600],
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.grey[400] 
+                : Colors.grey[600],
           ),
         ),
       ],
@@ -697,7 +715,9 @@ class DashboardScreen extends ConsumerWidget {
           Text(
             '— ${selectedQuote['author']}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.grey[400] 
+                  : Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
           ),

@@ -8,7 +8,7 @@ part 'task_entity.g.dart';
 /// Task Entity - Represents a single task
 /// 
 /// This entity stores all task information including:
-/// - Basic info: title, description, weight
+/// - Basic info: title, description, duration
 /// - Status: completion status
 /// - Dates: created date, original date, current date
 /// - Carry-over tracking: whether task was carried over
@@ -26,9 +26,9 @@ class TaskEntity extends Equatable {
   @HiveField(2)
   final String? description;
   
-  /// Task weight (used for daily limit calculation)
+  /// Task duration in minutes (used for daily limit calculation)
   @HiveField(3)
-  final int weight;
+  final int durationMinutes;
   
   /// Whether the task is completed
   @HiveField(4)
@@ -75,7 +75,7 @@ class TaskEntity extends Equatable {
     required this.id,
     required this.title,
     this.description,
-    required this.weight,
+    required this.durationMinutes,
     required this.isCompleted,
     required this.createdDate,
     required this.originalDate,
@@ -93,7 +93,7 @@ class TaskEntity extends Equatable {
     required String id,
     required String title,
     String? description,
-    required int weight,
+    required int durationMinutes,
     required String date,
     TaskType taskType = TaskType.task,
     TaskPriority priority = TaskPriority.medium,
@@ -104,7 +104,7 @@ class TaskEntity extends Equatable {
       id: id,
       title: title,
       description: description,
-      weight: weight,
+      durationMinutes: durationMinutes,
       isCompleted: false,
       createdDate: date,
       originalDate: date,
@@ -122,7 +122,7 @@ class TaskEntity extends Equatable {
     String? id,
     String? title,
     String? description,
-    int? weight,
+    int? durationMinutes,
     bool? isCompleted,
     String? createdDate,
     String? originalDate,
@@ -138,7 +138,7 @@ class TaskEntity extends Equatable {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
-      weight: weight ?? this.weight,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
       isCompleted: isCompleted ?? this.isCompleted,
       createdDate: createdDate ?? this.createdDate,
       originalDate: originalDate ?? this.originalDate,
@@ -181,7 +181,7 @@ class TaskEntity extends Equatable {
         id,
         title,
         description,
-        weight,
+        durationMinutes,
         isCompleted,
         createdDate,
         originalDate,
@@ -193,4 +193,17 @@ class TaskEntity extends Equatable {
         notes,
         tags,
       ];
+  
+  /// Get formatted duration string (e.g., "1h 30m")
+  String get formattedDuration {
+    final hours = durationMinutes ~/ 60;
+    final minutes = durationMinutes % 60;
+    if (hours > 0 && minutes > 0) {
+      return '${hours}h ${minutes}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${minutes}m';
+    }
+  }
 }
