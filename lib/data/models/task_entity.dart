@@ -75,6 +75,10 @@ class TaskEntity extends Equatable {
   @HiveField(14)
   final bool isPermanent;
 
+  /// Alarm/reminder time for the task
+  @HiveField(15)
+  final DateTime? alarmTime;
+
   const TaskEntity({
     required this.id,
     required this.title,
@@ -91,6 +95,7 @@ class TaskEntity extends Equatable {
     this.notes,
     this.tags = const [],
     this.isPermanent = false,
+    this.alarmTime,
   });
   
   /// Create a new task
@@ -105,6 +110,7 @@ class TaskEntity extends Equatable {
     String? notes,
     List<String> tags = const [],
     bool isPermanent = false,
+    DateTime? alarmTime,
   }) {
     return TaskEntity(
       id: id,
@@ -121,6 +127,7 @@ class TaskEntity extends Equatable {
       notes: notes,
       tags: tags,
       isPermanent: isPermanent,
+      alarmTime: alarmTime,
     );
   }
   
@@ -141,6 +148,7 @@ class TaskEntity extends Equatable {
     String? notes,
     List<String>? tags,
     bool? isPermanent,
+    DateTime? alarmTime,
   }) {
     return TaskEntity(
       id: id ?? this.id,
@@ -158,6 +166,7 @@ class TaskEntity extends Equatable {
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
       isPermanent: isPermanent ?? this.isPermanent,
+      alarmTime: alarmTime ?? this.alarmTime,
     );
   }
   
@@ -202,6 +211,7 @@ class TaskEntity extends Equatable {
         notes,
         tags,
         isPermanent,
+        alarmTime,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")

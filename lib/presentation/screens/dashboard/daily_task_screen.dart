@@ -1094,6 +1094,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     TaskType selectedType = task?.taskType ?? TaskType.task;
     TaskPriority selectedPriority = task?.priority ?? TaskPriority.medium;
     bool isPermanent = task?.isPermanent ?? false;
+    DateTime? alarmTime = task?.alarmTime;
     
     showModalBottomSheet(
       context: context,
@@ -1353,6 +1354,92 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    
+                    // Alarm/Reminder time picker
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.orange.withOpacity(0.1) 
+                            : Colors.orange.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.orange.withOpacity(0.3) 
+                              : Colors.orange.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.alarm,
+                            color: Colors.orange,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Reminder',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  alarmTime != null
+                                      ? 'Set for ${alarmTime!.hour.toString().padLeft(2, '0')}:${alarmTime!.minute.toString().padLeft(2, '0')}'
+                                      : 'No reminder set',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).brightness == Brightness.dark 
+                                        ? Colors.grey[400] 
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (alarmTime != null)
+                            IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                setModalState(() {
+                                  alarmTime = null;
+                                });
+                              },
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.access_time),
+                            onPressed: () async {
+                              final selectedDate = DateHelper.parseDate(ref.read(taskStateProvider).selectedDate);
+                              final initialTime = alarmTime != null
+                                  ? TimeOfDay(hour: alarmTime!.hour, minute: alarmTime!.minute)
+                                  : TimeOfDay.now();
+                              
+                              final TimeOfDay? time = await showTimePicker(
+                                context: context,
+                                initialTime: initialTime,
+                              );
+                              
+                              if (time != null) {
+                                setModalState(() {
+                                  alarmTime = DateTime(
+                                    selectedDate.year,
+                                    selectedDate.month,
+                                    selectedDate.day,
+                                    time.hour,
+                                    time.minute,
+                                  );
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     
                     // Action buttons
@@ -1430,6 +1517,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         ? null
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
+                                    alarmTime: alarmTime,
                                   ));
                                 } else {
                                   notifier.addTask(
@@ -1445,6 +1533,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         ? null
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
+                                    alarmTime: alarmTime,
                                   );
                                 }
                                 

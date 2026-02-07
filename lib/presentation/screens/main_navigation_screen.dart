@@ -149,6 +149,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   TaskType selectedType = TaskType.task;
   TaskPriority selectedPriority = TaskPriority.medium;
   bool isPermanent = false;
+  DateTime? alarmTime;
 
   @override
   void dispose() {
@@ -413,6 +414,94 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                
+                // Alarm time picker
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? const Color(0xFFFF6B35).withOpacity(0.1) 
+                        : const Color(0xFFFF6B35).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? const Color(0xFFFF6B35).withOpacity(0.3) 
+                          : const Color(0xFFFF6B35).withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.alarm,
+                        color: Color(0xFFFF6B35),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Set Reminder',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              alarmTime != null
+                                  ? 'Set for ${alarmTime!.hour.toString().padLeft(2, '0')}:${alarmTime!.minute.toString().padLeft(2, '0')}'
+                                  : 'No reminder set',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).brightness == Brightness.dark 
+                                    ? Colors.grey[400] 
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (alarmTime != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            setState(() {
+                              alarmTime = null;
+                            });
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.access_time, size: 20),
+                        onPressed: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: alarmTime != null
+                                ? TimeOfDay(hour: alarmTime!.hour, minute: alarmTime!.minute)
+                                : TimeOfDay.now(),
+                          );
+                          if (time != null) {
+                            setState(() {
+                              final now = DateTime.now();
+                              alarmTime = DateTime(
+                                now.year,
+                                now.month,
+                                now.day,
+                                time.hour,
+                                time.minute,
+                              );
+                            });
+                          }
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 24),
                 
                 // Action buttons
@@ -506,6 +595,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             ? null
             : _notesController.text.trim(),
         isPermanent: isPermanent,
+        alarmTime: alarmTime,
       );
       
       Navigator.pop(context);

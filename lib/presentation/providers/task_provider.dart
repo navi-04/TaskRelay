@@ -6,6 +6,7 @@ import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/day_summary_repository.dart';
 import '../../core/utils/date_utils.dart';
 import '../../domain/services/task_carry_over_service.dart';
+import '../../domain/services/notification_service.dart';
 import 'providers.dart';
 
 /// Task State
@@ -63,11 +64,13 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   final TaskRepository _taskRepository;
   final DaySummaryRepository _summaryRepository;
   final TaskCarryOverService _carryOverService;
+  final NotificationService _notificationService;
   
   TaskStateNotifier(
     this._taskRepository,
     this._summaryRepository,
     this._carryOverService,
+    this._notificationService,
   ) : super(TaskState(
           tasks: [],
           selectedDate: DateHelper.formatDate(DateHelper.getToday()),
@@ -161,6 +164,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     String? notes,
     List<String> tags = const [],
     bool isPermanent = false,
+    DateTime? alarmTime,
   }) async {
     try {
       final task = TaskEntity.create(
@@ -174,9 +178,21 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         notes: notes,
         tags: tags,
         isPermanent: isPermanent,
+        alarmTime: alarmTime,
       );
       
       await _taskRepository.addTask(task);
+      
+      // Schedule alarm if alarmTime is set
+      if (alarmTime != null) {
+        await _notificationService.scheduleTaskAlarm(
+          taskId: id,
+          taskTitle: title,
+          alarmTime: alarmTime,
+          isPermanent: isPermanent,
+        );
+      }
+      
       await _updateSummary();
       loadTasksForSelectedDate();
     } catch (e) {
@@ -187,7 +203,28 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   /// Update task
   Future<void> updateTask(TaskEntity task) async {
     try {
+      // Get old task to check if alarm changed
+      final oldTask = state.tasks.firstWhere(
+        (t) => t.id == task.id,
+        orElse: () => task,
+      );
+      
       await _taskRepository.updateTask(task);
+      
+      // Handle alarm updates
+      if (task.alarmTime != null) {
+        // Schedule new/updated alarm
+        await _notificationService.scheduleTaskAlarm(
+          taskId: task.id,
+          taskTitle: task.title,
+          alarmTime: task.alarmTime!,
+          isPermanent: task.isPermanent,
+        );
+      } else if (oldTask.alarmTime != null && task.alarmTime == null) {
+        // Alarm was removed, cancel it
+        await _notificationService.cancelTaskAlarm(task.id);
+      }
+      
       await _updateSummary();
       loadTasksForSelectedDate();
     } catch (e) {
@@ -198,6 +235,9 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   /// Delete task
   Future<void> deleteTask(String id) async {
     try {
+      // Cancel alarm if exists
+      await _notificationService.cancelTaskAlarm(id);
+      
       await _taskRepository.deleteTask(id);
       await _updateSummary();
       loadTasksForSelectedDate();
@@ -209,7 +249,16 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   /// Toggle task completion
   Future<void> toggleTaskCompletion(String id) async {
     try {
+      // Find the task
+      final task = state.tasks.firstWhere((t) => t.id == id);
+      
       await _taskRepository.toggleTaskCompletion(id);
+      
+      // If task was just completed and had an alarm, cancel it
+      if (!task.isCompleted && task.alarmTime != null) {
+        await _notificationService.cancelTaskAlarm(id);
+      }
+      
       await _updateSummary();
       loadTasksForSelectedDate();
     } catch (e) {
@@ -282,6 +331,7 @@ final taskStateProvider = StateNotifierProvider<TaskStateNotifier, TaskState>((r
   final taskRepo = ref.watch(taskRepositoryProvider);
   final summaryRepo = ref.watch(daySummaryRepositoryProvider);
   final carryOverService = ref.watch(taskCarryOverServiceProvider);
+  final notificationService = ref.watch(notificationServiceProvider);
   
-  return TaskStateNotifier(taskRepo, summaryRepo, carryOverService);
+  return TaskStateNotifier(taskRepo, summaryRepo, carryOverService, notificationService);
 });

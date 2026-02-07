@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -47,7 +49,73 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
     
+    // Create notification channels for Android with proper sound/vibration
+    await _createNotificationChannels();
+    
     _initialized = true;
+  }
+  
+  /// Create Android notification channels with sound and vibration
+  Future<void> _createNotificationChannels() async {
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidPlugin == null) return;
+    
+    // Task Alarms Channel - High priority with sound and vibration
+    final alarmChannel = AndroidNotificationChannel(
+      'task_alarms',
+      'Task Alarms',
+      description: 'Alarm notifications for scheduled tasks',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
+      enableLights: true,
+      ledColor: const Color(0xFFFF6B35),
+      showBadge: true,
+    );
+    
+    await androidPlugin.createNotificationChannel(alarmChannel);
+    
+    // Daily Reminder Channel
+    const reminderChannel = AndroidNotificationChannel(
+      'daily_reminder',
+      'Daily Reminder',
+      description: 'Daily task reminder notifications',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+    
+    await androidPlugin.createNotificationChannel(reminderChannel);
+    
+    // Carry Over Alert Channel
+    const carryOverChannel = AndroidNotificationChannel(
+      'carry_over_alert',
+      'Carry Over Alerts',
+      description: 'Alerts for carried over tasks',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+    
+    await androidPlugin.createNotificationChannel(carryOverChannel);
+    
+    // Task Reminder Channel
+    const taskReminderChannel = AndroidNotificationChannel(
+      'task_reminder',
+      'Task Reminders',
+      description: 'Task reminder notifications',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+    
+    await androidPlugin.createNotificationChannel(taskReminderChannel);
   }
   
   /// Handle notification tap
@@ -59,19 +127,29 @@ class NotificationService {
   
   /// Request notification permissions (iOS)
   Future<bool> requestPermissions() async {
-    final plugin = _notifications.resolvePlatformSpecificImplementation<
+    // Request Android 13+ notification permission
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+      await androidPlugin.requestExactAlarmsPermission();
+    }
+    
+    // Request iOS permissions
+    final iosPlugin = _notifications.resolvePlatformSpecificImplementation<
         IOSFlutterLocalNotificationsPlugin>();
     
-    if (plugin != null) {
-      final granted = await plugin.requestPermissions(
+    if (iosPlugin != null) {
+      final granted = await iosPlugin.requestPermissions(
         alert: true,
         badge: true,
         sound: true,
+        critical: true,
       );
       return granted ?? false;
     }
     
-    // Android doesn't require runtime permission request for notifications
     return true;
   }
   
@@ -256,5 +334,115 @@ class NotificationService {
           false;
     }
     return true; // iOS doesn't have this check
+  }
+  
+  /// Schedule task-specific alarm notification
+  /// 
+  /// Schedules a notification at the specified time for a task
+  /// For permanent tasks, the alarm repeats daily
+  Future<void> scheduleTaskAlarm({
+    required String taskId,
+    required String taskTitle,
+    required DateTime alarmTime,
+    bool isPermanent = false,
+  }) async {
+    // Cancel existing alarm for this task first
+    await cancelTaskAlarm(taskId);
+    
+    // Use task ID hash as notification ID (offset by 1000 to avoid conflicts with system notifications)
+    final notificationId = 1000 + taskId.hashCode.abs() % 100000;
+    
+    final now = DateTime.now();
+    var scheduledDate = alarmTime;
+    
+    // If time has passed today, schedule for tomorrow
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = DateTime(
+        now.year,
+        now.month,
+        now.day + 1,
+        alarmTime.hour,
+        alarmTime.minute,
+      );
+    }
+    
+    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
+    
+    print('🔔 Scheduling alarm:');
+    print('  Task: $taskTitle');
+    print('  ID: $notificationId');
+    print('  Time: ${scheduledDate.toString()}');
+    print('  Permanent: $isPermanent');
+    print('  TZ Time: ${tzScheduledDate.toString()}');
+    
+    final androidDetails = AndroidNotificationDetails(
+      'task_alarms',
+      'Task Alarms',
+      channelDescription: 'Alarm notifications for scheduled tasks',
+      importance: Importance.max,
+      priority: Priority.max,
+      playSound: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      visibility: NotificationVisibility.public,
+      ongoing: true,
+      autoCancel: false,
+      colorized: true,
+      color: const Color(0xFFFF6B35),
+      timeoutAfter: 60000, // Ring for 60 seconds
+      channelShowBadge: true,
+      ledColor: const Color(0xFFFF6B35),
+      additionalFlags: Int32List.fromList([4, 128]), // FLAG_INSISTENT | FLAG_SHOW_WHEN_LOCKED
+    );
+    
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.critical,
+      sound: 'default',
+    );
+    
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    
+    try {
+      await _notifications.zonedSchedule(
+        notificationId,
+        '⏰ Task Alarm',
+        taskTitle,
+        tzScheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: isPermanent ? DateTimeComponents.time : null,
+        payload: taskId,
+      );
+      
+      print('✅ Alarm scheduled successfully');
+      
+      // Verify it was scheduled
+      final pendingNotifications = await _notifications.pendingNotificationRequests();
+      print('📋 Pending notifications: ${pendingNotifications.length}');
+      for (final notif in pendingNotifications) {
+        print('  - ID: ${notif.id}, Title: ${notif.title}, Body: ${notif.body}');
+      }
+    } catch (e) {
+      print('❌ Error scheduling alarm: $e');
+      rethrow;
+    }
+  }
+  
+  /// Cancel task-specific alarm
+  /// 
+  /// Cancels the scheduled notification for a specific task
+  Future<void> cancelTaskAlarm(String taskId) async {
+    final notificationId = 1000 + taskId.hashCode.abs() % 100000;
+    await _notifications.cancel(notificationId);
   }
 }
