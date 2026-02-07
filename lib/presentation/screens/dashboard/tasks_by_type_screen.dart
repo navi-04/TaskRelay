@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../../data/models/task_entity.dart';
 import '../../../data/models/task_type.dart';
+import '../../../data/models/task_priority.dart';
 import '../../../core/utils/date_utils.dart';
 
 /// Screen that displays tasks categorized by their task type
@@ -387,18 +388,16 @@ class _TaskItem extends StatelessWidget {
     );
   }
 
-  Color _getPriorityColor(priority) {
-    switch (priority.toString().split('.').last) {
-      case 'critical':
+  Color _getPriorityColor(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.critical:
         return Colors.red;
-      case 'high':
+      case TaskPriority.high:
         return Colors.orange;
-      case 'medium':
+      case TaskPriority.medium:
         return Colors.blue;
-      case 'low':
+      case TaskPriority.low:
         return Colors.green;
-      default:
-        return Colors.grey;
     }
   }
 }

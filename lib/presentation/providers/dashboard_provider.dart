@@ -130,10 +130,13 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
   }
 });
 
-/// Calendar Data Provider
-final calendarDataProvider = Provider.family<Map<String, DaySummaryEntity>, DateTime>((ref, date) {
+/// Calendar Data Provider - Watches task state for dynamic updates
+final calendarDataProvider = Provider.family.autoDispose<Map<String, DaySummaryEntity>, DateTime>((ref, date) {
   try {
     final summaryRepo = ref.watch(daySummaryRepositoryProvider);
+    
+    // Watch task state to trigger rebuilds when tasks change
+    ref.watch(taskStateProvider);
     
     final startOfMonth = DateHelper.getStartOfMonth(date);
     final endOfMonth = DateHelper.getEndOfMonth(date);
