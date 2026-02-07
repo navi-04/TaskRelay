@@ -83,23 +83,26 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           .where((task) => !task.isPermanent)
           .toList();
       
-      // Get permanent tasks
+      // Get permanent tasks - only for dates >= creation date
       final permanentTasks = _taskRepository.getPermanentTasks();
       
       // Update permanent tasks for the selected date
       final updatedPermanentTasks = <TaskEntity>[];
       for (final task in permanentTasks) {
-        // If the task's current date doesn't match selected date, reset completion
-        if (task.currentDate != state.selectedDate) {
-          final updatedTask = task.copyWith(
-            currentDate: state.selectedDate,
-            isCompleted: false,
-          );
-          updatedPermanentTasks.add(updatedTask);
-          // Update in database
-          await _taskRepository.updateTask(updatedTask);
-        } else {
-          updatedPermanentTasks.add(task);
+        // Only show permanent tasks on or after their creation date
+        if (state.selectedDate.compareTo(task.createdDate) >= 0) {
+          // If the task's current date doesn't match selected date, reset completion
+          if (task.currentDate != state.selectedDate) {
+            final updatedTask = task.copyWith(
+              currentDate: state.selectedDate,
+              isCompleted: false,
+            );
+            updatedPermanentTasks.add(updatedTask);
+            // Update in database
+            await _taskRepository.updateTask(updatedTask);
+          } else {
+            updatedPermanentTasks.add(task);
+          }
         }
       }
       
