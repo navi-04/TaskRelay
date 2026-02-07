@@ -24,8 +24,13 @@ class NotificationService {
   Future<void> initialize() async {
     if (_initialized) return;
     
+    print('🔧 Initializing TaskRelay NotificationService...');
+    
     // Initialize timezone
     tz_data.initializeTimeZones();
+    final local = tz.getLocation('America/New_York');
+    tz.setLocalLocation(local);
+    print('  ✅ Timezone: ${tz.local.name}');
     
     // Android initialization settings
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -53,6 +58,7 @@ class NotificationService {
     await _createNotificationChannels();
     
     _initialized = true;
+    print('  ✅ NotificationService ready!');
   }
   
   /// Create Android notification channels with sound and vibration
@@ -353,27 +359,34 @@ class NotificationService {
     final notificationId = 1000 + taskId.hashCode.abs() % 100000;
     
     final now = DateTime.now();
-    var scheduledDate = alarmTime;
     
-    // If time has passed today, schedule for tomorrow
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = DateTime(
-        now.year,
-        now.month,
-        now.day + 1,
-        alarmTime.hour,
-        alarmTime.minute,
-      );
+    // Ensure we're scheduling with today's/tomorrow's date + alarm time
+    var scheduledDate = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      alarmTime.hour, 
+      alarmTime.minute,
+      0,
+      0,
+    );
+    
+    // If time has passed today (or is within 30 seconds), schedule for tomorrow
+    if (scheduledDate.isBefore(now) || scheduledDate.difference(now).inSeconds < 30) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
     
     final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
+    final timeUntil = scheduledDate.difference(now);
     
-    print('🔔 Scheduling alarm:');
-    print('  Task: $taskTitle');
-    print('  ID: $notificationId');
-    print('  Time: ${scheduledDate.toString()}');
-    print('  Permanent: $isPermanent');
-    print('  TZ Time: ${tzScheduledDate.toString()}');
+    print('\n🔔 ========== SCHEDULING ALARM ==========');
+    print('  📋 Task: "$taskTitle"');
+    print('  🆔 Notification ID: $notificationId');
+    print('  🕐 Current time: ${now.toString()}');
+    print('  ⏰ Scheduled for: ${scheduledDate.toString()}');
+    print('  ⏱️  Time until alarm: ${timeUntil.inHours}h ${timeUntil.inMinutes % 60}m ${timeUntil.inSeconds % 60}s');
+    print('  🔁 Daily repeat: $isPermanent');
+    print('  🌍 Timezone: ${tz.local.name}');
     
     final androidDetails = AndroidNotificationDetails(
       'task_alarms',
@@ -393,7 +406,6 @@ class NotificationService {
       color: const Color(0xFFFF6B35),
       timeoutAfter: 60000, // Ring for 60 seconds
       channelShowBadge: true,
-      ledColor: const Color(0xFFFF6B35),
       additionalFlags: Int32List.fromList([4, 128]), // FLAG_INSISTENT | FLAG_SHOW_WHEN_LOCKED
     );
     
