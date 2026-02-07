@@ -9,6 +9,7 @@ import '../../../data/models/task_priority.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import 'tasks_by_type_screen.dart';
 
 /// Daily Task Screen - Modern design with improved UX
 class DailyTaskScreen extends ConsumerStatefulWidget {
@@ -72,6 +73,18 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         ),
         automaticallyImplyLeading: widget.selectedDate != null,
         actions: [
+          // View by Type button
+          IconButton(
+            icon: const Icon(Icons.category_outlined),
+            tooltip: 'View by Type',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const TasksByTypeScreen(),
+                ),
+              );
+            },
+          ),
           // Filter button
           PopupMenuButton<TaskPriority?>(
             icon: Icon(
@@ -102,8 +115,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 value: priority,
                 child: Row(
                   children: [
-                    Text(priority.emoji),
-                    const SizedBox(width: 8),
                     Text(priority.label),
                     if (_priorityFilter == priority) ...[
                       const Spacer(),
@@ -460,42 +471,62 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               ),
               Padding(
                 padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Task Type (tappable)
-                    GestureDetector(
-                      onTap: () => _showChangeTypeDialog(context, task),
-                      child: _buildChip(
-                        task.taskType.emoji,
-                        task.taskType.label,
-                        Colors.purple,
-                      ),
+                    Row(
+                      children: [
+                        // Task Type (tappable)
+                        GestureDetector(
+                          onTap: () => _showChangeTypeDialog(context, task),
+                          child: _buildChip(
+                            task.taskType.label,
+                            Colors.purple,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Priority (tappable)
+                        GestureDetector(
+                          onTap: () => _showChangePriorityDialog(context, task),
+                          child: _buildChip(
+                            task.priority.label,
+                            task.priority.color,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Duration
+                        _buildChip(
+                          task.formattedDuration,
+                          AppTheme.info,
+                        ),
+                        if (task.isCarriedOver) ...[
+                          const SizedBox(width: 6),
+                          _buildChip(
+                            'Carried',
+                            Colors.amber,
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    // Priority (tappable)
-                    GestureDetector(
-                      onTap: () => _showChangePriorityDialog(context, task),
-                      child: _buildChip(
-                        task.priority.emoji,
-                        task.priority.label,
-                        task.priority.color,
-                      ),
+                    const SizedBox(height: 6),
+                    // Created date
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.create,
+                          size: 12,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Created on ${DateHelper.formatDateForDisplay(DateHelper.parseDate(task.createdDate))}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    // Duration
-                    _buildChip(
-                      '⏱️',
-                      task.formattedDuration,
-                      AppTheme.info,
-                    ),
-                    if (task.isCarriedOver) ...[
-                      const SizedBox(width: 6),
-                      _buildChip(
-                        '↪️',
-                        'Carried',
-                        Colors.amber,
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -506,7 +537,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     );
   }
   
-  Widget _buildChip(String emoji, String label, Color color) {
+  Widget _buildChip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -516,8 +547,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 12)),
-          const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
@@ -565,9 +594,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: TaskType.values.map((type) => ListTile(
-            leading: Text(type.emoji, style: const TextStyle(fontSize: 24)),
-            title: Text(type.displayName),
-            trailing: task.taskType == type 
+            title: Text(type.label),
+            trailing: task.taskType == type
                 ? const Icon(Icons.check, color: AppTheme.success)
                 : null,
             onTap: () {
@@ -577,7 +605,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Changed type to ${type.displayName}'),
+                  content: Text('Changed type to ${type.label}'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -596,16 +624,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: TaskPriority.values.map((priority) => ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: priority.color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(priority.emoji, style: const TextStyle(fontSize: 20)),
-            ),
-            title: Text(priority.displayName),
-            trailing: task.priority == priority 
+            title: Text(priority.label),
+            trailing: task.priority == priority
                 ? const Icon(Icons.check, color: AppTheme.success)
                 : null,
             onTap: () {
@@ -615,7 +635,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Changed priority to ${priority.displayName}'),
+                  content: Text('Changed priority to ${priority.label}'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -667,7 +687,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   color: Colors.purple.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(task.taskType.displayName),
+                child: Text(task.taskType.label),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -683,7 +703,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   color: task.priority.color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(task.priority.displayName),
+                child: Text(task.priority.label),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -787,7 +807,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           _showChangeTypeDialog(context, task);
                         },
                         child: _buildEditableDetailChip(
-                          task.taskType.displayName, 
+                          task.taskType.label,
                           Colors.purple,
                           isEditable: true,
                         ),
@@ -798,7 +818,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           _showChangePriorityDialog(context, task);
                         },
                         child: _buildEditableDetailChip(
-                          task.priority.displayName, 
+                          task.priority.label,
                           task.priority.color,
                           isEditable: true,
                         ),
@@ -1041,7 +1061,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                             items: TaskType.values.map((type) {
                               return DropdownMenuItem(
                                 value: type,
-                                child: Text(type.displayName, style: const TextStyle(fontSize: 14)),
+                                child: Text(type.label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -1062,7 +1082,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                             items: TaskPriority.values.map((priority) {
                               return DropdownMenuItem(
                                 value: priority,
-                                child: Text(priority.displayName, style: const TextStyle(fontSize: 14)),
+                                child: Text(priority.label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {

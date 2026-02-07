@@ -12,17 +12,18 @@ class AppTheme {
   static const Color secondaryColor = Color(0xFF2DD4BF);    // Accent
   static const Color accentColor = Color(0xFF2DD4BF);       // Accent
 
-  static const Color backgroundLight = Color(0xFFF0FDFA);   // Background
-  static const Color backgroundDark = Color(0xFF121212);    // Dark background
-  static const Color surfaceLight = Color(0xFFF0FDFA);      // Background
-  static const Color surfaceDark = Color(0xFF1E1E1E);       // Dark surface
-  
+  static const Color backgroundLight = Color(0xFFFFFFFF);   // Pure white
+  static const Color backgroundDark = Color(0xFF000000);    // Pure black
+  static const Color surfaceLight = Color(0xFFFFFFFF);      // Pure white
+  static const Color surfaceDark = Color(0xFF0A0A0A);       // Nearly pure black
+  static const Color navIconColor = Color(0xFF64B5F6);      // Light blue
+
   // Text colors for dark mode
   static const Color textLight = Color(0xFF1F2937);         // Dark text for light mode
   static const Color textDark = Color(0xFFE5E5E5);          // Light text for dark mode
   static const Color textSecondaryLight = Color(0xFF6B7280);// Secondary text light
   static const Color textSecondaryDark = Color(0xFF9CA3AF); // Secondary text dark
-  
+
   // Status colors - muted versions
   static const Color success = Color(0xFF2E7D4A);
   static const Color warning = Color(0xFFB8860B);
@@ -35,25 +36,25 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
+
   static const LinearGradient successGradient = LinearGradient(
     colors: [success, success],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
+
   static const LinearGradient warningGradient = LinearGradient(
     colors: [warning, warning],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
+
   static const LinearGradient dangerGradient = LinearGradient(
     colors: [error, error],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
+
   static const LinearGradient streakGradient = LinearGradient(
     colors: [primaryLight, primaryColor],
     begin: Alignment.topLeft,
@@ -140,8 +141,8 @@ class AppTheme {
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: backgroundLight,
-      selectedItemColor: accentColor,
-      unselectedItemColor: primaryColor,
+      selectedItemColor: navIconColor,
+      unselectedItemColor: navIconColor,
       type: BottomNavigationBarType.fixed,
       elevation: 4,
     ),
@@ -239,8 +240,8 @@ class AppTheme {
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: surfaceDark,
-      selectedItemColor: accentColor,
-      unselectedItemColor: Colors.grey[400],
+      selectedItemColor: navIconColor,
+      unselectedItemColor: navIconColor,
       type: BottomNavigationBarType.fixed,
       elevation: 4,
     ),

@@ -60,10 +60,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Header with Stats
-            _buildProfileHeader(context, dashboard),
-            const SizedBox(height: 24),
-
             // Quick Stats
             _buildQuickStats(context, dashboard),
             const SizedBox(height: 24),
@@ -130,81 +126,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildProfileHeader(BuildContext context, dynamic dashboard) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person,
-              size: 48,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'TaskRelay',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Text(
-                      '🔥',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${dashboard.streak} day streak',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (dashboard.streak >= 7)
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.star, color: Colors.amber, size: 28),
-            ),
-        ],
-      ),
     );
   }
 
@@ -702,8 +623,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(type.emoji, style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 4),
             Text(
               type.label,
               style: const TextStyle(fontSize: 12),
@@ -733,8 +652,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(priority.emoji, style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 4),
             Text(
               priority.label,
               style: TextStyle(
@@ -756,8 +673,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   
   void _showAddTaskTypeDialog(BuildContext context) {
     final labelController = TextEditingController();
-    final emojiController = TextEditingController(text: '📌');
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -765,16 +681,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: emojiController,
-              decoration: const InputDecoration(
-                labelText: 'Emoji',
-                hintText: '📌',
-              ),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24),
-            ),
-            const SizedBox(height: 16),
             TextField(
               controller: labelController,
               decoration: const InputDecoration(
@@ -795,7 +701,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               if (labelController.text.isNotEmpty) {
                 ref.read(customTypesProvider.notifier).addTaskType(
                   labelController.text,
-                  emojiController.text.isEmpty ? '📌' : emojiController.text,
+                  '📌',
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -816,8 +722,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   
   void _showEditTaskTypeDialog(BuildContext context, CustomTaskType type) {
     final labelController = TextEditingController(text: type.label);
-    final emojiController = TextEditingController(text: type.emoji);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -825,15 +730,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: emojiController,
-              decoration: const InputDecoration(
-                labelText: 'Emoji',
-              ),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24),
-            ),
-            const SizedBox(height: 16),
             TextField(
               controller: labelController,
               decoration: const InputDecoration(
@@ -854,7 +750,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ref.read(customTypesProvider.notifier).updateTaskType(
                   type.id,
                   labelController.text,
-                  emojiController.text.isEmpty ? '📌' : emojiController.text,
+                  type.emoji,
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -878,7 +774,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Task Type'),
-        content: Text('Are you sure you want to delete "${type.displayName}"?'),
+        content: Text('Are you sure you want to delete "${type.label}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -908,9 +804,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   
   void _showAddPriorityDialog(BuildContext context) {
     final labelController = TextEditingController();
-    final emojiController = TextEditingController(text: '⭐');
     int selectedColorValue = 0xFF9E9E9E; // Grey default
-    
+
     final colors = [
       {'name': 'Blue', 'value': 0xFF2196F3},
       {'name': 'Green', 'value': 0xFF4CAF50},
@@ -921,7 +816,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       {'name': 'Teal', 'value': 0xFF009688},
       {'name': 'Grey', 'value': 0xFF9E9E9E},
     ];
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -930,16 +825,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: emojiController,
-                decoration: const InputDecoration(
-                  labelText: 'Emoji',
-                  hintText: '⭐',
-                ),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24),
-              ),
-              const SizedBox(height: 16),
               TextField(
                 controller: labelController,
                 decoration: const InputDecoration(
@@ -965,11 +850,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
-                        border: isSelected 
-                          ? Border.all(color: Colors.black, width: 3) 
+                        border: isSelected
+                          ? Border.all(color: Colors.black, width: 3)
                           : null,
                       ),
-                      child: isSelected 
+                      child: isSelected
                         ? const Icon(Icons.check, color: Colors.white, size: 20)
                         : null,
                     ),
@@ -988,7 +873,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 if (labelController.text.isNotEmpty) {
                   ref.read(customTypesProvider.notifier).addPriority(
                     labelController.text,
-                    emojiController.text.isEmpty ? '⭐' : emojiController.text,
+                    '⭐',
                     selectedColorValue,
                   );
                   Navigator.pop(context);
@@ -1011,9 +896,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   
   void _showEditPriorityDialog(BuildContext context, CustomPriority priority) {
     final labelController = TextEditingController(text: priority.label);
-    final emojiController = TextEditingController(text: priority.emoji);
     int selectedColorValue = priority.colorValue;
-    
+
     final colors = [
       {'name': 'Blue', 'value': 0xFF2196F3},
       {'name': 'Green', 'value': 0xFF4CAF50},
@@ -1024,7 +908,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       {'name': 'Teal', 'value': 0xFF009688},
       {'name': 'Grey', 'value': 0xFF9E9E9E},
     ];
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1033,15 +917,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: emojiController,
-                decoration: const InputDecoration(
-                  labelText: 'Emoji',
-                ),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24),
-              ),
-              const SizedBox(height: 16),
               TextField(
                 controller: labelController,
                 decoration: const InputDecoration(
@@ -1066,11 +941,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
-                        border: isSelected 
-                          ? Border.all(color: Colors.black, width: 3) 
+                        border: isSelected
+                          ? Border.all(color: Colors.black, width: 3)
                           : null,
                       ),
-                      child: isSelected 
+                      child: isSelected
                         ? const Icon(Icons.check, color: Colors.white, size: 20)
                         : null,
                     ),
@@ -1090,7 +965,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ref.read(customTypesProvider.notifier).updatePriority(
                     priority.id,
                     labelController.text,
-                    emojiController.text.isEmpty ? '⭐' : emojiController.text,
+                    priority.emoji,
                     selectedColorValue,
                   );
                   Navigator.pop(context);
@@ -1116,7 +991,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Priority'),
-        content: Text('Are you sure you want to delete "${priority.displayName}"?'),
+        content: Text('Are you sure you want to delete "${priority.label}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1188,7 +1063,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: TaskType.values.map((type) {
               final isSelected = type == settings.defaultTaskType;
               return ListTile(
-                leading: Text(type.emoji, style: const TextStyle(fontSize: 24)),
                 title: Text(type.label),
                 selected: isSelected,
                 selectedTileColor: AppTheme.primaryColor.withOpacity(0.1),
@@ -1199,7 +1073,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Default task type set to ${type.displayName}'),
+                      content: Text('Default task type set to ${type.label}'),
                       backgroundColor: AppTheme.success,
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -1230,14 +1104,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: TaskPriority.values.map((priority) {
             final isSelected = priority == settings.defaultPriority;
             return ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: priority.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(priority.emoji, style: const TextStyle(fontSize: 20)),
-              ),
               title: Text(priority.label),
               selected: isSelected,
               selectedTileColor: priority.color.withOpacity(0.1),
@@ -1248,7 +1114,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Default priority set to ${priority.displayName}'),
+                    content: Text('Default priority set to ${priority.label}'),
                     backgroundColor: priority.color,
                     behavior: SnackBarBehavior.floating,
                   ),
