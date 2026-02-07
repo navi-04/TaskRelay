@@ -153,13 +153,22 @@ class DashboardScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppTheme.streakGradient,
-        borderRadius: BorderRadius.circular(8),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFF6B35), // Vibrant orange
+            Color(0xFFF7931E), // Bright orange
+            Color(0xFFFFB627), // Yellow-orange
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF6B6B).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: const Color(0xFFFF6B35).withOpacity(0.4),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+            spreadRadius: 2,
           ),
         ],
       ),
@@ -168,12 +177,19 @@ class DashboardScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: const Icon(
               Icons.local_fire_department,
-              size: 40,
+              size: 48,
               color: Colors.white,
             ),
           ),
@@ -182,15 +198,26 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Current Streak',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.whatshot,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Current Streak',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -198,19 +225,20 @@ class DashboardScreen extends ConsumerWidget {
                       '$streak',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 42,
+                        fontSize: 48,
                         fontWeight: FontWeight.bold,
+                        height: 1.0,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
                         streak == 1 ? 'day' : 'days',
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: Colors.white,
                           fontSize: 18,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -221,20 +249,30 @@ class DashboardScreen extends ConsumerWidget {
           ),
           if (streak >= 7)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star, color: Colors.amber, size: 16),
+                  Text(
+                    '🔥',
+                    style: TextStyle(fontSize: 16),
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'On Fire!',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFFFF6B35),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),

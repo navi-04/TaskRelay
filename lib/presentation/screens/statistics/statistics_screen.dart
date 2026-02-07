@@ -24,17 +24,13 @@ class StatisticsScreen extends ConsumerWidget {
           ref.invalidate(dashboardProvider);
         },
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Overview Section
-              _buildSectionHeader(context, 'Overview', Icons.insights),
-              const SizedBox(height: 12),
-              _buildOverviewCards(context, dashboard),
-              const SizedBox(height: 24),
-
               // Productivity Score
               _buildSectionHeader(context, 'Productivity Score', Icons.speed),
               const SizedBox(height: 12),
@@ -86,43 +82,6 @@ class StatisticsScreen extends ConsumerWidget {
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOverviewCards(BuildContext context, dynamic dashboard) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.3,
-      children: [
-        StatCard(
-          title: 'Current Streak',
-          value: '${dashboard.streak} days',
-          icon: Icons.local_fire_department,
-          color: Colors.orange,
-        ),
-        StatCard(
-          title: 'Tasks Today',
-          value: '${dashboard.todaySummary?.completedTasks ?? 0}/${dashboard.todaySummary?.totalTasks ?? 0}',
-          icon: Icons.check_circle,
-          color: AppTheme.success,
-        ),
-        StatCard(
-          title: 'Time Used',
-          value: '${dashboard.formattedUsedTime}/${dashboard.formattedDailyLimit}',
-          icon: Icons.schedule,
-          color: dashboard.isOverLimit ? AppTheme.error : AppTheme.info,
-        ),
-        StatCard(
-          title: 'Completion',
-          value: '${((dashboard.todaySummary?.completedTasks ?? 0) / (dashboard.todaySummary?.totalTasks ?? 1) * 100).toInt()}%',
-          icon: Icons.trending_up,
-          color: AppTheme.primaryColor,
         ),
       ],
     );

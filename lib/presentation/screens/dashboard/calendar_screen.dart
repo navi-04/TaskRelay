@@ -259,6 +259,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     
     return Flexible(
       child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         padding: const EdgeInsets.all(16),
         child: GradientCard(
           gradient: LinearGradient(

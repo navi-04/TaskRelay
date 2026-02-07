@@ -133,8 +133,24 @@ class _MyAppState extends ConsumerState<MyApp> {
     return MaterialApp(
       title: 'TaskRelay',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme.copyWith(
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          },
+        ),
+      ),
+      darkTheme: AppTheme.darkTheme.copyWith(
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          },
+        ),
+      ),
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
       home: isFirstLaunch ? const OnboardingScreen() : const MainNavigationScreen(),
     );

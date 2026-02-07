@@ -165,9 +165,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               // Tab bar
               TabBar(
                 controller: _tabController,
-                labelColor: AppTheme.primaryColor,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: AppTheme.primaryColor,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicatorColor: Colors.white,
                 tabs: [
                   Tab(text: 'All (${taskState.tasks.length})'),
                   Tab(text: 'Active (${taskState.tasks.length - taskState.completedTasks.length})'),
@@ -319,6 +319,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
       tasks = tasks.where((t) => t.priority == _priorityFilter).toList();
     }
     
+    // Separate permanent and regular tasks
+    final permanentTasks = tasks.where((t) => t.isPermanent).toList();
+    final regularTasks = tasks.where((t) => !t.isPermanent).toList();
+    
     // Sort: incomplete first, then by priority, then by duration
     final priorityOrder = {
       TaskPriority.critical: 0,
@@ -327,14 +331,19 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
       TaskPriority.low: 3,
     };
     
-    tasks.sort((a, b) {
-      if (a.isCompleted != b.isCompleted) {
-        return a.isCompleted ? 1 : -1;
-      }
-      final priorityCompare = priorityOrder[a.priority]!.compareTo(priorityOrder[b.priority]!);
-      if (priorityCompare != 0) return priorityCompare;
-      return b.durationMinutes.compareTo(a.durationMinutes);
-    });
+    void sortTasks(List<TaskEntity> taskList) {
+      taskList.sort((a, b) {
+        if (a.isCompleted != b.isCompleted) {
+          return a.isCompleted ? 1 : -1;
+        }
+        final priorityCompare = priorityOrder[a.priority]!.compareTo(priorityOrder[b.priority]!);
+        if (priorityCompare != 0) return priorityCompare;
+        return b.durationMinutes.compareTo(a.durationMinutes);
+      });
+    }
+    
+    sortTasks(permanentTasks);
+    sortTasks(regularTasks);
     
     if (tasks.isEmpty) {
       return EmptyStateWidget(
@@ -347,13 +356,109 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     }
     
     return ListView.builder(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       padding: const EdgeInsets.all(12),
-      itemCount: tasks.length,
+      itemCount: (permanentTasks.isNotEmpty ? 1 : 0) + permanentTasks.length + 
+                 (regularTasks.isNotEmpty && permanentTasks.isNotEmpty ? 1 : 0) + regularTasks.length,
       itemBuilder: (context, index) {
-        return AnimatedTaskTile(
-          index: index,
-          child: _buildTaskCard(context, tasks[index]),
-        );
+        // Permanent tasks section
+        if (permanentTasks.isNotEmpty) {
+          if (index == 0) {
+            // Section header for permanent tasks
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8, top: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.repeat,
+                    size: 18,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PERMANENT TASKS',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[700]
+                          : Colors.grey[300],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          } else if (index <= permanentTasks.length) {
+            // Permanent task item
+            return AnimatedTaskTile(
+              index: index - 1,
+              child: _buildTaskCard(context, permanentTasks[index - 1]),
+            );
+          }
+        }
+        
+        // Regular tasks section
+        final regularTasksStartIndex = permanentTasks.isNotEmpty ? permanentTasks.length + 1 : 0;
+        
+        if (regularTasks.isNotEmpty && permanentTasks.isNotEmpty && index == regularTasksStartIndex) {
+          // Section header for regular tasks
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8, top: 16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.task_alt,
+                  size: 18,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600],
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'TODAY\'S TASKS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[400]
+                        : Colors.grey[600],
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    height: 1,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[700]
+                        : Colors.grey[300],
+                  ),
+                ),
+              ],
+            ),
+          );
+        } else if (regularTasks.isNotEmpty) {
+          // Regular task item
+          final taskIndex = index - regularTasksStartIndex - (permanentTasks.isNotEmpty ? 1 : 0);
+          if (taskIndex >= 0 && taskIndex < regularTasks.length) {
+            return AnimatedTaskTile(
+              index: taskIndex,
+              child: _buildTaskCard(context, regularTasks[taskIndex]),
+            );
+          }
+        }
+        
+        return const SizedBox.shrink();
       },
     );
   }
@@ -387,36 +492,42 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (direction) => _confirmDelete(context, task),
-      child: GestureDetector(
-        onTap: () => _showTaskDetails(context, task),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showTaskDetails(context, task),
             borderRadius: BorderRadius.circular(6),
-            border: task.isCompleted
-                ? null
-                : Border.all(
-                    color: task.priority.color.withOpacity(0.3),
-                    width: 1,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(6),
+                border: task.isCompleted
+                    ? null
+                    : Border.all(
+                        color: task.priority.color.withOpacity(0.3),
+                        width: 1,
+                      ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            children: [
+              child: Column(
+                children: [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: GestureDetector(
                   onTap: () {
                     ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
                   },
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
@@ -506,6 +617,13 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                             Colors.amber,
                           ),
                         ],
+                        if (task.isPermanent) ...[
+                          const SizedBox(width: 6),
+                          _buildChip(
+                            'Permanent',
+                            AppTheme.primaryColor,
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -530,7 +648,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   ],
                 ),
               ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -973,6 +1093,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     
     TaskType selectedType = task?.taskType ?? TaskType.task;
     TaskPriority selectedPriority = task?.priority ?? TaskPriority.medium;
+    bool isPermanent = task?.isPermanent ?? false;
     
     showModalBottomSheet(
       context: context,
@@ -988,6 +1109,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Form(
@@ -1174,6 +1296,63 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       ),
                       maxLines: 2,
                     ),
+                    const SizedBox(height: 16),
+                    
+                    // Permanent task toggle
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.blue.withOpacity(0.1) 
+                            : Colors.blue.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.blue.withOpacity(0.3) 
+                              : Colors.blue.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.repeat,
+                            color: AppTheme.primaryColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Permanent Task',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Shows up every day until deleted',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).brightness == Brightness.dark 
+                                        ? Colors.grey[400] 
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: isPermanent,
+                            onChanged: (value) {
+                              setModalState(() {
+                                isPermanent = value;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     
                     // Action buttons
@@ -1250,6 +1429,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     notes: notesController.text.trim().isEmpty
                                         ? null
                                         : notesController.text.trim(),
+                                    isPermanent: isPermanent,
                                   ));
                                 } else {
                                   notifier.addTask(
@@ -1264,6 +1444,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     notes: notesController.text.trim().isEmpty
                                         ? null
                                         : notesController.text.trim(),
+                                    isPermanent: isPermanent,
                                   );
                                 }
                                 

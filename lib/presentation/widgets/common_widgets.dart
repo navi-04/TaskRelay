@@ -235,8 +235,8 @@ class EmptyStateWidget extends StatelessWidget {
   }
 }
 
-/// Simple task tile wrapper (no animation)
-class AnimatedTaskTile extends StatelessWidget {
+/// Animated task tile with smooth fade-in and slide effect
+class AnimatedTaskTile extends StatefulWidget {
   final Widget child;
   final int index;
 
@@ -247,8 +247,63 @@ class AnimatedTaskTile extends StatelessWidget {
   });
 
   @override
+  State<AnimatedTaskTile> createState() => _AnimatedTaskTileState();
+}
+
+class _AnimatedTaskTileState extends State<AnimatedTaskTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    // Stagger animations based on index
+    final delay = widget.index * 50; // 50ms delay per item
+    
+    Future.delayed(Duration(milliseconds: delay), () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return child;
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: RepaintBoundary(
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }
 

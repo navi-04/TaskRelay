@@ -31,13 +31,14 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       priority: fields[11] as TaskPriority,
       notes: fields[12] as String?,
       tags: (fields[13] as List).cast<String>(),
+      isPermanent: fields[14] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskEntity obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -65,7 +66,9 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       ..writeByte(12)
       ..write(obj.notes)
       ..writeByte(13)
-      ..write(obj.tags);
+      ..write(obj.tags)
+      ..writeByte(14)
+      ..write(obj.isPermanent);
   }
 
   @override

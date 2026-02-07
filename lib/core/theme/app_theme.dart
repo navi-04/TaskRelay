@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// App Theme Configuration - Simple Navy Blue Theme
+/// App Theme Configuration - Blue Theme
 class AppTheme {
-  // Updated color palette
-  static const Color primaryColor = Color(0xFF0F766E);      // Base
-  static const Color primaryDark = Color(0xFF0F766E);       // Use base for dark variant
-  static const Color primaryLight = Color(0xFF2DD4BF);      // Accent
-  static const Color primaryLighter = Color(0xFF2DD4BF);    // Accent
-  static const Color primaryLightest = Color(0xFF2DD4BF);   // Accent
+  // Blue color palette
+  static const Color primaryColor = Color(0xFF1976D2);      // Material Blue 700
+  static const Color primaryDark = Color(0xFF0D47A1);       // Material Blue 900
+  static const Color primaryLight = Color(0xFF42A5F5);      // Material Blue 400
+  static const Color primaryLighter = Color(0xFF64B5F6);    // Material Blue 300
+  static const Color primaryLightest = Color(0xFF90CAF9);   // Material Blue 200
 
-  static const Color secondaryColor = Color(0xFF2DD4BF);    // Accent
-  static const Color accentColor = Color(0xFF2DD4BF);       // Accent
+  static const Color secondaryColor = Color(0xFF42A5F5);    // Material Blue 400
+  static const Color accentColor = Color(0xFF64B5F6);       // Material Blue 300
 
   static const Color backgroundLight = Color(0xFFFFFFFF);   // Pure white
-  static const Color backgroundDark = Color(0xFF000000);    // Pure black
+  static const Color backgroundDark = Color(0xFF121212);    // Modern dark gray
   static const Color surfaceLight = Color(0xFFFFFFFF);      // Pure white
-  static const Color surfaceDark = Color(0xFF0A0A0A);       // Nearly pure black
+  static const Color surfaceDark = Color(0xFF1E1E1E);       // Elevated dark surface
   static const Color navIconColor = Color(0xFF64B5F6);      // Light blue
 
   // Text colors for dark mode
@@ -25,10 +25,10 @@ class AppTheme {
   static const Color textSecondaryDark = Color(0xFF9CA3AF); // Secondary text dark
 
   // Status colors - muted versions
-  static const Color success = Color(0xFF2E7D4A);
-  static const Color warning = Color(0xFFB8860B);
-  static const Color error = Color(0xFFB22234);
-  static const Color info = Color(0xFF336699);
+  static const Color success = Color.fromARGB(255, 61, 190, 106);
+  static const Color warning = Color.fromARGB(255, 255, 210, 97);
+  static const Color error = Color.fromARGB(255, 249, 62, 84);
+  static const Color info = Color(0xFF42A5F5);              // Material Blue 400
   
   // Simple solid gradients (same color for simplicity)
   static const LinearGradient primaryGradient = LinearGradient(
@@ -146,6 +146,22 @@ class AppTheme {
       type: BottomNavigationBarType.fixed,
       elevation: 4,
     ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: backgroundLight,
+      indicatorColor: primaryColor,
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const IconThemeData(color: Colors.white);
+        }
+        return IconThemeData(color: primaryColor.withOpacity(0.6));
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor);
+        }
+        return TextStyle(fontSize: 12, color: primaryColor.withOpacity(0.6));
+      }),
+    ),
     chipTheme: ChipThemeData(
       backgroundColor: accentColor.withOpacity(0.2),
       labelStyle: TextStyle(fontSize: 12, color: accentColor),
@@ -244,6 +260,22 @@ class AppTheme {
       unselectedItemColor: navIconColor,
       type: BottomNavigationBarType.fixed,
       elevation: 4,
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: surfaceDark,
+      indicatorColor: primaryColor,
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const IconThemeData(color: Colors.white);
+        }
+        return IconThemeData(color: primaryColor.withOpacity(0.6));
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryColor);
+        }
+        return TextStyle(fontSize: 12, color: primaryColor.withOpacity(0.6));
+      }),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: accentColor.withOpacity(0.2),

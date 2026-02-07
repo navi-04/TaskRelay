@@ -71,6 +71,10 @@ class TaskEntity extends Equatable {
   @HiveField(13)
   final List<String> tags;
 
+  /// Whether this is a permanent task that appears every day
+  @HiveField(14)
+  final bool isPermanent;
+
   const TaskEntity({
     required this.id,
     required this.title,
@@ -86,6 +90,7 @@ class TaskEntity extends Equatable {
     this.priority = TaskPriority.medium,
     this.notes,
     this.tags = const [],
+    this.isPermanent = false,
   });
   
   /// Create a new task
@@ -99,6 +104,7 @@ class TaskEntity extends Equatable {
     TaskPriority priority = TaskPriority.medium,
     String? notes,
     List<String> tags = const [],
+    bool isPermanent = false,
   }) {
     return TaskEntity(
       id: id,
@@ -114,6 +120,7 @@ class TaskEntity extends Equatable {
       priority: priority,
       notes: notes,
       tags: tags,
+      isPermanent: isPermanent,
     );
   }
   
@@ -133,6 +140,7 @@ class TaskEntity extends Equatable {
     TaskPriority? priority,
     String? notes,
     List<String>? tags,
+    bool? isPermanent,
   }) {
     return TaskEntity(
       id: id ?? this.id,
@@ -149,6 +157,7 @@ class TaskEntity extends Equatable {
       priority: priority ?? this.priority,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
+      isPermanent: isPermanent ?? this.isPermanent,
     );
   }
   
@@ -192,6 +201,7 @@ class TaskEntity extends Equatable {
         priority,
         notes,
         tags,
+        isPermanent,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")

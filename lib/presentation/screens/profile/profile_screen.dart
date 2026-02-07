@@ -56,6 +56,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         centerTitle: false,
       ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

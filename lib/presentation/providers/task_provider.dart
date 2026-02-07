@@ -74,13 +74,40 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         ));
   
   /// Load tasks for currently selected date
-  void loadTasksForSelectedDate() {
+  void loadTasksForSelectedDate() async {
     state = state.copyWith(isLoading: true);
     
     try {
-      final tasks = _taskRepository.getTasksForDate(state.selectedDate);
+      // Get date-specific tasks (non-permanent tasks for this date)
+      final dateTasks = _taskRepository.getTasksForDate(state.selectedDate)
+          .where((task) => !task.isPermanent)
+          .toList();
+      
+      // Get permanent tasks
+      final permanentTasks = _taskRepository.getPermanentTasks();
+      
+      // Update permanent tasks for the selected date
+      final updatedPermanentTasks = <TaskEntity>[];
+      for (final task in permanentTasks) {
+        // If the task's current date doesn't match selected date, reset completion
+        if (task.currentDate != state.selectedDate) {
+          final updatedTask = task.copyWith(
+            currentDate: state.selectedDate,
+            isCompleted: false,
+          );
+          updatedPermanentTasks.add(updatedTask);
+          // Update in database
+          await _taskRepository.updateTask(updatedTask);
+        } else {
+          updatedPermanentTasks.add(task);
+        }
+      }
+      
+      // Combine both lists
+      final allTasks = [...dateTasks, ...updatedPermanentTasks];
+      
       state = state.copyWith(
-        tasks: tasks,
+        tasks: allTasks,
         isLoading: false,
         error: null,
       );
@@ -130,6 +157,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     TaskPriority priority = TaskPriority.medium,
     String? notes,
     List<String> tags = const [],
+    bool isPermanent = false,
   }) async {
     try {
       final task = TaskEntity.create(
@@ -142,6 +170,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         priority: priority,
         notes: notes,
         tags: tags,
+        isPermanent: isPermanent,
       );
       
       await _taskRepository.addTask(task);

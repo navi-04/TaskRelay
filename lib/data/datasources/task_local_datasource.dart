@@ -106,6 +106,11 @@ class TaskLocalDataSource {
     return _taskBox.values.where((task) => task.isCarriedOver).toList();
   }
   
+  /// Get all permanent tasks
+  List<TaskEntity> getPermanentTasks() {
+    return _taskBox.values.where((task) => task.isPermanent).toList();
+  }
+  
   /// Clear all tasks (use with caution)
   Future<void> clearAllTasks() async {
     await _taskBox.clear();
