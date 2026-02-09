@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -17,6 +18,9 @@ class NotificationService {
   
   final FlutterLocalNotificationsPlugin _notifications = 
       FlutterLocalNotificationsPlugin();
+  
+  // Method channel for full-screen alarms
+  static const platform = MethodChannel('com.example.sampleapp/alarm');
   
   bool _initialized = false;
   
@@ -68,13 +72,23 @@ class NotificationService {
     
     if (androidPlugin == null) return;
     
-    // Task Alarms Channel - High priority with sound and vibration
+    // Task Alarms Channel - High priority with alarm sound and vibration
+    // Using channel ID v3 with proper alarm ringtone configuration
+    // 
+    // NOTE: To use a custom alarm ringtone, add alarm_sound.mp3 or alarm_sound.ogg
+    // to android/app/src/main/res/raw/ directory
+    // See android/app/src/main/res/raw/README_ALARM_SOUND.md for details
+    //
+    // ALTERNATIVE APPROACH: If you don't add a custom sound file, the system will
+    // use the default notification sound. To use no custom sound, remove the 'sound' parameter below.
     final alarmChannel = AndroidNotificationChannel(
-      'task_alarms',
+      'task_alarms_v3',
       'Task Alarms',
       description: 'Alarm notifications for scheduled tasks',
       importance: Importance.max,
       playSound: true,
+      sound: const RawResourceAndroidNotificationSound('alarm_sound'),  // Custom alarm ringtone
+      // ALTERNATIVE: Remove the 'sound' line above to use default notification sound
       enableVibration: true,
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
       enableLights: true,
@@ -344,8 +358,9 @@ class NotificationService {
   
   /// Schedule task-specific alarm notification
   /// 
-  /// Schedules a notification at the specified time for a task
+  /// Schedules a FULL-SCREEN alarm at the specified time for a task
   /// For permanent tasks, the alarm repeats daily
+  /// This alarm will show over the lock screen and wake the device
   Future<void> scheduleTaskAlarm({
     required String taskId,
     required String taskTitle,
@@ -371,90 +386,52 @@ class NotificationService {
       0,
     );
     
-    // If time has passed today (or is within 30 seconds), schedule for tomorrow
-    if (scheduledDate.isBefore(now) || scheduledDate.difference(now).inSeconds < 30) {
+    // If time has already passed, schedule for tomorrow
+    // Otherwise, schedule for today
+    if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
     
-    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
     final timeUntil = scheduledDate.difference(now);
     
-    print('\n🔔 ========== SCHEDULING ALARM ==========');
+    print('\n🔔 ========== SCHEDULING FULL-SCREEN ALARM ==========');
     print('  📋 Task: "$taskTitle"');
     print('  🆔 Notification ID: $notificationId');
     print('  🕐 Current time: ${now.toString()}');
     print('  ⏰ Scheduled for: ${scheduledDate.toString()}');
     print('  ⏱️  Time until alarm: ${timeUntil.inHours}h ${timeUntil.inMinutes % 60}m ${timeUntil.inSeconds % 60}s');
     print('  🔁 Daily repeat: $isPermanent');
-    print('  🌍 Timezone: ${tz.local.name}');
-    
-    final androidDetails = AndroidNotificationDetails(
-      'task_alarms',
-      'Task Alarms',
-      channelDescription: 'Alarm notifications for scheduled tasks',
-      importance: Importance.max,
-      priority: Priority.max,
-      playSound: true,
-      enableVibration: true,
-      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
-      fullScreenIntent: true,
-      category: AndroidNotificationCategory.alarm,
-      visibility: NotificationVisibility.public,
-      ongoing: true,
-      autoCancel: false,
-      colorized: true,
-      color: const Color(0xFFFF6B35),
-      timeoutAfter: 60000, // Ring for 60 seconds
-      channelShowBadge: true,
-      additionalFlags: Int32List.fromList([4, 128]), // FLAG_INSISTENT | FLAG_SHOW_WHEN_LOCKED
-    );
-    
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      interruptionLevel: InterruptionLevel.critical,
-      sound: 'default',
-    );
-    
-    final details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+    print('  📱 Full-screen: YES (works over lock screen)');
     
     try {
-      await _notifications.zonedSchedule(
-        notificationId,
-        '⏰ Task Alarm',
-        taskTitle,
-        tzScheduledDate,
-        details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: isPermanent ? DateTimeComponents.time : null,
-        payload: taskId,
-      );
+      // Use native Android alarm with full-screen intent
+      await platform.invokeMethod('scheduleFullScreenAlarm', {
+        'notificationId': notificationId,
+        'taskTitle': taskTitle,
+        'triggerTimeMillis': scheduledDate.millisecondsSinceEpoch,
+        'isPermanent': isPermanent,
+      });
       
-      print('✅ Alarm scheduled successfully');
-      
-      // Verify it was scheduled
-      final pendingNotifications = await _notifications.pendingNotificationRequests();
-      print('📋 Pending notifications: ${pendingNotifications.length}');
-      for (final notif in pendingNotifications) {
-        print('  - ID: ${notif.id}, Title: ${notif.title}, Body: ${notif.body}');
-      }
+      print('✅ Full-screen alarm scheduled successfully');
     } catch (e) {
-      print('❌ Error scheduling alarm: $e');
+      print('❌ Error scheduling full-screen alarm: $e');
       rethrow;
     }
   }
   
   /// Cancel task-specific alarm
   /// 
-  /// Cancels the scheduled notification for a specific task
+  /// Cancels the scheduled full-screen alarm for a specific task
   Future<void> cancelTaskAlarm(String taskId) async {
     final notificationId = 1000 + taskId.hashCode.abs() % 100000;
+    
+    try {
+      await platform.invokeMethod('cancelFullScreenAlarm', {
+        'notificationId': notificationId,
+      });
+    } catch (e) {
+      print('❌ Error canceling alarm: $e');
+    }
     await _notifications.cancel(notificationId);
   }
 }
