@@ -2,8 +2,10 @@ package com.example.sampleapp
 
 import android.annotation.SuppressLint
 import android.app.AlarmManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -17,6 +19,8 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.sampleapp/alarm"
     private val TAG = "MainActivity"
+    private var methodChannel: MethodChannel? = null
+    private var completeTaskReceiver: BroadcastReceiver? = null
     
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,16 +46,24 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel = channel
+
+        // Register broadcast receiver for "Mark as Complete" from AlarmActivity/overlay
+        registerCompleteTaskReceiver()
+
+        channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "scheduleFullScreenAlarm" -> {
                     val notificationId = call.argument<Int>("notificationId") ?: 0
                     val taskTitle = call.argument<String>("taskTitle") ?: "Task Reminder"
+                    val taskId = call.argument<String>("taskId") ?: ""
                     val triggerTimeMillis = call.argument<Long>("triggerTimeMillis") ?: 0L
                     val isPermanent = call.argument<Boolean>("isPermanent") ?: false
                     
                     Log.d(TAG, "🔔 Scheduling alarm from Flutter")
                     Log.d(TAG, "  - Task: $taskTitle")
+                    Log.d(TAG, "  - TaskID: $taskId")
                     Log.d(TAG, "  - ID: $notificationId")
                     Log.d(TAG, "  - Time: $triggerTimeMillis")
                     Log.d(TAG, "  - Delta: ${(triggerTimeMillis - System.currentTimeMillis()) / 1000}s")
@@ -65,7 +77,8 @@ class MainActivity : FlutterActivity() {
                         notificationId,
                         taskTitle,
                         triggerTimeMillis,
-                        isPermanent
+                        isPermanent,
+                        taskId
                     )
                     
                     Log.d(TAG, "✅ Alarm scheduled successfully")

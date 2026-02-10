@@ -27,8 +27,9 @@ class AlarmReceiver : BroadcastReceiver() {
         Log.d(TAG, "🚨🚨🚨 ALARM TRIGGERED! 🚨🚨🚨")
 
         val taskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
+        val taskId = intent.getStringExtra("taskId") ?: ""
         val notificationId = intent.getIntExtra("notificationId", 0)
-        Log.d(TAG, "  Task: $taskTitle, ID: $notificationId")
+        Log.d(TAG, "  Task: $taskTitle, ID: $notificationId, TaskID: $taskId")
 
         // ── Start AlarmService — it posts FSI notification + plays sound ─
         // Do NOT launch AlarmActivity directly. Do NOT wake screen.
@@ -39,6 +40,7 @@ class AlarmReceiver : BroadcastReceiver() {
             val svcIntent = Intent(context, AlarmService::class.java).apply {
                 action = AlarmService.ACTION_START_ALARM
                 putExtra("taskTitle", taskTitle)
+                putExtra("taskId", taskId)
                 putExtra("notificationId", notificationId)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -60,7 +62,8 @@ class AlarmReceiver : BroadcastReceiver() {
             notificationId: Int,
             taskTitle: String,
             triggerTimeMillis: Long,
-            isPermanent: Boolean
+            isPermanent: Boolean,
+            taskId: String = ""
         ) {
             Log.d(TAG, "📅 ========== SCHEDULING ALARM ==========")
             Log.d(TAG, "  Task       : $taskTitle")
@@ -73,6 +76,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
             val receiverIntent = Intent(context, AlarmReceiver::class.java).apply {
                 putExtra("taskTitle", taskTitle)
+                putExtra("taskId", taskId)
                 putExtra("notificationId", notificationId)
             }
             val pi = PendingIntent.getBroadcast(

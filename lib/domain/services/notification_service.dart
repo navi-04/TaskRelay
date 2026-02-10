@@ -446,6 +446,7 @@ class NotificationService {
       // Use native Android alarm with full-screen intent
       await platform.invokeMethod('scheduleFullScreenAlarm', {
         'notificationId': notificationId,
+        'taskId': taskId,
         'taskTitle': taskTitle,
         'triggerTimeMillis': scheduledDate.millisecondsSinceEpoch,
         'isPermanent': isPermanent,

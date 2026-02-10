@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -35,6 +36,7 @@ class AlarmActivity : Activity() {
     }
 
     private lateinit var taskTitle: String
+    private var taskId: String = ""
     private var notificationId: Int = 0
     private var screenWakeLock: PowerManager.WakeLock? = null
 
@@ -48,8 +50,9 @@ class AlarmActivity : Activity() {
 
         // ── 2. Extract intent data ───────────────────────────────────
         taskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
+        taskId = intent.getStringExtra("taskId") ?: ""
         notificationId = intent.getIntExtra("notificationId", 0)
-        Log.d(TAG, "  Task: $taskTitle  ID: $notificationId")
+        Log.d(TAG, "  Task: $taskTitle  ID: $notificationId  TaskID: $taskId")
 
         // ── 3. Set content + bind views ──────────────────────────────
         try {
@@ -61,8 +64,8 @@ class AlarmActivity : Activity() {
             findViewById<Button>(R.id.dismissButton).setOnClickListener {
                 dismissAlarm()
             }
-            findViewById<Button>(R.id.snoozeButton).setOnClickListener {
-                snoozeAlarm()
+            findViewById<Button>(R.id.completeButton).setOnClickListener {
+                markAsComplete()
             }
 
             Log.d(TAG, "✅ AlarmActivity fully ready")
@@ -155,11 +158,21 @@ class AlarmActivity : Activity() {
         finish()
     }
 
-    private fun snoozeAlarm() {
-        Log.d(TAG, "💤 Snooze pressed – +5 min")
+    private fun markAsComplete() {
+        Log.d(TAG, "✅ Mark as Complete pressed — taskId: $taskId")
         AlarmService.stopAlarm(this)
-        val snoozeMs = System.currentTimeMillis() + 5 * 60 * 1000
-        AlarmReceiver.scheduleAlarm(this, notificationId, taskTitle, snoozeMs, false)
+
+        // Send broadcast to Flutter to mark task as complete
+        if (taskId.isNotEmpty()) {
+            val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
+                setPackage(packageName)
+                putExtra("taskId", taskId)
+                putExtra("taskTitle", taskTitle)
+            }
+            sendBroadcast(completeIntent)
+            Log.d(TAG, "📤 Complete broadcast sent for taskId: $taskId")
+        }
+
         releaseWakeLock()
         finish()
     }
@@ -171,6 +184,7 @@ class AlarmActivity : Activity() {
         // Handle re-launch if already showing (singleTask/singleTop)
         setIntent(intent)
         taskTitle = intent.getStringExtra("taskTitle") ?: taskTitle
+        taskId = intent.getStringExtra("taskId") ?: taskId
         notificationId = intent.getIntExtra("notificationId", notificationId)
         try {
             findViewById<TextView>(R.id.alarmTitle)?.text = taskTitle

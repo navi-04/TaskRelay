@@ -1,98 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF6B35"
-    android:padding="32dp">
+    android:background="#CC000000">
 
-    <!-- Alarm Icon -->
-    <TextView
-        android:id="@+id/alarmIcon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="80dp"
-        android:text="⏰"
-        android:textSize="80sp"
-        android:textColor="#FFFFFF" />
-
-    <!-- Current Time -->
-    <TextView
-        android:id="@+id/alarmTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/alarmIcon"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="24dp"
-        android:text="12:00"
-        android:textSize="72sp"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold" />
-
-    <!-- Task Title -->
-    <TextView
-        android:id="@+id/alarmTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/alarmTime"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="32dp"
-        android:text="Task Reminder"
-        android:textSize="28sp"
-        android:textColor="#FFFFFF"
-        android:textAlignment="center"
-        android:gravity="center"
-        android:textStyle="bold" />
-
-    <!-- Label -->
-    <TextView
-        android:id="@+id/alarmLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/alarmTitle"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="16dp"
-        android:text="Task Alarm"
-        android:textSize="18sp"
-        android:textColor="#FFFFFF"
-        android:alpha="0.9" />
-
-    <!-- Button Container -->
+    <!-- Centered card container -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="48dp"
-        android:orientation="horizontal"
-        android:gravity="center">
+        android:layout_gravity="center"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp"
+        android:background="@drawable/alarm_card_bg">
 
-        <!-- Snooze Button -->
+        <!-- Pulsing ring icon -->
+        <TextView
+            android:id="@+id/alarmIcon"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:gravity="center"
+            android:text="🔔"
+            android:textSize="44sp"
+            android:background="@drawable/alarm_icon_ring" />
+
+        <!-- ALARM label -->
+        <TextView
+            android:id="@+id/alarmLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="ALARM"
+            android:textSize="13sp"
+            android:textColor="#80FFFFFF"
+            android:letterSpacing="0.3"
+            android:textStyle="bold" />
+
+        <!-- Current Time -->
+        <TextView
+            android:id="@+id/alarmTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="12:00"
+            android:textSize="56sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-light" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="48dp"
+            android:layout_height="2dp"
+            android:layout_marginTop="16dp"
+            android:background="#33FFFFFF" />
+
+        <!-- Task Title -->
+        <TextView
+            android:id="@+id/alarmTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Task Reminder"
+            android:textSize="22sp"
+            android:textColor="#FFFFFF"
+            android:textAlignment="center"
+            android:gravity="center"
+            android:textStyle="bold"
+            android:maxLines="3"
+            android:ellipsize="end" />
+
+        <!-- Mark as Complete button -->
         <Button
-            android:id="@+id/snoozeButton"
-            android:layout_width="0dp"
-            android:layout_height="64dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="12dp"
-            android:text="Snooze\n5 min"
+            android:id="@+id/completeButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="32dp"
+            android:text="✓  Mark as Complete"
             android:textSize="16sp"
-            android:textColor="#FF6B35"
-            android:background="@drawable/alarm_button_bg"
-            android:padding="12dp" />
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:background="@drawable/alarm_complete_btn_bg"
+            android:stateListAnimator="@null" />
 
-        <!-- Dismiss Button -->
+        <!-- Dismiss button -->
         <Button
             android:id="@+id/dismissButton"
-            android:layout_width="0dp"
-            android:layout_height="64dp"
-            android:layout_weight="1"
-            android:layout_marginStart="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
             android:text="Dismiss"
-            android:textSize="18sp"
-            android:textColor="#FF6B35"
-            android:background="@drawable/alarm_button_bg"
-            android:textStyle="bold"
-            android:padding="12dp" />
+            android:textSize="15sp"
+            android:textColor="#80FFFFFF"
+            android:textAllCaps="false"
+            android:background="@android:color/transparent"
+            android:stateListAnimator="@null" />
 
     </LinearLayout>
 
-</RelativeLayout>
+</FrameLayout>

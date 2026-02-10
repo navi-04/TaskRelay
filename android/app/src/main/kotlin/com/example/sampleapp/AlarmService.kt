@@ -30,6 +30,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
@@ -88,6 +89,7 @@ class AlarmService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var partialWakeLock: PowerManager.WakeLock? = null
     private var currentTaskTitle: String = ""
+    private var currentTaskId: String = ""
     private var currentNotificationId: Int = 0
 
     override fun onCreate() {
@@ -124,9 +126,10 @@ class AlarmService : Service() {
 
     private fun handleStartAlarm(intent: Intent) {
         currentTaskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
+        currentTaskId = intent.getStringExtra("taskId") ?: ""
         currentNotificationId = intent.getIntExtra("notificationId", 0)
 
-        Log.d(TAG, "🔔 Starting alarm → $currentTaskTitle (ID: $currentNotificationId)")
+        Log.d(TAG, "🔔 Starting alarm → $currentTaskTitle (ID: $currentNotificationId, TaskID: $currentTaskId)")
 
         // ── STEP 1: Go foreground with FSI notification IMMEDIATELY ──
         // This is the ONLY reliable way to show UI on the lock screen.
@@ -356,27 +359,59 @@ class AlarmService : Service() {
     }
 
     /**
-     * Build the alarm UI programmatically — orange fullscreen with
-     * time, task title, snooze and dismiss buttons.
+     * Build the alarm UI programmatically — modern transparent glassmorphic card
+     * centered on a dark translucent scrim, with Mark as Complete and Dismiss.
      */
     private fun buildAlarmUI(taskTitle: String): View {
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
 
-        val root = LinearLayout(this).apply {
+        // Root — dark translucent scrim over entire screen
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(0xCC000000.toInt())
+        }
+
+        // Card container — centered frosted glass card
+        val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setBackgroundColor(0xFFFF6B35.toInt())
-            setPadding(dp(32), dp(60), dp(32), dp(48))
+            background = makeRoundedBg(0x55FFFFFF.toInt(), dp(28).toFloat()).apply {
+                setStroke(dp(1), 0x33FFFFFF.toInt())
+            }
+            setPadding(dp(32), dp(32), dp(32), dp(32))
         }
 
+        // Icon — bell inside a ring
+        val iconBg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(0x44FFFFFF.toInt())
+            setStroke(dp(2), 0x88FFFFFF.toInt())
+        }
         val icon = TextView(this).apply {
-            text = "⏰"
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 80f)
+            text = "🔔"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 44f)
             gravity = Gravity.CENTER
+            background = iconBg
         }
-        root.addView(icon)
+        card.addView(icon, LinearLayout.LayoutParams(dp(80), dp(80)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
 
+        // "ALARM" label
+        val alarmLabel = TextView(this).apply {
+            text = "ALARM"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTextColor(0x80FFFFFF.toInt())
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            letterSpacing = 0.3f
+        }
+        card.addView(alarmLabel, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(20) })
+
+        // Current time
         val now = java.util.Calendar.getInstance()
         val timeStr = String.format(
             "%02d:%02d",
@@ -385,87 +420,95 @@ class AlarmService : Service() {
         )
         val timeView = TextView(this).apply {
             text = timeStr
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 72f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 56f)
             setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.create("sans-serif-light", Typeface.BOLD)
             gravity = Gravity.CENTER
         }
-        root.addView(timeView, LinearLayout.LayoutParams(
+        card.addView(timeView, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(24) })
+        ).apply { topMargin = dp(4) })
 
+        // Divider
+        val divider = View(this).apply {
+            setBackgroundColor(0x33FFFFFF.toInt())
+        }
+        card.addView(divider, LinearLayout.LayoutParams(dp(48), dp(2)).apply {
+            topMargin = dp(16)
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
+
+        // Task title
         val titleView = TextView(this).apply {
             text = taskTitle
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
+            maxLines = 3
         }
-        root.addView(titleView, LinearLayout.LayoutParams(
+        card.addView(titleView, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(32) })
-
-        val label = TextView(this).apply {
-            text = "Task Alarm"
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-            setTextColor(Color.argb(230, 255, 255, 255))
-            gravity = Gravity.CENTER
-        }
-        root.addView(label, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(16) })
 
-        // Spacer
-        root.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f))
-
-        val btnContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-
-        val snoozeBtn = Button(this).apply {
-            text = "Snooze\n5 min"
-            setTextColor(0xFFFF6B35.toInt())
+        // "Mark as Complete" button — green
+        val completeBtn = Button(this).apply {
+            text = "✓  Mark as Complete"
+            setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            background = makeRoundedBg(Color.WHITE, dp(32).toFloat())
-            setPadding(dp(24), dp(12), dp(24), dp(12))
+            typeface = Typeface.DEFAULT_BOLD
+            isAllCaps = false
+            background = makeRoundedBg(0xFF4CAF50.toInt(), dp(16).toFloat())
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            stateListAnimator = null
             setOnClickListener {
-                Log.d(TAG, "💤 Snooze pressed")
-                val snoozeMs = System.currentTimeMillis() + 5 * 60 * 1000
-                AlarmReceiver.scheduleAlarm(
-                    this@AlarmService, currentNotificationId,
-                    currentTaskTitle, snoozeMs, false
-                )
+                Log.d(TAG, "✅ Complete pressed (overlay)")
+                // Send broadcast to Flutter to mark task as complete
+                if (currentTaskId.isNotEmpty()) {
+                    val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
+                        setPackage(packageName)
+                        putExtra("taskId", currentTaskId)
+                        putExtra("taskTitle", currentTaskTitle)
+                    }
+                    sendBroadcast(completeIntent)
+                    Log.d(TAG, "📤 Complete broadcast sent for taskId: $currentTaskId")
+                }
                 handleStopAlarm()
             }
         }
-        btnContainer.addView(snoozeBtn, LinearLayout.LayoutParams(0, dp(64), 1f).apply {
-            marginEnd = dp(12)
-        })
+        card.addView(completeBtn, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(56)
+        ).apply { topMargin = dp(32) })
 
+        // "Dismiss" button — transparent text
         val dismissBtn = Button(this).apply {
             text = "Dismiss"
-            setTextColor(0xFFFF6B35.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-            typeface = Typeface.DEFAULT_BOLD
-            background = makeRoundedBg(Color.WHITE, dp(32).toFloat())
-            setPadding(dp(24), dp(12), dp(24), dp(12))
+            setTextColor(0x80FFFFFF.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            isAllCaps = false
+            setBackgroundColor(Color.TRANSPARENT)
+            stateListAnimator = null
             setOnClickListener {
-                Log.d(TAG, "🛑 Dismiss pressed")
+                Log.d(TAG, "🛑 Dismiss pressed (overlay)")
                 handleStopAlarm()
             }
         }
-        btnContainer.addView(dismissBtn, LinearLayout.LayoutParams(0, dp(64), 1f).apply {
-            marginStart = dp(12)
-        })
+        card.addView(dismissBtn, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(48)
+        ).apply { topMargin = dp(12) })
 
-        root.addView(btnContainer, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
+        // Add card to root, centered with margins
+        val cardParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.CENTER
+            marginStart = dp(24)
+            marginEnd = dp(24)
+        }
+        root.addView(card, cardParams)
 
         return root
     }
@@ -524,6 +567,7 @@ class AlarmService : Service() {
         // ── Full-screen intent → AlarmActivity ──
         val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra("taskTitle", taskTitle)
+            putExtra("taskId", currentTaskId)
             putExtra("notificationId", notificationId)
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or

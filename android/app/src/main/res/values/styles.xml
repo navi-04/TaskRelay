@@ -17,8 +17,9 @@
     </style>
 
     <style name="AlarmTheme" parent="@android:style/Theme.NoTitleBar.Fullscreen">
-        <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowBackground">#FF6B35</item> <!-- Match alarm background color -->
-        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
     </style>
 </resources>
