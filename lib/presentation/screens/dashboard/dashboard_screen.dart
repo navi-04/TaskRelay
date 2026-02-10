@@ -344,9 +344,9 @@ class DashboardScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Time Used'),
+                        Text(dashboard.progressLabel),
                         Text(
-                          '${dashboard.formattedUsedTime} / ${dashboard.formattedDailyLimit}',
+                          '${dashboard.formattedUsedValue} / ${dashboard.formattedDailyLimitValue}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: isOverLimit ? AppTheme.error : AppTheme.primaryColor,

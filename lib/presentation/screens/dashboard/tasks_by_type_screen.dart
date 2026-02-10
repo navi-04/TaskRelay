@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../providers/providers.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../../data/models/estimation_mode.dart';
 import '../../../data/models/task_entity.dart';
 import '../../../data/models/task_type.dart';
 import '../../../data/models/task_priority.dart';
@@ -308,13 +310,24 @@ class _TaskItem extends ConsumerWidget {
                         color: Colors.grey[600],
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        '${task.durationMinutes} min',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                      Builder(builder: (context) {
+                        final mode = ref.watch(settingsProvider).estimationMode;
+                        String label;
+                        if (mode == EstimationMode.timeBased) {
+                          label = '${task.durationMinutes} min';
+                        } else if (mode == EstimationMode.weightBased) {
+                          label = task.formattedWeight;
+                        } else {
+                          label = '1 task';
+                        }
+                        return Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        );
+                      }),
                     ],
                   ),
                   Row(
@@ -421,6 +434,8 @@ class _TaskItem extends ConsumerWidget {
     TaskType selectedType = task.taskType;
     TaskPriority selectedPriority = task.priority;
     bool isPermanent = task.isPermanent;
+    int selectedWeight = task.weight;
+    final estimationMode = ref.read(settingsProvider).estimationMode;
     
     showModalBottomSheet(
       context: context,
@@ -545,73 +560,104 @@ class _TaskItem extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Duration (Hours and Minutes)
-                    Text(
-                      'Duration *',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[300] 
-                            : Colors.grey[700],
+                    // Estimation fields (mode-aware)
+                    if (estimationMode == EstimationMode.timeBased) ...[
+                      Text(
+                        'Duration *',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[300] 
+                              : Colors.grey[700],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        // Hours dropdown
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            value: selectedHours,
-                            decoration: const InputDecoration(
-                              labelText: 'Hours',
-                              prefixIcon: Icon(Icons.schedule),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              value: selectedHours,
+                              decoration: const InputDecoration(
+                                labelText: 'Hours',
+                                prefixIcon: Icon(Icons.schedule),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              items: List.generate(25, (index) => index).map((hour) {
+                                return DropdownMenuItem(
+                                  value: hour,
+                                  child: Text('$hour h', style: const TextStyle(fontSize: 14)),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setModalState(() {
+                                  selectedHours = value!;
+                                });
+                              },
                             ),
-                            items: List.generate(25, (index) => index).map((hour) {
-                              return DropdownMenuItem(
-                                value: hour,
-                                child: Text('$hour h', style: const TextStyle(fontSize: 14)),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setModalState(() {
-                                selectedHours = value!;
-                              });
-                            },
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Minutes dropdown
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            value: selectedMinutes,
-                            decoration: const InputDecoration(
-                              labelText: 'Minutes',
-                              prefixIcon: Icon(Icons.timer),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              value: selectedMinutes,
+                              decoration: const InputDecoration(
+                                labelText: 'Minutes',
+                                prefixIcon: Icon(Icons.timer),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) {
+                                return DropdownMenuItem(
+                                  value: minute,
+                                  child: Text('$minute m', style: const TextStyle(fontSize: 14)),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setModalState(() {
+                                  selectedMinutes = value!;
+                                });
+                              },
+                              validator: (value) {
+                                if (selectedHours == 0 && (value == null || value == 0)) {
+                                  return 'Duration required';
+                                }
+                                return null;
+                              },
                             ),
-                            items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) {
-                              return DropdownMenuItem(
-                                value: minute,
-                                child: Text('$minute m', style: const TextStyle(fontSize: 14)),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setModalState(() {
-                                selectedMinutes = value!;
-                              });
-                            },
-                            validator: (value) {
-                              if (selectedHours == 0 && (value == null || value == 0)) {
-                                return 'Duration required';
-                              }
-                              return null;
-                            },
                           ),
+                        ],
+                      ),
+                    ] else if (estimationMode == EstimationMode.weightBased) ...[
+                      Text(
+                        'Weight',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[300] 
+                              : Colors.grey[700],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value: selectedWeight,
+                        decoration: const InputDecoration(
+                          labelText: 'Weight (points)',
+                          prefixIcon: Icon(Icons.fitness_center),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100].map((w) {
+                          return DropdownMenuItem(
+                            value: w,
+                            child: Text('$w pts', style: const TextStyle(fontSize: 14)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setModalState(() {
+                            selectedWeight = value!;
+                          });
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     
                     // Notes
