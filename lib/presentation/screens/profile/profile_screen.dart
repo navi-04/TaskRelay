@@ -369,7 +369,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             }).toList(),
             selected: {currentMode},
             onSelectionChanged: (Set<EstimationMode> selected) {
-              ref.read(settingsProvider.notifier).updateEstimationMode(selected.first.index);
+              final newMode = selected.first;
+              ref.read(settingsProvider.notifier).updateEstimationMode(newMode.index);
+              // Bulk-sync weight <-> duration on existing tasks
+              ref.read(taskStateProvider.notifier).syncTaskEstimationValues(newMode);
             },
           ),
           const SizedBox(height: 16),
