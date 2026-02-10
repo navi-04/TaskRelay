@@ -110,13 +110,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           ],
         ),
       ),
-      floatingActionButton: _currentIndex == 1
-          ? FloatingActionButton.extended(
-              onPressed: () => _showQuickAddSheet(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Task'),
-            )
-          : null,
     );
   }
 

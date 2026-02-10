@@ -10,13 +10,13 @@ enum TaskPriority {
   low('Low', '🔵', Colors.blue),
 
   @HiveField(1)
-  medium('Medium', '�', Colors.orange),
+  medium('Medium', '🟡', Colors.orange),
 
   @HiveField(2)
-  high('High', '�', Colors.red),
+  high('High', '🔴', Colors.red),
 
   @HiveField(3)
-  critical('Critical', '�', Colors.deepOrange);
+  critical('Critical', '🔥', Colors.deepOrange);
 
   const TaskPriority(this.label, this.emoji, this.color);
 

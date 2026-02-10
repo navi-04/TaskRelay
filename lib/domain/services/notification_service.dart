@@ -32,8 +32,14 @@ class NotificationService {
     
     // Initialize timezone
     tz_data.initializeTimeZones();
-    final local = tz.getLocation('America/New_York');
-    tz.setLocalLocation(local);
+    // Detect the device's local timezone instead of hardcoding
+    try {
+      final local = tz.getLocation(DateTime.now().timeZoneName);
+      tz.setLocalLocation(local);
+    } catch (_) {
+      // If device timezone name isn't found in the database, use UTC as fallback
+      tz.setLocalLocation(tz.UTC);
+    }
     print('  ✅ Timezone: ${tz.local.name}');
     
     // Android initialization settings

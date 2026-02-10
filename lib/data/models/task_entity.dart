@@ -5,6 +5,12 @@ import 'task_priority.dart';
 
 part 'task_entity.g.dart';
 
+/// Sentinel class to distinguish "not provided" from explicit null in copyWith
+class _Unset {
+  const _Unset();
+}
+const _unset = _Unset();
+
 /// Task Entity - Represents a single task
 /// 
 /// This entity stores all task information including:
@@ -131,42 +137,44 @@ class TaskEntity extends Equatable {
     );
   }
   
-  /// Copy with method for immutable updates
+  /// Copy with method for immutable updates.
+  /// Nullable fields (description, completedAt, notes, alarmTime) use
+  /// Object? + const sentinel so callers can explicitly pass null to clear them.
   TaskEntity copyWith({
     String? id,
     String? title,
-    String? description,
+    Object? description = _unset,
     int? durationMinutes,
     bool? isCompleted,
     String? createdDate,
     String? originalDate,
     String? currentDate,
     bool? isCarriedOver,
-    DateTime? completedAt,
+    Object? completedAt = _unset,
     TaskType? taskType,
     TaskPriority? priority,
-    String? notes,
+    Object? notes = _unset,
     List<String>? tags,
     bool? isPermanent,
-    DateTime? alarmTime,
+    Object? alarmTime = _unset,
   }) {
     return TaskEntity(
       id: id ?? this.id,
       title: title ?? this.title,
-      description: description ?? this.description,
+      description: description is _Unset ? this.description : description as String?,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       isCompleted: isCompleted ?? this.isCompleted,
       createdDate: createdDate ?? this.createdDate,
       originalDate: originalDate ?? this.originalDate,
       currentDate: currentDate ?? this.currentDate,
       isCarriedOver: isCarriedOver ?? this.isCarriedOver,
-      completedAt: completedAt ?? this.completedAt,
+      completedAt: completedAt is _Unset ? this.completedAt : completedAt as DateTime?,
       taskType: taskType ?? this.taskType,
       priority: priority ?? this.priority,
-      notes: notes ?? this.notes,
+      notes: notes is _Unset ? this.notes : notes as String?,
       tags: tags ?? this.tags,
       isPermanent: isPermanent ?? this.isPermanent,
-      alarmTime: alarmTime ?? this.alarmTime,
+      alarmTime: alarmTime is _Unset ? this.alarmTime : alarmTime as DateTime?,
     );
   }
   

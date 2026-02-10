@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/providers.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 
@@ -40,7 +42,7 @@ class StatisticsScreen extends ConsumerWidget {
               // Weekly Performance
               _buildSectionHeader(context, 'Weekly Performance', Icons.trending_up),
               const SizedBox(height: 12),
-              _buildWeeklyChart(context, dashboard.weeklyStats),
+              _buildWeeklyChart(context, ref, dashboard.weeklyStats),
               const SizedBox(height: 24),
 
               // Task Distribution
@@ -186,9 +188,33 @@ class StatisticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWeeklyChart(BuildContext context, Map<String, dynamic> stats) {
+  Widget _buildWeeklyChart(BuildContext context, WidgetRef ref, Map<String, dynamic> stats) {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final today = DateTime.now().weekday - 1;
+
+    // Compute per-day completion rates from real data
+    final now = DateTime.now();
+    // Find the Monday of this week
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final List<double> dailyRates = [];
+    try {
+      final summaryRepo = ref.read(daySummaryRepositoryProvider);
+      for (int i = 0; i < 7; i++) {
+        final day = monday.add(Duration(days: i));
+        final dateStr = DateHelper.formatDate(day);
+        final summary = summaryRepo.getSummaryForDate(dateStr);
+        if (summary != null && summary.totalTasks > 0) {
+          dailyRates.add(summary.completedTasks / summary.totalTasks);
+        } else {
+          dailyRates.add(0.0);
+        }
+      }
+    } catch (_) {
+      // If repo not ready, fill with zeros
+      while (dailyRates.length < 7) {
+        dailyRates.add(0.0);
+      }
+    }
 
     return GradientCard(
       padding: const EdgeInsets.all(20),
@@ -199,8 +225,8 @@ class StatisticsScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: List.generate(7, (index) {
               final isToday = index == today;
-              // Simulated data - in real app, this would come from actual daily summaries
-              final double height = index <= today ? (0.3 + (index * 0.1)).clamp(0.2, 1.0) : 0.1;
+              // Use real completion rate; show a minimum sliver (0.1) for future/empty days
+              final double height = dailyRates[index] > 0 ? dailyRates[index] : 0.1;
 
               return Column(
                 mainAxisSize: MainAxisSize.min,
