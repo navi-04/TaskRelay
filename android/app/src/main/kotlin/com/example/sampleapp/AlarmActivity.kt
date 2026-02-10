@@ -37,14 +37,45 @@ class AlarmActivity : Activity() {
         super.onCreate(savedInstanceState)
         currentInstance = this
         Log.d(TAG, "🔔 AlarmActivity onCreate")
+        
+        // ── 1. Set flags FIRST so window can show over lock screen ──
+        try {
+            // Apply LEGACY flags (still needed for some behaviors)
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
+            
+            // Apply MODERN API (Android 8.1+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                setShowWhenLocked(true)
+                setTurnScreenOn(true)
+                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                keyguardManager.requestDismissKeyguard(this, null)
+            }
+            
+            // Apply WAKE LOCK (Absolute backup)
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            screenWakeLock = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                        PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "SampleApp:AlarmActivityWake"
+            )
+            screenWakeLock?.acquire(30_000L) // 30 seconds max
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error setting flags: ${e.message}", e)
+        }
 
         try {
             taskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
             notificationId = intent.getIntExtra("notificationId", 0)
             Log.d(TAG, "  Task: $taskTitle  ID: $notificationId")
-
-            // ── 1. Set flags FIRST so window can show over lock screen ──
-            forceScreenOn()
 
             // ── 2. THEN set content ───────────────────────────────────
             setContentView(R.layout.activity_alarm)
@@ -63,52 +94,8 @@ class AlarmActivity : Activity() {
 
             Log.d(TAG, "✅ AlarmActivity fully ready and visible")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error in onCreate: ${e.message}", e)
+            Log.e(TAG, "❌ Error in onCreate UI setup: ${e.message}", e)
         }
-    }
-
-    /**
-     * Use EVERY possible mechanism to show over lock screen and turn screen on.
-     */
-    private fun forceScreenOn() {
-        // ── Modern API (Android 8.1+) ────────────────────────────────
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-            try {
-                val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                km.requestDismissKeyguard(this, null)
-            } catch (e: Exception) {
-                Log.e(TAG, "KeyguardManager failed: ${e.message}")
-            }
-        }
-
-        // ── Legacy flags (still work and needed as backup) ───────────
-        @Suppress("DEPRECATION")
-        window.addFlags(
-            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-            WindowManager.LayoutParams.FLAG_FULLSCREEN
-        )
-
-        // ── Wake lock as absolute last resort to turn screen on ──────
-        try {
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            @Suppress("DEPRECATION")
-            screenWakeLock = pm.newWakeLock(
-                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
-                        PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                "SampleApp:AlarmActivityWake"
-            )
-            screenWakeLock?.acquire(30_000L) // 30 seconds
-            Log.d(TAG, "✅ Activity wake lock acquired — screen ON")
-        } catch (e: Exception) {
-            Log.e(TAG, "Wake lock failed: ${e.message}", e)
-        }
-
-        Log.d(TAG, "✅ All screen-on mechanisms applied")
     }
 
     // ─── Actions ─────────────────────────────────────────────────────

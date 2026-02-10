@@ -42,9 +42,11 @@
         <!-- Full-screen Alarm Activity - Shows over lock screen -->
         <activity
             android:name=".AlarmActivity"
+            android:taskAffinity=".AlarmActivity"
             android:excludeFromRecents="true"
-            android:exported="false"
-            android:launchMode="singleInstance"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:showOnLockScreen="true"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
