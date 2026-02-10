@@ -43,12 +43,12 @@ class AlarmActivity : Activity() {
             notificationId = intent.getIntExtra("notificationId", 0)
             Log.d(TAG, "  Task: $taskTitle  ID: $notificationId")
 
-            // ── 1. Set content FIRST so there's a window to show ─────
+            // ── 1. Set flags FIRST so window can show over lock screen ──
+            forceScreenOn()
+
+            // ── 2. THEN set content ───────────────────────────────────
             setContentView(R.layout.activity_alarm)
             Log.d(TAG, "✅ setContentView done")
-
-            // ── 2. THEN force screen on and show over lock screen ────
-            forceScreenOn()
 
             // ── 3. Bind views ────────────────────────────────────────
             findViewById<TextView>(R.id.alarmTitle).text = taskTitle

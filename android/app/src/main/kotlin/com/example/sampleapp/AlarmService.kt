@@ -115,6 +115,12 @@ class AlarmService : Service() {
         // launch AlarmActivity over the lock screen. If we wake the
         // screen first, Android treats the device as "in use" and just
         // shows a heads-up notification instead.
+        
+        // Acquire PARTIAL_WAKE_LOCK immediately to ensure CPU runs
+        // while we wait for the delay.
+        acquirePartialWakeLock()
+        
+        try {
         try {
             val notification = buildNotification(currentTaskTitle, currentNotificationId)
             startForeground(ALARM_NOTIFICATION_ID, notification)
@@ -130,12 +136,10 @@ class AlarmService : Service() {
         startVibration()
 
         // ── 4. After a short delay, wake screen + show overlay ───────
-        // The 800ms delay gives the full-screen intent time to fire
-        // and launch AlarmActivity on the lock screen. After that,
-        // we also wake the screen and show the overlay as a fallback
-        // (overlay is the primary UI when unlocked).
+        // The 250ms delay gives the full-screen intent time to fire.
         Handler(Looper.getMainLooper()).postDelayed({
-            acquireWakeLock()
+            // Now we force the screen on (Full Wake Lock)
+            acquireFullWakeLock()
 
             // Try to dismiss non-secure keyguard
             tryDismissKeyguard()
@@ -143,7 +147,10 @@ class AlarmService : Service() {
             // Show overlay (primary UI when screen is unlocked,
             // fallback when full-screen intent didn't fire)
             showOverlay(currentTaskTitle)
-        }, 800)
+            
+            // Release the partial lock now that we have the full one
+            releasePartialWakeLock()
+        }, 250)
     }
 
     /**
@@ -195,7 +202,27 @@ class AlarmService : Service() {
 
     // ─── Wake lock ───────────────────────────────────────────────────
 
-    private fun acquireWakeLock() {
+    // ─── Wake lock ───────────────────────────────────────────────────
+
+    private var partialWakeLock: PowerManager.WakeLock? = null
+
+    private fun acquirePartialWakeLock() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            partialWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SampleApp:AlarmPartial")
+            partialWakeLock?.acquire(60_000L) // 1 min timeout
+            Log.d(TAG, "✅ Partial wake lock acquired")
+        } catch (e: Exception) { Log.e(TAG, "Partial WL failed: $e") }
+    }
+    
+    private fun releasePartialWakeLock() {
+         try {
+            if (partialWakeLock?.isHeld == true) partialWakeLock?.release()
+        } catch (_: Exception) {}
+        partialWakeLock = null
+    }
+
+    private fun acquireFullWakeLock() {
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             @Suppress("DEPRECATION")
@@ -205,7 +232,7 @@ class AlarmService : Service() {
                 "SampleApp:AlarmWake"
             )
             wakeLock?.acquire(5 * 60_000L) // 5 minutes max
-            Log.d(TAG, "✅ Wake lock acquired — screen ON")
+            Log.d(TAG, "✅ Full Screen wake lock acquired — screen ON")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Wake lock failed: ${e.message}", e)
         }
@@ -219,6 +246,7 @@ class AlarmService : Service() {
             }
         } catch (_: Exception) {}
         wakeLock = null
+        releasePartialWakeLock()
     }
 
     // ─── Overlay Window (the actual alarm UI) ────────────────────────
@@ -517,6 +545,7 @@ class AlarmService : Service() {
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build())
+                setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
                 isLooping = true
                 setVolume(1f, 1f)
                 prepare()
