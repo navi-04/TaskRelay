@@ -28,9 +28,11 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    // Request notification permissions on app launch
-     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(notificationServiceProvider).requestPermissions();
+    // Check and request alarm-related permissions with user-facing dialogs.
+    // Basic notification/exact-alarm permissions are already requested in main.dart.
+    // This handles overlay & full-screen intent via explanation dialogs.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
     });
   }
 
@@ -536,7 +538,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
     );
   }
 
-  void _submitTask() {
+  Future<void> _submitTask() async {
     if (_formKey.currentState!.validate()) {
       final durationMinutes = (selectedHours * 60) + selectedMinutes;
       
@@ -584,6 +586,22 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         );
         return;
       }
+
+      // If alarm is set, check overlay permission — strip alarm if denied
+      var effectiveAlarmTime = alarmTime;
+      if (alarmTime != null) {
+        final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
+        if (!hasOverlay) {
+          // Show dialog explaining why permission is needed
+          final accepted = await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
+          // Re-check after user returns from settings
+          final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
+          if (!nowHasOverlay) {
+            // Permission still not granted — remove alarm, create task without it
+            effectiveAlarmTime = null;
+          }
+        }
+      }
       
       notifier.addTask(
         id: const Uuid().v4(),
@@ -598,19 +616,36 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             ? null
             : _notesController.text.trim(),
         isPermanent: isPermanent,
-        alarmTime: alarmTime,
+        alarmTime: effectiveAlarmTime,
       );
       
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Task added!'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      // Warn the user if alarm was removed due to missing permission
+      if (alarmTime != null && effectiveAlarmTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Task created without alarm — "Display over other apps" permission is required for alarms.',
+            ),
+            backgroundColor: AppTheme.warning,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Task added!'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
     }
   }
 }

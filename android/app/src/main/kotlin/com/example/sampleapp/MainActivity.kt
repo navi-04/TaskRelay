@@ -24,20 +24,10 @@ class MainActivity : FlutterActivity() {
     
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Request "Display over other apps" permission on first launch.
-        // This is REQUIRED for showing the alarm overlay on OnePlus/ColorOS.
+        // Permission requests are now handled from Flutter with proper dialogs.
+        // Do NOT auto-navigate to settings here.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            Log.w(TAG, "⚠️ Overlay permission not granted — requesting")
-            try {
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName")
-                )
-                startActivity(intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Cannot request overlay permission: ${e.message}", e)
-            }
+            Log.w(TAG, "⚠️ Overlay permission not granted — will be requested from Flutter UI")
         } else {
             Log.d(TAG, "✅ Overlay permission granted")
         }

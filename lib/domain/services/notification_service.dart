@@ -189,7 +189,8 @@ class NotificationService {
     print('Notification tapped: ${response.payload}');
   }
   
-  /// Request notification permissions (iOS)
+  /// Request basic notification & exact alarm permissions (silent — no dialog).
+  /// Called during app init. Overlay & FSI are handled separately via dialogs.
   Future<bool> requestPermissions() async {
     // Request Android 13+ notification permission & exact alarms
     final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
@@ -198,33 +199,6 @@ class NotificationService {
     if (androidPlugin != null) {
       await androidPlugin.requestNotificationsPermission();
       await androidPlugin.requestExactAlarmsPermission();
-    }
-
-    // Request SYSTEM_ALERT_WINDOW for lock screen overlay (Android 10+)
-    // This is CRITICAL for showing the alarm UI over lock screen on newer Androids
-    // when the full-screen intent is blocked.
-    // Use MethodChannel to avoid permission_handler plugin issues on Windows
-    try {
-      print('🔍 Checking SYSTEM_ALERT_WINDOW permission...');
-      final hasOverlayPermission = await platform.invokeMethod<bool>('checkSystemAlertWindowPermission') ?? false;
-      if (!hasOverlayPermission) {
-        print('⚠️ SYSTEM_ALERT_WINDOW denied. Requesting...');
-        await platform.invokeMethod('requestSystemAlertWindowPermission');
-      } else {
-        print('✅ SYSTEM_ALERT_WINDOW granted');
-      }
-      
-      // Request USE_FULL_SCREEN_INTENT (Android 14+)
-      print('🔍 Checking USE_FULL_SCREEN_INTENT permission...');
-      final hasFullScreenPermission = await platform.invokeMethod<bool>('checkFullScreenIntentPermission') ?? false;
-      if (!hasFullScreenPermission) {
-        print('⚠️ USE_FULL_SCREEN_INTENT denied. Requesting...');
-        await platform.invokeMethod('requestFullScreenIntentPermission');
-      } else {
-        print('✅ USE_FULL_SCREEN_INTENT granted');
-      }
-    } catch (e) {
-      print('❌ Error checking/requesting permissions: $e');
     }
 
     // iOS permissions are handled by the local notifications plugin
@@ -241,6 +215,141 @@ class NotificationService {
     }
     
     return true;
+  }
+
+  // ─── Permission checks (no navigation) ────────────────────────────
+
+  /// Check if "Display over other apps" is granted.
+  Future<bool> hasOverlayPermission() async {
+    try {
+      return await platform.invokeMethod<bool>('checkSystemAlertWindowPermission') ?? false;
+    } catch (_) {
+      return true; // Assume OK on non-Android
+    }
+  }
+
+  /// Check if full-screen intent is granted (Android 14+).
+  Future<bool> hasFullScreenIntentPermission() async {
+    try {
+      return await platform.invokeMethod<bool>('checkFullScreenIntentPermission') ?? false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Navigate to the system overlay permission settings page.
+  Future<void> openOverlayPermissionSettings() async {
+    try {
+      await platform.invokeMethod('requestSystemAlertWindowPermission');
+    } catch (e) {
+      print('❌ openOverlayPermissionSettings: $e');
+    }
+  }
+
+  /// Navigate to the system full-screen intent settings page.
+  Future<void> openFullScreenIntentSettings() async {
+    try {
+      await platform.invokeMethod('requestFullScreenIntentPermission');
+    } catch (e) {
+      print('❌ openFullScreenIntentSettings: $e');
+    }
+  }
+
+  /// **Show a dialog and request all alarm-related permissions.**
+  ///
+  /// Call this before scheduling any alarm, or at app launch.
+  /// Shows user-friendly dialog explaining WHY each permission is needed,
+  /// then navigates to system settings only after the user taps "Open Settings".
+  ///
+  /// Returns `true` if all required permissions are granted.
+  Future<bool> ensureAlarmPermissions(BuildContext context) async {
+    bool allGranted = true;
+
+    // 1. Notification permission (Android 13+)
+    final notifOk = await areNotificationsEnabled();
+    if (!notifOk) {
+      final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        final granted = await androidPlugin.requestNotificationsPermission() ?? false;
+        if (!granted) allGranted = false;
+      }
+    }
+
+    // 2. "Display over other apps" — show dialog first
+    final overlayOk = await hasOverlayPermission();
+    if (!overlayOk) {
+      final userAccepted = await _showPermissionDialog(
+        context,
+        title: 'Display Over Other Apps',
+        message:
+            'TaskRelay needs the "Display over other apps" permission to show '
+            'alarm notifications on your lock screen.\n\n'
+            'Without this, alarms may not appear when your phone is locked.',
+        buttonText: 'Open Settings',
+      );
+      if (userAccepted) {
+        await openOverlayPermissionSettings();
+      }
+      // Re-check after user returns (we can't know for sure, so mark not-granted)
+      allGranted = false;
+    }
+
+    // 3. Full-screen intent (Android 14+) — show dialog first
+    final fsiOk = await hasFullScreenIntentPermission();
+    if (!fsiOk) {
+      final userAccepted = await _showPermissionDialog(
+        context,
+        title: 'Full-Screen Alarm',
+        message:
+            'TaskRelay needs the "Full-screen notifications" permission to '
+            'display alarms that wake your screen.\n\n'
+            'Without this, alarms may only show as a small notification.',
+        buttonText: 'Open Settings',
+      );
+      if (userAccepted) {
+        await openFullScreenIntentSettings();
+      }
+      allGranted = false;
+    }
+
+    return allGranted;
+  }
+
+  /// Generic permission explanation dialog.
+  /// Returns `true` if user tapped [buttonText], `false` if dismissed.
+  Future<bool> _showPermissionDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String buttonText,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.security, color: Theme.of(ctx).colorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 18))),
+          ],
+        ),
+        content: Text(message, style: const TextStyle(fontSize: 14, height: 1.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Not Now', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(buttonText),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
   
   /// Schedule daily reminder notification

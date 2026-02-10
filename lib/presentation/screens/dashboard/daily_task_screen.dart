@@ -9,6 +9,7 @@ import '../../../data/models/task_priority.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../providers/providers.dart';
 import 'tasks_by_type_screen.dart';
 
 /// Daily Task Screen - Modern design with improved UX
@@ -1455,7 +1456,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         Expanded(
                           flex: 2,
                           child: ElevatedButton.icon(
-                            onPressed: () {
+                            onPressed: () async {
                               if (formKey.currentState!.validate()) {
                                 final durationMinutes = (selectedHours * 60) + selectedMinutes;
                                 
@@ -1503,6 +1504,19 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   );
                                   return;
                                 }
+
+                                // If alarm is set, check overlay permission — strip alarm if denied
+                                var effectiveAlarmTime = alarmTime;
+                                if (alarmTime != null) {
+                                  final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
+                                  if (!hasOverlay) {
+                                    await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
+                                    final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
+                                    if (!nowHasOverlay) {
+                                      effectiveAlarmTime = null;
+                                    }
+                                  }
+                                }
                                 
                                 if (isEditing) {
                                   notifier.updateTask(task.copyWith(
@@ -1517,7 +1531,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         ? null
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
-                                    alarmTime: alarmTime,
+                                    alarmTime: effectiveAlarmTime,
                                   ));
                                 } else {
                                   notifier.addTask(
@@ -1533,20 +1547,36 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         ? null
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
-                                    alarmTime: alarmTime,
+                                    alarmTime: effectiveAlarmTime,
                                   );
                                 }
                                 
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(isEditing ? 'Task updated!' : 'Task added!'),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                if (alarmTime != null && effectiveAlarmTime == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '${isEditing ? 'Task updated' : 'Task created'} without alarm — "Display over other apps" permission is required for alarms.',
+                                      ),
+                                      backgroundColor: AppTheme.warning,
+                                      duration: const Duration(seconds: 4),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(isEditing ? 'Task updated!' : 'Task added!'),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  );
+                                }
                               }
                             },
                             icon: Icon(isEditing ? Icons.save : Icons.add),
