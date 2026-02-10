@@ -571,6 +571,90 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
   }
 
+  // ─── ESTIMATION FIELDS ──────────────────────────────────────────────
+
+  List<Widget> _buildEstimationFields(bool isDark) {
+    final mode = ref.watch(settingsProvider).estimationMode;
+
+    if (mode == EstimationMode.timeBased) {
+      return [
+        Text(
+          'Duration *',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.grey[300] : Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                value: _selectedHours,
+                decoration: const InputDecoration(
+                  labelText: 'Hours',
+                  prefixIcon: Icon(Icons.schedule),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: List.generate(25, (i) => i)
+                    .map((h) => DropdownMenuItem(value: h, child: Text('$h h', style: const TextStyle(fontSize: 14))))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedHours = v!),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                value: _selectedMinutes,
+                decoration: const InputDecoration(
+                  labelText: 'Minutes',
+                  prefixIcon: Icon(Icons.timer),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+                    .map((m) => DropdownMenuItem(value: m, child: Text('$m m', style: const TextStyle(fontSize: 14))))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedMinutes = v!),
+                validator: (v) {
+                  if (_selectedHours == 0 && (v == null || v == 0)) return 'Duration required';
+                  return null;
+                },
+              ),
+            ),
+          ],
+        ),
+      ];
+    } else if (mode == EstimationMode.weightBased) {
+      return [
+        Text(
+          'Weight',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.grey[300] : Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          value: _selectedWeight,
+          decoration: const InputDecoration(
+            labelText: 'Weight (points)',
+            prefixIcon: Icon(Icons.fitness_center),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100]
+              .map((w) => DropdownMenuItem(value: w, child: Text('$w pts', style: const TextStyle(fontSize: 14))))
+              .toList(),
+          onChanged: (v) => setState(() => _selectedWeight = v!),
+        ),
+      ];
+    } else {
+      // Count-based — no extra fields
+      return [];
+    }
+  }
+
   // ─── DELETE ─────────────────────────────────────────────────────────
 
   Future<void> _confirmDelete(TaskEntity task) async {
