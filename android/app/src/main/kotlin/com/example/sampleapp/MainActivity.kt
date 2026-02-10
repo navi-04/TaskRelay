@@ -84,6 +84,31 @@ class MainActivity : FlutterActivity() {
                         result.success(true) // Not needed on older Android
                     }
                 }
+                "checkSystemAlertWindowPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        result.success(Settings.canDrawOverlays(context))
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "requestSystemAlertWindowPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+                        try {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName")
+                            )
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ Cannot request overlay permission: ${e.message}", e)
+                            result.success(false)
+                        }
+                    } else {
+                        result.success(true)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }

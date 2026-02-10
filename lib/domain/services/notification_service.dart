@@ -2,7 +2,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
 
@@ -154,21 +153,26 @@ class NotificationService {
   
   /// Request notification permissions (iOS)
   Future<bool> requestPermissions() async {
-    // Request Android permissions
-    if (await Permission.notification.isDenied) {
-      await Permission.notification.request();
-    }
+    // Request Android 13+ notification permission & exact alarms
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     
-    // Request exact alarm permission (Android 12+)
-    if (await Permission.scheduleExactAlarm.isDenied) {
-      await Permission.scheduleExactAlarm.request();
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+      await androidPlugin.requestExactAlarmsPermission();
     }
 
     // Request SYSTEM_ALERT_WINDOW for lock screen overlay (Android 10+)
     // This is CRITICAL for showing the alarm UI over lock screen on newer Androids
     // when the full-screen intent is blocked.
-    if (await Permission.systemAlertWindow.isDenied) {
-      await Permission.systemAlertWindow.request();
+    // Use MethodChannel to avoid permission_handler plugin issues on Windows
+    try {
+      final hasOverlayPermission = await platform.invokeMethod<bool>('checkSystemAlertWindowPermission') ?? false;
+      if (!hasOverlayPermission) {
+        await platform.invokeMethod('requestSystemAlertWindowPermission');
+      }
+    } catch (e) {
+      print('❌ Error checking/requesting overlay permission: $e');
     }
 
     // iOS permissions are handled by the local notifications plugin
