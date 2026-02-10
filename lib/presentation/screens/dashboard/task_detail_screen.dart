@@ -544,6 +544,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       isPermanent: _isPermanent,
       alarmTime: effectiveAlarmTime,
+      weight: _selectedWeight,
     ));
 
     setState(() => _isEditing = false);
