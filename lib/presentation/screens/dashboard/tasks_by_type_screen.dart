@@ -743,27 +743,30 @@ class _TaskItem extends ConsumerWidget {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               if (formKey.currentState!.validate()) {
-                                final durationMinutes = (selectedHours * 60) + selectedMinutes;
+                                int durationMinutes;
                                 
-                                // Validate duration
-                                if (durationMinutes < 5) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Duration must be at least 5 minutes'),
-                                      backgroundColor: AppTheme.warning,
-                                    ),
-                                  );
-                                  return;
-                                }
-                                
-                                if (durationMinutes > 24 * 60) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Duration cannot exceed 24 hours'),
-                                      backgroundColor: AppTheme.warning,
-                                    ),
-                                  );
-                                  return;
+                                if (estimationMode == EstimationMode.timeBased) {
+                                  durationMinutes = (selectedHours * 60) + selectedMinutes;
+                                  if (durationMinutes < 5) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Duration must be at least 5 minutes'),
+                                        backgroundColor: AppTheme.warning,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  if (durationMinutes > 24 * 60) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Duration cannot exceed 24 hours'),
+                                        backgroundColor: AppTheme.warning,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                } else {
+                                  durationMinutes = task.durationMinutes; // keep existing
                                 }
                                 
                                 final notifier = ref.read(taskStateProvider.notifier);
@@ -780,6 +783,7 @@ class _TaskItem extends ConsumerWidget {
                                       ? null
                                       : notesController.text.trim(),
                                   isPermanent: isPermanent,
+                                  weight: selectedWeight,
                                 ));
                                 
                                 Navigator.pop(context);
