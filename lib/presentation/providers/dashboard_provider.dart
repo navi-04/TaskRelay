@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/day_summary_entity.dart';
+import '../../data/models/estimation_mode.dart';
 import '../../core/utils/date_utils.dart';
 import 'providers.dart';
 import 'settings_provider.dart';
@@ -16,6 +17,10 @@ class DashboardStats {
   final int remainingMinutes;
   final double progressPercentage;
   final bool isOverLimit;
+  final EstimationMode estimationMode;
+  final int dailyLimit;   // generic limit for current mode
+  final int usedValue;    // generic used for current mode
+  final int remainingValue;
   
   DashboardStats({
     required this.todayDate,
@@ -27,9 +32,13 @@ class DashboardStats {
     required this.remainingMinutes,
     required this.progressPercentage,
     required this.isOverLimit,
+    this.estimationMode = EstimationMode.timeBased,
+    this.dailyLimit = 0,
+    this.usedValue = 0,
+    this.remainingValue = 0,
   });
   
-  factory DashboardStats.empty(String todayDate, int dailyLimitMinutes) {
+  factory DashboardStats.empty(String todayDate, int dailyLimitMinutes, {EstimationMode estimationMode = EstimationMode.timeBased, int dailyLimit = 0}) {
     return DashboardStats(
       todayDate: todayDate,
       todaySummary: null,
@@ -40,6 +49,10 @@ class DashboardStats {
       remainingMinutes: dailyLimitMinutes,
       progressPercentage: 0.0,
       isOverLimit: false,
+      estimationMode: estimationMode,
+      dailyLimit: dailyLimit,
+      usedValue: 0,
+      remainingValue: dailyLimit,
     );
   }
   
@@ -82,6 +95,37 @@ class DashboardStats {
       return '${mins}m';
     }
   }
+
+  /// Format a value based on current estimation mode
+  String formatValue(int value) {
+    switch (estimationMode) {
+      case EstimationMode.timeBased:
+        final h = value ~/ 60;
+        final m = value % 60;
+        if (h > 0 && m > 0) return '${h}h ${m}m';
+        if (h > 0) return '${h}h';
+        return '${m}m';
+      case EstimationMode.weightBased:
+        return '$value pts';
+      case EstimationMode.countBased:
+        return '$value';
+    }
+  }
+
+  String get formattedUsedValue => formatValue(usedValue);
+  String get formattedRemainingValue => formatValue(remainingValue);
+  String get formattedDailyLimitValue => formatValue(dailyLimit);
+
+  String get progressLabel {
+    switch (estimationMode) {
+      case EstimationMode.timeBased:
+        return 'Time Used';
+      case EstimationMode.weightBased:
+        return 'Weight Used';
+      case EstimationMode.countBased:
+        return 'Tasks Added';
+    }
+  }
 }
 
 /// Dashboard Provider - Rebuilds when tasks or settings change
@@ -110,6 +154,12 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
         ? ((usedMinutes / settings.dailyTimeLimitMinutes) * 100).clamp(0.0, 100.0)
         : 0.0;
     final isOverLimit = usedMinutes > settings.dailyTimeLimitMinutes;
+
+    // Mode-aware values
+    final mode = settings.estimationMode;
+    final dailyLimit = settings.effectiveDailyLimit;
+    final usedValue = taskState.usedValueFor(mode);
+    final remainingValue = (dailyLimit - usedValue).clamp(0, dailyLimit);
     
     return DashboardStats(
       todayDate: today,
@@ -121,12 +171,18 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
       remainingMinutes: remainingMinutes,
       progressPercentage: progressPercentage,
       isOverLimit: isOverLimit,
+      estimationMode: mode,
+      dailyLimit: dailyLimit,
+      usedValue: usedValue,
+      remainingValue: remainingValue,
     );
   } catch (e) {
     // Return empty stats if box not initialized yet
     final settings = ref.watch(settingsProvider);
     final today = DateHelper.formatDate(DateHelper.getToday());
-    return DashboardStats.empty(today, settings.dailyTimeLimitMinutes);
+    return DashboardStats.empty(today, settings.dailyTimeLimitMinutes,
+        estimationMode: settings.estimationMode,
+        dailyLimit: settings.effectiveDailyLimit);
   }
 });
 

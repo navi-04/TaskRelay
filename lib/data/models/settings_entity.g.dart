@@ -28,13 +28,16 @@ class SettingsEntityAdapter extends TypeAdapter<SettingsEntity> {
       defaultPriority: fields[8] as TaskPriority,
       username: fields[9] as String,
       profilePhoto: fields[10] as String?,
+      estimationModeIndex: fields[11] as int? ?? 0,
+      dailyWeightLimit: fields[12] as int? ?? 100,
+      dailyCountLimit: fields[13] as int? ?? 10,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsEntity obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(14)
       ..writeByte(9)
       ..write(obj.username)
       ..writeByte(10)
@@ -56,7 +59,13 @@ class SettingsEntityAdapter extends TypeAdapter<SettingsEntity> {
       ..writeByte(7)
       ..write(obj.defaultTaskType)
       ..writeByte(8)
-      ..write(obj.defaultPriority);
+      ..write(obj.defaultPriority)
+      ..writeByte(11)
+      ..write(obj.estimationModeIndex)
+      ..writeByte(12)
+      ..write(obj.dailyWeightLimit)
+      ..writeByte(13)
+      ..write(obj.dailyCountLimit);
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task_entity.dart';
 import '../../data/models/task_type.dart';
 import '../../data/models/task_priority.dart';
+import '../../data/models/estimation_mode.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/day_summary_repository.dart';
 import '../../core/utils/date_utils.dart';
@@ -44,6 +45,34 @@ class TaskState {
   int get totalMinutes => tasks.fold(0, (sum, t) => sum + t.durationMinutes);
   int get completedMinutes => completedTasks.fold(0, (sum, t) => sum + t.durationMinutes);
   int get pendingMinutes => pendingTasks.fold(0, (sum, t) => sum + t.durationMinutes);
+
+  int get totalWeight => tasks.fold(0, (sum, t) => sum + t.weight);
+  int get completedWeight => completedTasks.fold(0, (sum, t) => sum + t.weight);
+  int get pendingWeight => pendingTasks.fold(0, (sum, t) => sum + t.weight);
+
+  /// Get the used value for a given estimation mode
+  int usedValueFor(EstimationMode mode) {
+    switch (mode) {
+      case EstimationMode.timeBased:
+        return totalMinutes;
+      case EstimationMode.weightBased:
+        return totalWeight;
+      case EstimationMode.countBased:
+        return tasks.length;
+    }
+  }
+
+  /// Get completed value for a given estimation mode
+  int completedValueFor(EstimationMode mode) {
+    switch (mode) {
+      case EstimationMode.timeBased:
+        return completedMinutes;
+      case EstimationMode.weightBased:
+        return completedWeight;
+      case EstimationMode.countBased:
+        return completedTasks.length;
+    }
+  }
   
   /// Get formatted total time
   String get formattedTotalTime {
@@ -165,6 +194,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     List<String> tags = const [],
     bool isPermanent = false,
     DateTime? alarmTime,
+    int weight = 1,
   }) async {
     try {
       final task = TaskEntity.create(
@@ -179,6 +209,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         tags: tags,
         isPermanent: isPermanent,
         alarmTime: alarmTime,
+        weight: weight,
       );
       
       await _taskRepository.addTask(task);

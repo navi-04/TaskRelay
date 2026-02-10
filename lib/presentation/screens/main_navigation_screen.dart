@@ -7,6 +7,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/providers.dart';
 import '../../data/models/task_type.dart';
 import '../../data/models/task_priority.dart';
+import '../../data/models/estimation_mode.dart';
 import '../../core/theme/app_theme.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'dashboard/daily_task_screen.dart';
@@ -151,6 +152,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   
   int selectedHours = 0;
   int selectedMinutes = 30;
+  int selectedWeight = 1;
   TaskType selectedType = TaskType.task;
   TaskPriority selectedPriority = TaskPriority.medium;
   bool isPermanent = false;
@@ -284,73 +286,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Duration (Hours and Minutes)
-                Text(
-                  'Duration *',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.grey[300] 
-                        : Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    // Hours dropdown
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: selectedHours,
-                        decoration: const InputDecoration(
-                          labelText: 'Hours',
-                          prefixIcon: Icon(Icons.schedule),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: List.generate(25, (index) => index).map((hour) {
-                          return DropdownMenuItem(
-                            value: hour,
-                            child: Text('$hour h', style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedHours = value!;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Minutes dropdown
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: selectedMinutes,
-                        decoration: const InputDecoration(
-                          labelText: 'Minutes',
-                          prefixIcon: Icon(Icons.timer),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) {
-                          return DropdownMenuItem(
-                            value: minute,
-                            child: Text('$minute m', style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedMinutes = value!;
-                          });
-                        },
-                        validator: (value) {
-                          if (selectedHours == 0 && (value == null || value == 0)) {
-                            return 'Duration required';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                // Duration / Weight / nothing (mode-dependent)
+                ..._buildEstimationField(context),
                 const SizedBox(height: 16),
                 
                 // Notes
@@ -538,53 +475,147 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
     );
   }
 
+  List<Widget> _buildEstimationField(BuildContext context) {
+    final mode = ref.watch(settingsProvider).estimationMode;
+    if (mode == EstimationMode.timeBased) {
+      return [
+        Text(
+          'Duration *',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[300]
+                : Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                value: selectedHours,
+                decoration: const InputDecoration(
+                  labelText: 'Hours',
+                  prefixIcon: Icon(Icons.schedule),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: List.generate(25, (i) => i).map((h) {
+                  return DropdownMenuItem(value: h, child: Text('$h h', style: const TextStyle(fontSize: 14)));
+                }).toList(),
+                onChanged: (v) => setState(() => selectedHours = v!),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                value: selectedMinutes,
+                decoration: const InputDecoration(
+                  labelText: 'Minutes',
+                  prefixIcon: Icon(Icons.timer),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) {
+                  return DropdownMenuItem(value: m, child: Text('$m m', style: const TextStyle(fontSize: 14)));
+                }).toList(),
+                onChanged: (v) => setState(() => selectedMinutes = v!),
+                validator: (v) {
+                  if (selectedHours == 0 && (v == null || v == 0)) return 'Duration required';
+                  return null;
+                },
+              ),
+            ),
+          ],
+        ),
+      ];
+    } else if (mode == EstimationMode.weightBased) {
+      return [
+        Text(
+          'Weight *',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[300]
+                : Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          value: selectedWeight,
+          decoration: const InputDecoration(
+            labelText: 'Weight',
+            prefixIcon: Icon(Icons.fitness_center),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100].map((w) {
+            return DropdownMenuItem(value: w, child: Text('$w pt${w != 1 ? 's' : ''}', style: const TextStyle(fontSize: 14)));
+          }).toList(),
+          onChanged: (v) => setState(() => selectedWeight = v!),
+          validator: (v) {
+            if (v == null || v < 1) return 'Weight required';
+            return null;
+          },
+        ),
+      ];
+    } else {
+      return []; // count-based: no field
+    }
+  }
+
   Future<void> _submitTask() async {
     if (_formKey.currentState!.validate()) {
-      final durationMinutes = (selectedHours * 60) + selectedMinutes;
+      final estimationMode = ref.read(settingsProvider).estimationMode;
+      final durationMinutes = estimationMode == EstimationMode.timeBased
+          ? (selectedHours * 60) + selectedMinutes
+          : 30; // default fallback
       
-      // Validate duration
-      if (durationMinutes < 5) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Duration must be at least 5 minutes'),
-            backgroundColor: AppTheme.warning,
-          ),
-        );
-        return;
-      }
-      
-      if (durationMinutes > 24 * 60) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Duration cannot exceed 24 hours'),
-            backgroundColor: AppTheme.warning,
-          ),
-        );
-        return;
+      // Validate duration (time mode only)
+      if (estimationMode == EstimationMode.timeBased) {
+        if (durationMinutes < 5) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Duration must be at least 5 minutes'),
+              backgroundColor: AppTheme.warning,
+            ),
+          );
+          return;
+        }
+        
+        if (durationMinutes > 24 * 60) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Duration cannot exceed 24 hours'),
+              backgroundColor: AppTheme.warning,
+            ),
+          );
+          return;
+        }
       }
       
       final settings = ref.read(settingsProvider);
       final notifier = ref.read(taskStateProvider.notifier);
       
-      // Format time for display
-      String formatTime(int mins) {
-        final h = mins ~/ 60;
-        final m = mins % 60;
-        if (h > 0 && m > 0) return '\${h}h \${m}m';
-        if (h > 0) return '\${h}h';
-        return '\${m}m';
-      }
-      
-      if (notifier.wouldExceedLimit(durationMinutes, settings.dailyTimeLimitMinutes)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Adding this task would exceed your daily limit of \${formatTime(settings.dailyTimeLimitMinutes)}',
+      if (estimationMode == EstimationMode.timeBased) {
+        String formatTime(int mins) {
+          final h = mins ~/ 60;
+          final m = mins % 60;
+          if (h > 0 && m > 0) return '${h}h ${m}m';
+          if (h > 0) return '${h}h';
+          return '${m}m';
+        }
+        
+        if (notifier.wouldExceedLimit(durationMinutes, settings.dailyTimeLimitMinutes)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Adding this task would exceed your daily limit of ${formatTime(settings.dailyTimeLimitMinutes)}',
+              ),
+              backgroundColor: AppTheme.warning,
             ),
-            backgroundColor: AppTheme.warning,
-          ),
-        );
-        return;
+          );
+          return;
+        }
       }
 
       // If alarm is set, check overlay permission — strip alarm if denied
@@ -617,6 +648,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             : _notesController.text.trim(),
         isPermanent: isPermanent,
         alarmTime: effectiveAlarmTime,
+        weight: selectedWeight,
       );
       
       Navigator.pop(context);

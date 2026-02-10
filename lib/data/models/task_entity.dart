@@ -85,6 +85,10 @@ class TaskEntity extends Equatable {
   @HiveField(15)
   final DateTime? alarmTime;
 
+  /// Task weight for weight-based estimation mode (1–100, default 1)
+  @HiveField(16)
+  final int weight;
+
   const TaskEntity({
     required this.id,
     required this.title,
@@ -102,6 +106,7 @@ class TaskEntity extends Equatable {
     this.tags = const [],
     this.isPermanent = false,
     this.alarmTime,
+    this.weight = 1,
   });
   
   /// Create a new task
@@ -117,6 +122,7 @@ class TaskEntity extends Equatable {
     List<String> tags = const [],
     bool isPermanent = false,
     DateTime? alarmTime,
+    int weight = 1,
   }) {
     return TaskEntity(
       id: id,
@@ -134,6 +140,7 @@ class TaskEntity extends Equatable {
       tags: tags,
       isPermanent: isPermanent,
       alarmTime: alarmTime,
+      weight: weight,
     );
   }
   
@@ -157,6 +164,7 @@ class TaskEntity extends Equatable {
     List<String>? tags,
     bool? isPermanent,
     Object? alarmTime = _unset,
+    int? weight,
   }) {
     return TaskEntity(
       id: id ?? this.id,
@@ -175,6 +183,7 @@ class TaskEntity extends Equatable {
       tags: tags ?? this.tags,
       isPermanent: isPermanent ?? this.isPermanent,
       alarmTime: alarmTime is _Unset ? this.alarmTime : alarmTime as DateTime?,
+      weight: weight ?? this.weight,
     );
   }
   
@@ -220,6 +229,7 @@ class TaskEntity extends Equatable {
         tags,
         isPermanent,
         alarmTime,
+        weight,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")
@@ -234,4 +244,7 @@ class TaskEntity extends Equatable {
       return '${minutes}m';
     }
   }
+
+  /// Get formatted weight string
+  String get formattedWeight => '$weight pt${weight != 1 ? 's' : ''}';
 }

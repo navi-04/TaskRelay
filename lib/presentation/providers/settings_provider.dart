@@ -109,6 +109,27 @@ class SettingsStateNotifier extends StateNotifier<SettingsEntity> {
     await _repository.updateSettings(newSettings);
     state = newSettings;
   }
+
+  /// Update estimation mode
+  Future<void> updateEstimationMode(int modeIndex) async {
+    final newSettings = state.copyWith(estimationModeIndex: modeIndex);
+    await _repository.updateSettings(newSettings);
+    state = newSettings;
+  }
+
+  /// Update daily weight limit
+  Future<void> updateDailyWeightLimit(int limit) async {
+    final newSettings = state.copyWith(dailyWeightLimit: limit);
+    await _repository.updateSettings(newSettings);
+    state = newSettings;
+  }
+
+  /// Update daily count limit
+  Future<void> updateDailyCountLimit(int limit) async {
+    final newSettings = state.copyWith(dailyCountLimit: limit);
+    await _repository.updateSettings(newSettings);
+    state = newSettings;
+  }
 }
 
 /// Settings State Provider

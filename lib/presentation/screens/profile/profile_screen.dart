@@ -11,6 +11,7 @@ import '../../widgets/common_widgets.dart';
 import '../../../data/models/task_type.dart';
 import '../../../data/models/task_priority.dart';
 import '../../../data/models/custom_task_type.dart';
+import '../../../data/models/estimation_mode.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -73,6 +74,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             // Daily Time Limit
             _buildTimeLimitCard(context, settings),
+            const SizedBox(height: 12),
+
+            // Estimation Mode
+            _buildEstimationModeCard(context, settings),
             const SizedBox(height: 12),
 
             // Notifications Card
@@ -328,6 +333,153 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildEstimationModeCard(BuildContext context, settings) {
+    final currentMode = settings.estimationMode as EstimationMode;
+    return GradientCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.bar_chart, color: Colors.deepPurple),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Estimation Mode',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      currentMode.description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Mode selector
+          SegmentedButton<EstimationMode>(
+            segments: EstimationMode.values.map((mode) {
+              return ButtonSegment<EstimationMode>(
+                value: mode,
+                label: Text(
+                  mode == EstimationMode.timeBased
+                      ? 'Time'
+                      : mode == EstimationMode.weightBased
+                          ? 'Weight'
+                          : 'Count',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                icon: Icon(
+                  mode == EstimationMode.timeBased
+                      ? Icons.schedule
+                      : mode == EstimationMode.weightBased
+                          ? Icons.fitness_center
+                          : Icons.format_list_numbered,
+                  size: 18,
+                ),
+              );
+            }).toList(),
+            selected: {currentMode},
+            onSelectionChanged: (Set<EstimationMode> selected) {
+              ref.read(settingsProvider.notifier).updateEstimationMode(selected.first.index);
+            },
+          ),
+          const SizedBox(height: 16),
+          // Conditional limit input
+          if (currentMode == EstimationMode.weightBased)
+            _buildLimitRow(
+              context,
+              label: 'Daily Weight Limit',
+              value: settings.dailyWeightLimit as int,
+              suffix: 'pts',
+              min: 1,
+              max: 10000,
+              onSave: (v) => ref.read(settingsProvider.notifier).updateDailyWeightLimit(v),
+            ),
+          if (currentMode == EstimationMode.countBased)
+            _buildLimitRow(
+              context,
+              label: 'Daily Task Limit',
+              value: settings.dailyCountLimit as int,
+              suffix: 'tasks',
+              min: 1,
+              max: 100,
+              onSave: (v) => ref.read(settingsProvider.notifier).updateDailyCountLimit(v),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLimitRow(
+    BuildContext context, {
+    required String label,
+    required int value,
+    required String suffix,
+    required int min,
+    required int max,
+    required void Function(int) onSave,
+  }) {
+    final controller = TextEditingController(text: value.toString());
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: label,
+              suffixText: suffix,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        ElevatedButton(
+          onPressed: () {
+            final v = int.tryParse(controller.text);
+            if (v != null && v >= min && v <= max) {
+              onSave(v);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$label updated to $v $suffix'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Enter a value between $min and $max'),
+                  backgroundColor: AppTheme.warning,
+                ),
+              );
+            }
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 

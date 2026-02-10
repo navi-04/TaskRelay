@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 import 'package:equatable/equatable.dart';
 import 'task_type.dart';
 import 'task_priority.dart';
+import 'estimation_mode.dart';
 
 part 'settings_entity.g.dart';
 
@@ -21,6 +22,19 @@ class SettingsEntity extends Equatable {
     /// Profile photo path (local file path or base64)
     @HiveField(10)
     final String? profilePhoto;
+
+  /// Estimation mode index: 0=time, 1=weight, 2=count
+  @HiveField(11)
+  final int estimationModeIndex;
+
+  /// Daily weight limit (used in weight-based mode)
+  @HiveField(12)
+  final int dailyWeightLimit;
+
+  /// Daily task count limit (used in count-based mode)
+  @HiveField(13)
+  final int dailyCountLimit;
+
   /// Maximum total time allowed per day in minutes (max 1440 = 24 hours)
   @HiveField(0)
   final int dailyTimeLimitMinutes;
@@ -69,6 +83,9 @@ class SettingsEntity extends Equatable {
     this.defaultPriority = TaskPriority.medium,
     this.username = '',
     this.profilePhoto,
+    this.estimationModeIndex = 0,
+    this.dailyWeightLimit = 100,
+    this.dailyCountLimit = 10,
   });
   
   /// Default settings (8 hours = 480 minutes)
@@ -85,10 +102,40 @@ class SettingsEntity extends Equatable {
       defaultPriority: TaskPriority.medium,
       username: '',
       profilePhoto: null,
+      estimationModeIndex: 0,
+      dailyWeightLimit: 100,
+      dailyCountLimit: 10,
     );
   }
   
   /// Copy with method
+  /// Get estimation mode from index
+  EstimationMode get estimationMode => EstimationMode.values[estimationModeIndex.clamp(0, 2)];
+
+  /// Get the effective daily limit based on estimation mode
+  int get effectiveDailyLimit {
+    switch (estimationMode) {
+      case EstimationMode.timeBased:
+        return dailyTimeLimitMinutes;
+      case EstimationMode.weightBased:
+        return dailyWeightLimit;
+      case EstimationMode.countBased:
+        return dailyCountLimit;
+    }
+  }
+
+  /// Formatted effective limit string
+  String get formattedEffectiveLimit {
+    switch (estimationMode) {
+      case EstimationMode.timeBased:
+        return formattedTimeLimit;
+      case EstimationMode.weightBased:
+        return '$dailyWeightLimit pts';
+      case EstimationMode.countBased:
+        return '$dailyCountLimit tasks';
+    }
+  }
+
   SettingsEntity copyWith({
     int? dailyTimeLimitMinutes,
     bool? notificationsEnabled,
@@ -101,6 +148,9 @@ class SettingsEntity extends Equatable {
     TaskPriority? defaultPriority,
     String? username,
     String? profilePhoto,
+    int? estimationModeIndex,
+    int? dailyWeightLimit,
+    int? dailyCountLimit,
   }) {
     return SettingsEntity(
       dailyTimeLimitMinutes: dailyTimeLimitMinutes ?? this.dailyTimeLimitMinutes,
@@ -114,6 +164,9 @@ class SettingsEntity extends Equatable {
       defaultPriority: defaultPriority ?? this.defaultPriority,
       username: username ?? this.username,
       profilePhoto: profilePhoto ?? this.profilePhoto,
+      estimationModeIndex: estimationModeIndex ?? this.estimationModeIndex,
+      dailyWeightLimit: dailyWeightLimit ?? this.dailyWeightLimit,
+      dailyCountLimit: dailyCountLimit ?? this.dailyCountLimit,
     );
   }
   
@@ -143,5 +196,8 @@ class SettingsEntity extends Equatable {
         defaultPriority,
         username,
         profilePhoto,
+        estimationModeIndex,
+        dailyWeightLimit,
+        dailyCountLimit,
       ];
 }

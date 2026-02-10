@@ -6,11 +6,13 @@ import '../../providers/settings_provider.dart';
 import '../../../data/models/task_entity.dart';
 import '../../../data/models/task_type.dart';
 import '../../../data/models/task_priority.dart';
+import '../../../data/models/estimation_mode.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../providers/providers.dart';
 import 'tasks_by_type_screen.dart';
+import 'task_detail_screen.dart';
 
 /// Daily Task Screen - Modern design with improved UX
 class DailyTaskScreen extends ConsumerStatefulWidget {
@@ -208,19 +210,36 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   }
   
   Widget _buildProgressHeader(BuildContext context, TaskState taskState, int dailyLimitMinutes) {
-    final isOverLimit = taskState.totalMinutes > dailyLimitMinutes;
-    final progress = dailyLimitMinutes > 0 
-        ? (taskState.totalMinutes / dailyLimitMinutes).clamp(0.0, 1.0) 
+    final settings = ref.watch(settingsProvider);
+    final mode = settings.estimationMode;
+    final dailyLimit = settings.effectiveDailyLimit;
+    final usedValue = taskState.usedValueFor(mode);
+    final isOverLimit = usedValue > dailyLimit;
+    final progress = dailyLimit > 0 
+        ? (usedValue / dailyLimit).clamp(0.0, 1.0) 
         : 0.0;
     
-    // Format time display
-    String formatTime(int mins) {
-      final h = mins ~/ 60;
-      final m = mins % 60;
-      if (h > 0 && m > 0) return '${h}h ${m}m';
-      if (h > 0) return '${h}h';
-      return '${m}m';
+    // Format value based on mode
+    String formatValue(int val) {
+      switch (mode) {
+        case EstimationMode.timeBased:
+          final h = val ~/ 60;
+          final m = val % 60;
+          if (h > 0 && m > 0) return '${h}h ${m}m';
+          if (h > 0) return '${h}h';
+          return '${m}m';
+        case EstimationMode.weightBased:
+          return '$val pts';
+        case EstimationMode.countBased:
+          return '$val';
+      }
     }
+
+    final progressLabel = mode == EstimationMode.timeBased
+        ? 'Time'
+        : mode == EstimationMode.weightBased
+            ? 'Weight'
+            : 'Tasks';
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -244,7 +263,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Time: ${formatTime(taskState.totalMinutes)} / ${formatTime(dailyLimitMinutes)}',
+                      '$progressLabel: ${formatValue(usedValue)} / ${formatValue(dailyLimit)}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: isOverLimit ? AppTheme.error : null,
@@ -498,7 +517,12 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _showTaskDetails(context, task),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TaskDetailScreen(taskId: task.id),
+              ),
+            ),
             borderRadius: BorderRadius.circular(6),
             child: Ink(
               decoration: BoxDecoration(
@@ -606,11 +630,17 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           ),
                         ),
                         const SizedBox(width: 6),
-                        // Duration
-                        _buildChip(
-                          task.formattedDuration,
-                          AppTheme.info,
-                        ),
+                        // Duration / Weight (mode-dependent)
+                        if (ref.watch(settingsProvider).estimationMode == EstimationMode.timeBased)
+                          _buildChip(
+                            task.formattedDuration,
+                            AppTheme.info,
+                          )
+                        else if (ref.watch(settingsProvider).estimationMode == EstimationMode.weightBased)
+                          _buildChip(
+                            task.formattedWeight,
+                            AppTheme.info,
+                          ),
                         if (task.isCarriedOver) ...[
                           const SizedBox(width: 6),
                           _buildChip(
@@ -792,43 +822,16 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Edit Task'),
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('Open Task'),
               onTap: () {
                 Navigator.pop(context);
-                _showEditTaskBottomSheet(context, task);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.category),
-              title: const Text('Change Type'),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(task.taskType.label),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showChangeTypeDialog(context, task);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.flag),
-              title: const Text('Change Priority'),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: task.priority.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(task.priority.label),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showChangePriorityDialog(context, task);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TaskDetailScreen(taskId: task.id),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -1087,10 +1090,14 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     final descriptionController = TextEditingController(text: task?.description ?? '');
     final notesController = TextEditingController(text: task?.notes ?? '');
     final formKey = GlobalKey<FormState>();
+    final estimationMode = ref.read(settingsProvider).estimationMode;
     
     // Initialize hours and minutes from existing task duration
     int selectedHours = task != null ? task.durationMinutes ~/ 60 : 0;
     int selectedMinutes = task != null ? task.durationMinutes % 60 : 30;
+    
+    // Initialize weight
+    int selectedWeight = task?.weight ?? 1;
     
     TaskType selectedType = task?.taskType ?? TaskType.task;
     TaskPriority selectedPriority = task?.priority ?? TaskPriority.medium;
@@ -1220,73 +1227,109 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     ),
                     const SizedBox(height: 16),
                     
-                    // Duration (Hours and Minutes)
-                    Text(
-                      'Duration *',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[300] 
-                            : Colors.grey[700],
+                    // Duration / Weight / nothing (mode-dependent)
+                    if (estimationMode == EstimationMode.timeBased) ...[
+                      Text(
+                        'Duration *',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[300] 
+                              : Colors.grey[700],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        // Hours dropdown
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            value: selectedHours,
-                            decoration: const InputDecoration(
-                              labelText: 'Hours',
-                              prefixIcon: Icon(Icons.schedule),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              value: selectedHours,
+                              decoration: const InputDecoration(
+                                labelText: 'Hours',
+                                prefixIcon: Icon(Icons.schedule),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              items: List.generate(25, (index) => index).map((hour) {
+                                return DropdownMenuItem(
+                                  value: hour,
+                                  child: Text('$hour h', style: const TextStyle(fontSize: 14)),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setModalState(() {
+                                  selectedHours = value!;
+                                });
+                              },
                             ),
-                            items: List.generate(25, (index) => index).map((hour) {
-                              return DropdownMenuItem(
-                                value: hour,
-                                child: Text('$hour h', style: const TextStyle(fontSize: 14)),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setModalState(() {
-                                selectedHours = value!;
-                              });
-                            },
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Minutes dropdown
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            value: selectedMinutes,
-                            decoration: const InputDecoration(
-                              labelText: 'Minutes',
-                              prefixIcon: Icon(Icons.timer),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              value: selectedMinutes,
+                              decoration: const InputDecoration(
+                                labelText: 'Minutes',
+                                prefixIcon: Icon(Icons.timer),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) {
+                                return DropdownMenuItem(
+                                  value: minute,
+                                  child: Text('$minute m', style: const TextStyle(fontSize: 14)),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setModalState(() {
+                                  selectedMinutes = value!;
+                                });
+                              },
+                              validator: (value) {
+                                if (selectedHours == 0 && (value == null || value == 0)) {
+                                  return 'Duration required';
+                                }
+                                return null;
+                              },
                             ),
-                            items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) {
-                              return DropdownMenuItem(
-                                value: minute,
-                                child: Text('$minute m', style: const TextStyle(fontSize: 14)),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setModalState(() {
-                                selectedMinutes = value!;
-                              });
-                            },
-                            validator: (value) {
-                              if (selectedHours == 0 && (value == null || value == 0)) {
-                                return 'Duration required';
-                              }
-                              return null;
-                            },
                           ),
+                        ],
+                      ),
+                    ] else if (estimationMode == EstimationMode.weightBased) ...[
+                      Text(
+                        'Weight *',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.grey[300] 
+                              : Colors.grey[700],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value: selectedWeight,
+                        decoration: const InputDecoration(
+                          labelText: 'Weight',
+                          prefixIcon: Icon(Icons.fitness_center),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100].map((w) {
+                          return DropdownMenuItem(
+                            value: w,
+                            child: Text('$w pt${w != 1 ? 's' : ''}', style: const TextStyle(fontSize: 14)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setModalState(() {
+                            selectedWeight = value!;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value < 1) return 'Weight required';
+                          return null;
+                        },
+                      ),
+                    ],
+                    // Count-based: no duration/weight field
                     const SizedBox(height: 16),
                     
                     // Notes
@@ -1458,51 +1501,57 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           child: ElevatedButton.icon(
                             onPressed: () async {
                               if (formKey.currentState!.validate()) {
-                                final durationMinutes = (selectedHours * 60) + selectedMinutes;
+                                final durationMinutes = estimationMode == EstimationMode.timeBased
+                                    ? (selectedHours * 60) + selectedMinutes
+                                    : 30; // default fallback
                                 
-                                // Validate duration
-                                if (durationMinutes < 5) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Duration must be at least 5 minutes'),
-                                      backgroundColor: AppTheme.warning,
-                                    ),
-                                  );
-                                  return;
-                                }
-                                
-                                if (durationMinutes > 24 * 60) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Duration cannot exceed 24 hours'),
-                                      backgroundColor: AppTheme.warning,
-                                    ),
-                                  );
-                                  return;
+                                // Validate duration (only in time mode)
+                                if (estimationMode == EstimationMode.timeBased) {
+                                  if (durationMinutes < 5) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Duration must be at least 5 minutes'),
+                                        backgroundColor: AppTheme.warning,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  
+                                  if (durationMinutes > 24 * 60) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Duration cannot exceed 24 hours'),
+                                        backgroundColor: AppTheme.warning,
+                                      ),
+                                    );
+                                    return;
+                                  }
                                 }
                                 
                                 final settings = ref.read(settingsProvider);
                                 final notifier = ref.read(taskStateProvider.notifier);
                                 
-                                // Format time for display
-                                String formatTime(int mins) {
-                                  final h = mins ~/ 60;
-                                  final m = mins % 60;
-                                  if (h > 0 && m > 0) return '${h}h ${m}m';
-                                  if (h > 0) return '${h}h';
-                                  return '${m}m';
-                                }
-                                
-                                if (!isEditing && notifier.wouldExceedLimit(durationMinutes, settings.dailyTimeLimitMinutes)) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Adding this task would exceed your daily limit of ${formatTime(settings.dailyTimeLimitMinutes)}',
+                                // Limit check (time-based only)
+                                if (estimationMode == EstimationMode.timeBased) {
+                                  String formatTime(int mins) {
+                                    final h = mins ~/ 60;
+                                    final m = mins % 60;
+                                    if (h > 0 && m > 0) return '${h}h ${m}m';
+                                    if (h > 0) return '${h}h';
+                                    return '${m}m';
+                                  }
+                                  
+                                  if (!isEditing && notifier.wouldExceedLimit(durationMinutes, settings.dailyTimeLimitMinutes)) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Adding this task would exceed your daily limit of ${formatTime(settings.dailyTimeLimitMinutes)}',
+                                        ),
+                                        backgroundColor: AppTheme.warning,
                                       ),
-                                      backgroundColor: AppTheme.warning,
-                                    ),
-                                  );
-                                  return;
+                                    );
+                                    return;
+                                  }
                                 }
 
                                 // If alarm is set, check overlay permission — strip alarm if denied
@@ -1532,6 +1581,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
+                                    weight: selectedWeight,
                                   ));
                                 } else {
                                   notifier.addTask(
@@ -1548,6 +1598,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
+                                    weight: selectedWeight,
                                   );
                                 }
                                 
