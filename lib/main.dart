@@ -69,6 +69,12 @@ class _MyAppState extends ConsumerState<MyApp> {
       // Initialize notification service
       await ref.read(notificationServiceProvider).initialize();
       await ref.read(notificationServiceProvider).requestPermissions();
+
+      // Wire up "Mark as Complete" callback from native alarm UI
+      ref.read(notificationServiceProvider).onTaskCompletedFromAlarm = (taskId, taskTitle) {
+        print('🔔 Task completed from alarm UI: $taskId ($taskTitle)');
+        ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
+      };
       
       // Process any pending carry-overs (this will also refresh task state)
       final carryOverResult = await ref.read(taskStateProvider.notifier).processCarryOverAndRefresh();
