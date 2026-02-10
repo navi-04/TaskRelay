@@ -4,6 +4,7 @@ import '../../../data/models/task_entity.dart';
 import '../../../data/models/task_type.dart';
 import '../../../data/models/task_priority.dart';
 import '../../../data/models/estimation_mode.dart';
+import '../../../data/models/reminder_type.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/task_provider.dart';
@@ -32,6 +33,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   late TaskPriority _selectedPriority;
   late bool _isPermanent;
   DateTime? _alarmTime;
+  int _reminderTypeIndex = 0;
   final _formKey = GlobalKey<FormState>();
   bool _controllersInitialized = false;
 
@@ -67,6 +69,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       _selectedPriority = task.priority;
       _isPermanent = task.isPermanent;
       _alarmTime = task.alarmTime;
+      _reminderTypeIndex = task.reminderTypeIndex;
       _controllersInitialized = true;
     }
   }
@@ -199,9 +202,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           // Alarm
           if (task.alarmTime != null) ...[
             _sectionCard(
-              icon: Icons.alarm,
+              icon: task.reminderType == ReminderType.fullAlarm ? Icons.alarm : Icons.notifications_outlined,
               iconColor: Colors.orange,
-              title: 'Reminder',
+              title: task.reminderType == ReminderType.fullAlarm ? 'Alarm' : 'Notification',
               value:
                   '${task.alarmTime!.hour.toString().padLeft(2, '0')}:${task.alarmTime!.minute.toString().padLeft(2, '0')}',
               isDark: isDark,
@@ -404,48 +407,127 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   color: isDark ? Colors.orange.withOpacity(0.3) : Colors.orange.withOpacity(0.2),
                 ),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  const Icon(Icons.alarm, color: Colors.orange, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    children: [
+                      const Icon(Icons.alarm, color: Colors.orange, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Reminder',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text(
+                              _alarmTime != null
+                                  ? 'Set for ${_alarmTime!.hour.toString().padLeft(2, '0')}:${_alarmTime!.minute.toString().padLeft(2, '0')}'
+                                  : 'No reminder set',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_alarmTime != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () => setState(() => _alarmTime = null),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.access_time),
+                        onPressed: () async {
+                          final selectedDate = DateHelper.parseDate(ref.read(taskStateProvider).selectedDate);
+                          final initial = _alarmTime != null
+                              ? TimeOfDay(hour: _alarmTime!.hour, minute: _alarmTime!.minute)
+                              : TimeOfDay.now();
+                          final time = await showTimePicker(context: context, initialTime: initial);
+                          if (time != null) {
+                            setState(() {
+                              _alarmTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, time.hour, time.minute);
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  // Reminder type toggle — only shown when a time is set
+                  if (_alarmTime != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
                       children: [
-                        Text('Reminder',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Text(
-                          _alarmTime != null
-                              ? 'Set for ${_alarmTime!.hour.toString().padLeft(2, '0')}:${_alarmTime!.minute.toString().padLeft(2, '0')}'
-                              : 'No reminder set',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _reminderTypeIndex = 0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _reminderTypeIndex == 0
+                                    ? Colors.orange.withOpacity(0.2)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _reminderTypeIndex == 0
+                                      ? Colors.orange
+                                      : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.alarm, size: 16,
+                                      color: _reminderTypeIndex == 0 ? Colors.orange : (isDark ? Colors.grey[400] : Colors.grey[600])),
+                                  const SizedBox(width: 6),
+                                  Text('Alarm',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: _reminderTypeIndex == 0 ? FontWeight.w600 : FontWeight.w400,
+                                        color: _reminderTypeIndex == 0 ? Colors.orange : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                                      )),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _reminderTypeIndex = 1),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _reminderTypeIndex == 1
+                                    ? Colors.blue.withOpacity(0.2)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _reminderTypeIndex == 1
+                                      ? Colors.blue
+                                      : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.notifications_outlined, size: 16,
+                                      color: _reminderTypeIndex == 1 ? Colors.blue : (isDark ? Colors.grey[400] : Colors.grey[600])),
+                                  const SizedBox(width: 6),
+                                  Text('Notification',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: _reminderTypeIndex == 1 ? FontWeight.w600 : FontWeight.w400,
+                                        color: _reminderTypeIndex == 1 ? Colors.blue : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                                      )),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  if (_alarmTime != null)
-                    IconButton(
-                      icon: const Icon(Icons.clear, size: 20),
-                      onPressed: () => setState(() => _alarmTime = null),
-                    ),
-                  IconButton(
-                    icon: const Icon(Icons.access_time),
-                    onPressed: () async {
-                      final selectedDate = DateHelper.parseDate(ref.read(taskStateProvider).selectedDate);
-                      final initial = _alarmTime != null
-                          ? TimeOfDay(hour: _alarmTime!.hour, minute: _alarmTime!.minute)
-                          : TimeOfDay.now();
-                      final time = await showTimePicker(context: context, initialTime: initial);
-                      if (time != null) {
-                        setState(() {
-                          _alarmTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, time.hour, time.minute);
-                        });
-                      }
-                    },
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -517,9 +599,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       durationMinutes = task.durationMinutes; // keep existing
     }
 
-    // Check overlay permission if alarm set
+    // Check overlay permission if alarm set AND reminder type is full alarm
     var effectiveAlarmTime = _alarmTime;
-    if (_alarmTime != null) {
+    if (_alarmTime != null && _reminderTypeIndex == 0) {
       final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
       if (!hasOverlay) {
         await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
@@ -539,6 +621,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       isPermanent: _isPermanent,
       alarmTime: effectiveAlarmTime,
+      reminderTypeIndex: _reminderTypeIndex,
     ));
 
     setState(() => _isEditing = false);

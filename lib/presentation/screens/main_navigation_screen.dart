@@ -156,6 +156,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   TaskPriority selectedPriority = TaskPriority.medium;
   bool isPermanent = false;
   DateTime? alarmTime;
+  int reminderTypeIndex = 0;
 
   @override
   void dispose() {
@@ -371,75 +372,154 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                           : const Color(0xFFFF6B35).withOpacity(0.2),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      const Icon(
-                        Icons.alarm,
-                        color: Color(0xFFFF6B35),
-                        size: 20,
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.alarm,
+                            color: Color(0xFFFF6B35),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Set Reminder',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  alarmTime != null
+                                      ? 'Set for ${alarmTime!.hour.toString().padLeft(2, '0')}:${alarmTime!.minute.toString().padLeft(2, '0')}'
+                                      : 'No reminder set',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).brightness == Brightness.dark 
+                                        ? Colors.grey[400] 
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (alarmTime != null)
+                            IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                setState(() {
+                                  alarmTime = null;
+                                });
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.access_time, size: 20),
+                            onPressed: () async {
+                              final time = await showTimePicker(
+                                context: context,
+                                initialTime: alarmTime != null
+                                    ? TimeOfDay(hour: alarmTime!.hour, minute: alarmTime!.minute)
+                                    : TimeOfDay.now(),
+                              );
+                              if (time != null) {
+                                setState(() {
+                                  final now = DateTime.now();
+                                  alarmTime = DateTime(
+                                    now.year,
+                                    now.month,
+                                    now.day,
+                                    time.hour,
+                                    time.minute,
+                                  );
+                                });
+                              }
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      // Reminder type toggle — only shown when a time is set
+                      if (alarmTime != null) ...[
+                        const SizedBox(height: 10),
+                        Row(
                           children: [
-                            Text(
-                              'Set Reminder',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => reminderTypeIndex = 0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: reminderTypeIndex == 0
+                                        ? const Color(0xFFFF6B35).withOpacity(0.2)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: reminderTypeIndex == 0
+                                          ? const Color(0xFFFF6B35)
+                                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.alarm, size: 16,
+                                          color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                      const SizedBox(width: 6),
+                                      Text('Alarm',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: reminderTypeIndex == 0 ? FontWeight.w600 : FontWeight.w400,
+                                            color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                          )),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              alarmTime != null
-                                  ? 'Set for ${alarmTime!.hour.toString().padLeft(2, '0')}:${alarmTime!.minute.toString().padLeft(2, '0')}'
-                                  : 'No reminder set',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).brightness == Brightness.dark 
-                                    ? Colors.grey[400] 
-                                    : Colors.grey[600],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => reminderTypeIndex = 1),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: reminderTypeIndex == 1
+                                        ? Colors.blue.withOpacity(0.2)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: reminderTypeIndex == 1
+                                          ? Colors.blue
+                                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.notifications_outlined, size: 16,
+                                          color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                      const SizedBox(width: 6),
+                                      Text('Notification',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: reminderTypeIndex == 1 ? FontWeight.w600 : FontWeight.w400,
+                                            color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                          )),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      if (alarmTime != null)
-                        IconButton(
-                          icon: const Icon(Icons.clear, size: 20),
-                          onPressed: () {
-                            setState(() {
-                              alarmTime = null;
-                            });
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.access_time, size: 20),
-                        onPressed: () async {
-                          final time = await showTimePicker(
-                            context: context,
-                            initialTime: alarmTime != null
-                                ? TimeOfDay(hour: alarmTime!.hour, minute: alarmTime!.minute)
-                                : TimeOfDay.now(),
-                          );
-                          if (time != null) {
-                            setState(() {
-                              final now = DateTime.now();
-                              alarmTime = DateTime(
-                                now.year,
-                                now.month,
-                                now.day,
-                                time.hour,
-                                time.minute,
-                              );
-                            });
-                          }
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -587,9 +667,9 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         }
       }
 
-      // If alarm is set, check overlay permission — strip alarm if denied
+      // If alarm is set, check overlay permission — strip alarm if denied (only for full alarm type)
       var effectiveAlarmTime = alarmTime;
-      if (alarmTime != null) {
+      if (alarmTime != null && reminderTypeIndex == 0) {
         final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
         if (!hasOverlay) {
           // Show dialog explaining why permission is needed
@@ -617,6 +697,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             : _notesController.text.trim(),
         isPermanent: isPermanent,
         alarmTime: effectiveAlarmTime,
+        reminderTypeIndex: reminderTypeIndex,
       );
       
       Navigator.pop(context);

@@ -1091,6 +1091,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     TaskPriority selectedPriority = task?.priority ?? TaskPriority.medium;
     bool isPermanent = task?.isPermanent ?? false;
     DateTime? alarmTime = task?.alarmTime;
+    int reminderTypeIndex = task?.reminderTypeIndex ?? 0;
     
     showModalBottomSheet(
       context: context,
@@ -1367,73 +1368,152 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                               : Colors.orange.withOpacity(0.2),
                         ),
                       ),
-                      child: Row(
+                      child: Column(
                         children: [
-                          Icon(
-                            Icons.alarm,
-                            color: Colors.orange,
-                            size: 20,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.alarm,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Reminder',
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      alarmTime != null
+                                          ? 'Set for ${alarmTime!.hour.toString().padLeft(2, '0')}:${alarmTime!.minute.toString().padLeft(2, '0')}'
+                                          : 'No reminder set',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context).brightness == Brightness.dark 
+                                            ? Colors.grey[400] 
+                                            : Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (alarmTime != null)
+                                IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      alarmTime = null;
+                                    });
+                                  },
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.access_time),
+                                onPressed: () async {
+                                  final selectedDate = DateHelper.parseDate(ref.read(taskStateProvider).selectedDate);
+                                  final initialTime = alarmTime != null
+                                      ? TimeOfDay(hour: alarmTime!.hour, minute: alarmTime!.minute)
+                                      : TimeOfDay.now();
+                                  
+                                  final TimeOfDay? time = await showTimePicker(
+                                    context: context,
+                                    initialTime: initialTime,
+                                  );
+                                  
+                                  if (time != null) {
+                                    setModalState(() {
+                                      alarmTime = DateTime(
+                                        selectedDate.year,
+                                        selectedDate.month,
+                                        selectedDate.day,
+                                        time.hour,
+                                        time.minute,
+                                      );
+                                    });
+                                  }
+                                },
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          // Reminder type toggle — only shown when a time is set
+                          if (alarmTime != null) ...[
+                            const SizedBox(height: 10),
+                            Row(
                               children: [
-                                Text(
-                                  'Reminder',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setModalState(() => reminderTypeIndex = 0),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: reminderTypeIndex == 0
+                                            ? Colors.orange.withOpacity(0.2)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: reminderTypeIndex == 0
+                                              ? Colors.orange
+                                              : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.alarm, size: 16,
+                                              color: reminderTypeIndex == 0 ? Colors.orange : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                          const SizedBox(width: 6),
+                                          Text('Alarm',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: reminderTypeIndex == 0 ? FontWeight.w600 : FontWeight.w400,
+                                                color: reminderTypeIndex == 0 ? Colors.orange : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                              )),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  alarmTime != null
-                                      ? 'Set for ${alarmTime!.hour.toString().padLeft(2, '0')}:${alarmTime!.minute.toString().padLeft(2, '0')}'
-                                      : 'No reminder set',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                        ? Colors.grey[400] 
-                                        : Colors.grey[600],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setModalState(() => reminderTypeIndex = 1),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: reminderTypeIndex == 1
+                                            ? Colors.blue.withOpacity(0.2)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: reminderTypeIndex == 1
+                                              ? Colors.blue
+                                              : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.notifications_outlined, size: 16,
+                                              color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                          const SizedBox(width: 6),
+                                          Text('Notification',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: reminderTypeIndex == 1 ? FontWeight.w600 : FontWeight.w400,
+                                                color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                              )),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          if (alarmTime != null)
-                            IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                setModalState(() {
-                                  alarmTime = null;
-                                });
-                              },
-                            ),
-                          IconButton(
-                            icon: const Icon(Icons.access_time),
-                            onPressed: () async {
-                              final selectedDate = DateHelper.parseDate(ref.read(taskStateProvider).selectedDate);
-                              final initialTime = alarmTime != null
-                                  ? TimeOfDay(hour: alarmTime!.hour, minute: alarmTime!.minute)
-                                  : TimeOfDay.now();
-                              
-                              final TimeOfDay? time = await showTimePicker(
-                                context: context,
-                                initialTime: initialTime,
-                              );
-                              
-                              if (time != null) {
-                                setModalState(() {
-                                  alarmTime = DateTime(
-                                    selectedDate.year,
-                                    selectedDate.month,
-                                    selectedDate.day,
-                                    time.hour,
-                                    time.minute,
-                                  );
-                                });
-                              }
-                            },
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -1507,9 +1587,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   }
                                 }
 
-                                // If alarm is set, check overlay permission — strip alarm if denied
+                                // If alarm is set, check overlay permission — strip alarm if denied (only for full alarm type)
                                 var effectiveAlarmTime = alarmTime;
-                                if (alarmTime != null) {
+                                if (alarmTime != null && reminderTypeIndex == 0) {
                                   final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
                                   if (!hasOverlay) {
                                     await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
@@ -1534,6 +1614,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
+                                    reminderTypeIndex: reminderTypeIndex,
                                   ));
                                 } else {
                                   notifier.addTask(
@@ -1550,6 +1631,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
+                                    reminderTypeIndex: reminderTypeIndex,
                                   );
                                 }
                                 

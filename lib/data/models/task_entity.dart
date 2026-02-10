@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 import 'package:equatable/equatable.dart';
 import 'task_type.dart';
 import 'task_priority.dart';
+import 'reminder_type.dart';
 
 part 'task_entity.g.dart';
 
@@ -89,6 +90,13 @@ class TaskEntity extends Equatable {
   @HiveField(16)
   final int weight;
 
+  /// Reminder type: 0 = full alarm (lock-screen), 1 = simple notification
+  @HiveField(17)
+  final int reminderTypeIndex;
+
+  /// Convenience getter for the enum value
+  ReminderType get reminderType => ReminderType.fromIndex(reminderTypeIndex);
+
   const TaskEntity({
     required this.id,
     required this.title,
@@ -107,6 +115,7 @@ class TaskEntity extends Equatable {
     this.isPermanent = false,
     this.alarmTime,
     this.weight = 1,
+    this.reminderTypeIndex = 0,
   });
   
   /// Create a new task
@@ -123,6 +132,7 @@ class TaskEntity extends Equatable {
     bool isPermanent = false,
     DateTime? alarmTime,
     int weight = 1,
+    int reminderTypeIndex = 0,
   }) {
     return TaskEntity(
       id: id,
@@ -141,6 +151,7 @@ class TaskEntity extends Equatable {
       isPermanent: isPermanent,
       alarmTime: alarmTime,
       weight: weight,
+      reminderTypeIndex: reminderTypeIndex,
     );
   }
   
@@ -165,6 +176,7 @@ class TaskEntity extends Equatable {
     bool? isPermanent,
     Object? alarmTime = _unset,
     int? weight,
+    int? reminderTypeIndex,
   }) {
     return TaskEntity(
       id: id ?? this.id,
@@ -184,6 +196,7 @@ class TaskEntity extends Equatable {
       isPermanent: isPermanent ?? this.isPermanent,
       alarmTime: alarmTime is _Unset ? this.alarmTime : alarmTime as DateTime?,
       weight: weight ?? this.weight,
+      reminderTypeIndex: reminderTypeIndex ?? this.reminderTypeIndex,
     );
   }
   
@@ -230,6 +243,7 @@ class TaskEntity extends Equatable {
         isPermanent,
         alarmTime,
         weight,
+        reminderTypeIndex,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")

@@ -34,13 +34,14 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       isPermanent: fields[14] as bool,
       alarmTime: fields[15] as DateTime?,
       weight: fields[16] as int? ?? 1,
+      reminderTypeIndex: fields[17] as int? ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskEntity obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -74,7 +75,9 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       ..writeByte(15)
       ..write(obj.alarmTime)
       ..writeByte(16)
-      ..write(obj.weight);
+      ..write(obj.weight)
+      ..writeByte(17)
+      ..write(obj.reminderTypeIndex);
   }
 
   @override

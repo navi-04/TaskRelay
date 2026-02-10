@@ -3,6 +3,7 @@ import '../../data/models/task_entity.dart';
 import '../../data/models/task_type.dart';
 import '../../data/models/task_priority.dart';
 import '../../data/models/estimation_mode.dart';
+import '../../data/models/reminder_type.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/day_summary_repository.dart';
 import '../../core/utils/date_utils.dart';
@@ -188,6 +189,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     List<String> tags = const [],
     bool isPermanent = false,
     DateTime? alarmTime,
+    int reminderTypeIndex = 0,
   }) async {
     try {
       final task = TaskEntity.create(
@@ -202,23 +204,33 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         tags: tags,
         isPermanent: isPermanent,
         alarmTime: alarmTime,
+        reminderTypeIndex: reminderTypeIndex,
       );
       
       await _taskRepository.addTask(task);
       
-      // Schedule alarm if alarmTime is set
+      // Schedule alarm/notification if alarmTime is set
       if (alarmTime != null) {
         try {
           final hasPermissions = await _notificationService.areNotificationsEnabled();
           if (!hasPermissions) {
             await _notificationService.requestPermissions();
           }
-          await _notificationService.scheduleTaskAlarm(
-            taskId: id,
-            taskTitle: title,
-            alarmTime: alarmTime,
-            isPermanent: isPermanent,
-          );
+          if (ReminderType.fromIndex(reminderTypeIndex) == ReminderType.fullAlarm) {
+            await _notificationService.scheduleTaskAlarm(
+              taskId: id,
+              taskTitle: title,
+              alarmTime: alarmTime,
+              isPermanent: isPermanent,
+            );
+          } else {
+            await _notificationService.scheduleTaskNotification(
+              taskId: id,
+              taskTitle: title,
+              alarmTime: alarmTime,
+              isPermanent: isPermanent,
+            );
+          }
         } catch (_) {
           // Alarm scheduling failed — continue, task is already saved
         }
@@ -250,12 +262,21 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           if (!hasPermissions) {
             await _notificationService.requestPermissions();
           }
-          await _notificationService.scheduleTaskAlarm(
-            taskId: task.id,
-            taskTitle: task.title,
-            alarmTime: task.alarmTime!,
-            isPermanent: task.isPermanent,
-          );
+          if (task.reminderType == ReminderType.fullAlarm) {
+            await _notificationService.scheduleTaskAlarm(
+              taskId: task.id,
+              taskTitle: task.title,
+              alarmTime: task.alarmTime!,
+              isPermanent: task.isPermanent,
+            );
+          } else {
+            await _notificationService.scheduleTaskNotification(
+              taskId: task.id,
+              taskTitle: task.title,
+              alarmTime: task.alarmTime!,
+              isPermanent: task.isPermanent,
+            );
+          }
         } else if (oldTask.alarmTime != null && task.alarmTime == null) {
           await _notificationService.cancelTaskAlarm(task.id);
         }
@@ -303,12 +324,21 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           if (!hasPermissions) {
             await _notificationService.requestPermissions();
           }
-          await _notificationService.scheduleTaskAlarm(
-            taskId: task.id,
-            taskTitle: task.title,
-            alarmTime: task.alarmTime!,
-            isPermanent: task.isPermanent,
-          );
+          if (task.reminderType == ReminderType.fullAlarm) {
+            await _notificationService.scheduleTaskAlarm(
+              taskId: task.id,
+              taskTitle: task.title,
+              alarmTime: task.alarmTime!,
+              isPermanent: task.isPermanent,
+            );
+          } else {
+            await _notificationService.scheduleTaskNotification(
+              taskId: task.id,
+              taskTitle: task.title,
+              alarmTime: task.alarmTime!,
+              isPermanent: task.isPermanent,
+            );
+          }
         }
       } catch (_) {
         // Alarm update failed — continue

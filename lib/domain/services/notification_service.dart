@@ -614,4 +614,76 @@ class NotificationService {
     }
     await _notifications.cancel(notificationId);
   }
+
+  /// Schedule a simple notification reminder for a task (no full-screen alarm).
+  ///
+  /// Uses flutter_local_notifications zonedSchedule on the 'task_reminder' channel.
+  Future<void> scheduleTaskNotification({
+    required String taskId,
+    required String taskTitle,
+    required DateTime alarmTime,
+    bool isPermanent = false,
+  }) async {
+    // Cancel existing notification/alarm for this task first
+    await cancelTaskAlarm(taskId);
+
+    final notificationId = 1000 + taskId.hashCode.abs() % 100000;
+
+    final now = DateTime.now();
+    var scheduledDate = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      alarmTime.hour,
+      alarmTime.minute,
+      0,
+      0,
+    );
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
+
+    print('\n🔔 ========== SCHEDULING SIMPLE NOTIFICATION ==========');
+    print('  📋 Task: "$taskTitle"');
+    print('  🆔 Notification ID: $notificationId');
+    print('  ⏰ Scheduled for: ${scheduledDate.toString()}');
+    print('  🔁 Daily repeat: $isPermanent');
+    print('  📱 Full-screen: NO (simple notification)');
+
+    const androidDetails = AndroidNotificationDetails(
+      'task_reminder',
+      'Task Reminders',
+      channelDescription: 'Task reminder notifications',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notifications.zonedSchedule(
+      notificationId,
+      'Task Reminder',
+      taskTitle,
+      tzScheduledDate,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: isPermanent ? DateTimeComponents.time : null,
+    );
+
+    print('✅ Simple notification scheduled successfully');
+  }
 }
