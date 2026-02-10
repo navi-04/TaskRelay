@@ -186,7 +186,6 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     List<String> tags = const [],
     bool isPermanent = false,
     DateTime? alarmTime,
-    int weight = 1,
   }) async {
     try {
       final task = TaskEntity.create(
@@ -201,7 +200,6 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         tags: tags,
         isPermanent: isPermanent,
         alarmTime: alarmTime,
-        weight: weight,
       );
       
       await _taskRepository.addTask(task);
@@ -364,35 +362,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   List<TaskEntity> getTasksInDateRange(String startDate, String endDate) {
     return _taskRepository.getTasksInDateRange(startDate, endDate);
   }
-  
-  /// Sync weight <-> duration on all loaded tasks (called when estimation mode changes)
-  Future<void> syncTaskEstimationValues(EstimationMode newMode) async {
-    try {
-      final updatedTasks = <TaskEntity>[];
-      for (final task in state.tasks) {
-        TaskEntity updated;
-        if (newMode == EstimationMode.weightBased) {
-          // Derive weight from duration: 1 pt per 30 min, minimum 1
-          final derivedWeight = (task.durationMinutes / 30).round().clamp(1, 100);
-          updated = task.copyWith(weight: derivedWeight);
-        } else if (newMode == EstimationMode.timeBased) {
-          // Derive duration from weight: 30 min per 1 pt
-          final derivedDuration = (task.weight * 30).clamp(5, 1440);
-          updated = task.copyWith(durationMinutes: derivedDuration);
-        } else {
-          // Count mode — no sync needed
-          continue;
-        }
-        await _taskRepository.updateTask(updated);
-        updatedTasks.add(updated);
-      }
-      if (updatedTasks.isNotEmpty) {
-        await _updateSummary();
-        loadTasksForSelectedDate();
-      }
-    } catch (e) {
-      // Silently fail — values will be synced on next save
-    }
+}
   }
 
   /// Clear all tasks
