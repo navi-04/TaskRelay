@@ -147,6 +147,11 @@ class TaskCarryOverService {
         
         // Update summary for this date
         await _updateSummaryForDate(nextDateString);
+
+        // Reschedule alarms only for the final day (today)
+        if (DateHelper.isSameDay(nextDate, endDateTime)) {
+          await _rescheduleAlarmsForCarriedTasks(carriedTasks, nextDateString);
+        }
       }
       
       currentDate = nextDate;
