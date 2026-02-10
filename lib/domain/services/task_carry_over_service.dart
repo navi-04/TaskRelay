@@ -99,6 +99,9 @@ class TaskCarryOverService {
     
     final totalMinutes = carriedTasks.fold(0, (sum, task) => sum + task.durationMinutes);
     
+    // Reschedule alarms/notifications for carried-over tasks to new date
+    await _rescheduleAlarmsForCarriedTasks(carriedTasks, toDate);
+    
     // Update today's summary
     await _updateSummaryForDate(toDate);
     
@@ -165,6 +168,57 @@ class TaskCarryOverService {
   Future<void> _updateSummaryForDate(String date) async {
     final tasks = _taskRepository.getTasksForDate(date);
     await _summaryRepository.calculateAndSaveSummary(date, tasks);
+  }
+
+  /// Reschedule alarms/notifications for carried-over tasks to the target date
+  ///
+  /// When tasks are carried over, their alarm times still reference the old date.
+  /// This updates each task's alarmTime to the target date (same hour/minute)
+  /// and reschedules the alarm or notification accordingly.
+  Future<void> _rescheduleAlarmsForCarriedTasks(
+    List<TaskEntity> carriedTasks,
+    String targetDate,
+  ) async {
+    final targetDateTime = DateHelper.parseDate(targetDate);
+
+    for (final task in carriedTasks) {
+      if (task.alarmTime == null) continue;
+
+      // Build new alarm time with target date but same hour:minute
+      final newAlarmTime = DateTime(
+        targetDateTime.year,
+        targetDateTime.month,
+        targetDateTime.day,
+        task.alarmTime!.hour,
+        task.alarmTime!.minute,
+      );
+
+      // Update the task entity with the new alarm time and save
+      final updatedTask = task.copyWith(alarmTime: newAlarmTime);
+      await _taskRepository.updateTask(updatedTask);
+
+      // Reschedule based on reminder type
+      try {
+        if (task.reminderType == ReminderType.fullAlarm) {
+          await _notificationService.scheduleTaskAlarm(
+            taskId: task.id,
+            taskTitle: task.title,
+            alarmTime: newAlarmTime,
+            isPermanent: task.isPermanent,
+          );
+        } else {
+          await _notificationService.scheduleTaskNotification(
+            taskId: task.id,
+            taskTitle: task.title,
+            alarmTime: newAlarmTime,
+            isPermanent: task.isPermanent,
+          );
+        }
+        print('🔔 Rescheduled ${task.reminderType == ReminderType.fullAlarm ? "alarm" : "notification"} for carried-over task "${task.title}" to $targetDate');
+      } catch (e) {
+        print('⚠️ Failed to reschedule alarm for task "${task.title}": $e');
+      }
+    }
   }
   
   /// Send carry-over notification if enabled
