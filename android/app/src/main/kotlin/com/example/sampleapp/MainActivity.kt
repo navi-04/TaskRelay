@@ -195,4 +195,43 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
+
+    /**
+     * Register a broadcast receiver to listen for "Mark as Complete" actions
+     * from AlarmActivity or the overlay window, and forward to Flutter.
+     */
+    private fun registerCompleteTaskReceiver() {
+        completeTaskReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val taskId = intent.getStringExtra("taskId") ?: ""
+                val taskTitle = intent.getStringExtra("taskTitle") ?: ""
+                Log.d(TAG, "📥 Received complete broadcast — taskId: $taskId, title: $taskTitle")
+                
+                if (taskId.isNotEmpty()) {
+                    // Send to Flutter via MethodChannel
+                    methodChannel?.invokeMethod("onTaskCompletedFromAlarm", mapOf(
+                        "taskId" to taskId,
+                        "taskTitle" to taskTitle
+                    ))
+                    Log.d(TAG, "📤 Forwarded to Flutter: onTaskCompletedFromAlarm($taskId)")
+                }
+            }
+        }
+        val filter = IntentFilter("com.example.sampleapp.ACTION_COMPLETE_TASK")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(completeTaskReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(completeTaskReceiver, filter)
+        }
+        Log.d(TAG, "✅ CompleteTask broadcast receiver registered")
+    }
+
+    override fun onDestroy() {
+        try {
+            completeTaskReceiver?.let { unregisterReceiver(it) }
+        } catch (_: Exception) {}
+        completeTaskReceiver = null
+        methodChannel = null
+        super.onDestroy()
+    }
 }
