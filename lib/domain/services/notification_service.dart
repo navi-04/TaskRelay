@@ -71,6 +71,16 @@ class NotificationService {
     // Create notification channels for Android with proper sound/vibration
     await _createNotificationChannels();
     
+    // Listen for "Mark as Complete" from native alarm UI
+    platform.setMethodCallHandler((call) async {
+      if (call.method == 'onTaskCompletedFromAlarm') {
+        final taskId = call.arguments['taskId'] as String? ?? '';
+        final taskTitle = call.arguments['taskTitle'] as String? ?? '';
+        print('✅ Received onTaskCompletedFromAlarm: taskId=$taskId title=$taskTitle');
+        onTaskCompletedFromAlarm?.call(taskId, taskTitle);
+      }
+    });
+
     _initialized = true;
     print('  ✅ NotificationService ready!');
   }
