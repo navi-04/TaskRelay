@@ -23,11 +23,11 @@ class SettingsEntity extends Equatable {
     @HiveField(10)
     final String? profilePhoto;
 
-  /// Estimation mode index: 0=time, 1=weight, 2=count
+  /// Estimation mode index: 0=time, 1=count
   @HiveField(11)
   final int estimationModeIndex;
 
-  /// Daily weight limit (used in weight-based mode)
+  /// Daily weight limit (legacy, kept for Hive compat)
   @HiveField(12)
   final int dailyWeightLimit;
 
@@ -110,15 +110,13 @@ class SettingsEntity extends Equatable {
   
   /// Copy with method
   /// Get estimation mode from index
-  EstimationMode get estimationMode => EstimationMode.values[estimationModeIndex.clamp(0, 2)];
+  EstimationMode get estimationMode => EstimationMode.values[estimationModeIndex.clamp(0, 1)];
 
   /// Get the effective daily limit based on estimation mode
   int get effectiveDailyLimit {
     switch (estimationMode) {
       case EstimationMode.timeBased:
         return dailyTimeLimitMinutes;
-      case EstimationMode.weightBased:
-        return dailyWeightLimit;
       case EstimationMode.countBased:
         return dailyCountLimit;
     }
@@ -129,8 +127,6 @@ class SettingsEntity extends Equatable {
     switch (estimationMode) {
       case EstimationMode.timeBased:
         return formattedTimeLimit;
-      case EstimationMode.weightBased:
-        return '$dailyWeightLimit pts';
       case EstimationMode.countBased:
         return '$dailyCountLimit tasks';
     }
