@@ -545,6 +545,7 @@ class NotificationService {
     required String taskTitle,
     required DateTime alarmTime,
     bool isPermanent = false,
+    DateTime? taskDate,
   }) async {
     // Cancel existing alarm for this task first
     await cancelTaskAlarm(taskId);
@@ -554,11 +555,12 @@ class NotificationService {
     
     final now = DateTime.now();
     
-    // Ensure we're scheduling with today's/tomorrow's date + alarm time
+    // Use the task's date if provided, otherwise fall back to today
+    final baseDate = taskDate ?? now;
     var scheduledDate = DateTime(
-      now.year,
-      now.month,
-      now.day,
+      baseDate.year,
+      baseDate.month,
+      baseDate.day,
       alarmTime.hour, 
       alarmTime.minute,
       0,
@@ -623,6 +625,7 @@ class NotificationService {
     required String taskTitle,
     required DateTime alarmTime,
     bool isPermanent = false,
+    DateTime? taskDate,
   }) async {
     // Cancel existing notification/alarm for this task first
     await cancelTaskAlarm(taskId);
@@ -630,10 +633,12 @@ class NotificationService {
     final notificationId = 1000 + taskId.hashCode.abs() % 100000;
 
     final now = DateTime.now();
+    // Use the task's date if provided, otherwise fall back to today
+    final baseDate = taskDate ?? now;
     var scheduledDate = DateTime(
-      now.year,
-      now.month,
-      now.day,
+      baseDate.year,
+      baseDate.month,
+      baseDate.day,
       alarmTime.hour,
       alarmTime.minute,
       0,

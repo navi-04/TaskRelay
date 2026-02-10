@@ -216,12 +216,14 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           if (!hasPermissions) {
             await _notificationService.requestPermissions();
           }
+          final taskDate = DateHelper.parseDate(state.selectedDate);
           if (ReminderType.fromIndex(reminderTypeIndex) == ReminderType.fullAlarm) {
             await _notificationService.scheduleTaskAlarm(
               taskId: id,
               taskTitle: title,
               alarmTime: alarmTime,
               isPermanent: isPermanent,
+              taskDate: taskDate,
             );
           } else {
             await _notificationService.scheduleTaskNotification(
@@ -229,6 +231,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskTitle: title,
               alarmTime: alarmTime,
               isPermanent: isPermanent,
+              taskDate: taskDate,
             );
           }
         } catch (_) {
@@ -262,12 +265,14 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           if (!hasPermissions) {
             await _notificationService.requestPermissions();
           }
+          final taskDate = DateHelper.parseDate(task.currentDate);
           if (task.reminderType == ReminderType.fullAlarm) {
             await _notificationService.scheduleTaskAlarm(
               taskId: task.id,
               taskTitle: task.title,
               alarmTime: task.alarmTime!,
               isPermanent: task.isPermanent,
+              taskDate: taskDate,
             );
           } else {
             await _notificationService.scheduleTaskNotification(
@@ -275,6 +280,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskTitle: task.title,
               alarmTime: task.alarmTime!,
               isPermanent: task.isPermanent,
+              taskDate: taskDate,
             );
           }
         } else if (oldTask.alarmTime != null && task.alarmTime == null) {
@@ -324,12 +330,14 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           if (!hasPermissions) {
             await _notificationService.requestPermissions();
           }
+          final taskDate = DateHelper.parseDate(task.currentDate);
           if (task.reminderType == ReminderType.fullAlarm) {
             await _notificationService.scheduleTaskAlarm(
               taskId: task.id,
               taskTitle: task.title,
               alarmTime: task.alarmTime!,
               isPermanent: task.isPermanent,
+              taskDate: taskDate,
             );
           } else {
             await _notificationService.scheduleTaskNotification(
@@ -337,6 +345,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskTitle: task.title,
               alarmTime: task.alarmTime!,
               isPermanent: task.isPermanent,
+              taskDate: taskDate,
             );
           }
         }

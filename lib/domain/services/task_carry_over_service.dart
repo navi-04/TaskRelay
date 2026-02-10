@@ -210,6 +210,7 @@ class TaskCarryOverService {
             taskTitle: task.title,
             alarmTime: newAlarmTime,
             isPermanent: task.isPermanent,
+            taskDate: targetDateTime,
           );
         } else {
           await _notificationService.scheduleTaskNotification(
@@ -217,6 +218,7 @@ class TaskCarryOverService {
             taskTitle: task.title,
             alarmTime: newAlarmTime,
             isPermanent: task.isPermanent,
+            taskDate: targetDateTime,
           );
         }
         print('🔔 Rescheduled ${task.reminderType == ReminderType.fullAlarm ? "alarm" : "notification"} for carried-over task "${task.title}" to $targetDate');
