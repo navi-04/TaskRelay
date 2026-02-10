@@ -540,6 +540,7 @@ class AlarmService : Service() {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setFullScreenIntent(fullScreenPI, true)
+            .setContentIntent(fullScreenPI) // Required by some OEMs
             .setOngoing(true)
             .setAutoCancel(false)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissPI)
