@@ -57,6 +57,7 @@ class AlarmService : Service() {
 
         const val ACTION_START_ALARM = "com.example.sampleapp.ACTION_START_ALARM"
         const val ACTION_STOP_ALARM  = "com.example.sampleapp.ACTION_STOP_ALARM"
+        const val ACTION_COMPLETE_FROM_NOTIFICATION = "com.example.sampleapp.ACTION_COMPLETE_FROM_NOTIFICATION"
 
         private const val ALARM_NOTIFICATION_ID = 888
 
@@ -104,6 +105,7 @@ class AlarmService : Service() {
         when (intent?.action) {
             ACTION_START_ALARM -> handleStartAlarm(intent)
             ACTION_STOP_ALARM  -> handleStopAlarm()
+            ACTION_COMPLETE_FROM_NOTIFICATION -> handleCompleteFromNotification()
             else -> {
                 Log.w(TAG, "⚠️ Unknown action")
                 stopSelf()
@@ -160,6 +162,11 @@ class AlarmService : Service() {
         // ── STEP 4: Delayed fallback — only if FSI didn't launch Activity ──
         // Wait 3 seconds for the FSI to trigger and AlarmActivity to appear.
         // If it didn't (OEM blocked it, permission missing, etc.), use fallback.
+        //
+        // HOWEVER: if the screen is already on AND unlocked, Android will
+        // intentionally show a heads-up notification instead of the FSI.
+        // In that case we do NOT want the overlay — the notification alone
+        // (with Dismiss / Mark as Complete actions) is the correct UX.
         Handler(Looper.getMainLooper()).postDelayed({
             if (AlarmActivity.currentInstance != null) {
                 // AlarmActivity is already showing — FSI worked!
@@ -168,7 +175,21 @@ class AlarmService : Service() {
                 return@postDelayed
             }
 
-            Log.w(TAG, "⚠️ AlarmActivity NOT visible after 3s — using fallback mechanisms")
+            // Check if screen is on AND not locked — user is actively using phone
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            val screenOn = pm.isInteractive
+            val unlocked = !km.isKeyguardLocked
+
+            if (screenOn && unlocked) {
+                // Screen on + unlocked → heads-up notification is already showing
+                // with Dismiss & Complete actions. No overlay/activity needed.
+                Log.d(TAG, "✅ Screen on & unlocked — heads-up notification is sufficient, skipping overlay")
+                releasePartialWakeLock()
+                return@postDelayed
+            }
+
+            Log.w(TAG, "⚠️ AlarmActivity NOT visible after 3s (screen locked or off) — using fallback")
 
             // Now it's safe to wake the screen (FSI had its chance)
             acquireFullWakeLock()
@@ -205,6 +226,27 @@ class AlarmService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "⚠️ Keyguard dismiss failed: ${e.message}")
         }
+    }
+
+    /**
+     * "Mark as Complete" tapped from the heads-up notification action button.
+     * Persists the completion, sends broadcast to Flutter, then stops the alarm.
+     */
+    private fun handleCompleteFromNotification() {
+        Log.d(TAG, "✅ Mark as Complete from notification — taskId: $currentTaskId")
+        if (currentTaskId.isNotEmpty()) {
+            // Persist to SharedPreferences (survives process death)
+            AlarmActivity.persistPendingCompletion(this, currentTaskId)
+            // Also send broadcast (works if MainActivity is alive)
+            val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
+                setPackage(packageName)
+                putExtra("taskId", currentTaskId)
+                putExtra("taskTitle", currentTaskTitle)
+            }
+            sendBroadcast(completeIntent)
+            Log.d(TAG, "📤 Complete broadcast sent for taskId: $currentTaskId")
+        }
+        handleStopAlarm()
     }
 
     private fun handleStopAlarm() {
@@ -592,13 +634,10 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // ── Snooze action ──
-        val snoozeIntent = Intent(this, AlarmService::class.java).apply {
-            action = ACTION_STOP_ALARM
-            // Snooze is handled by just dismissing — the activity/overlay handles rescheduling
-        }
-        val snoozePI = PendingIntent.getService(
-            this, notificationId + 800000, snoozeIntent,
+        // ── Mark as Complete action ──
+        val completePI = PendingIntent.getService(
+            this, notificationId + 800000,
+            Intent(this, AlarmService::class.java).apply { action = ACTION_COMPLETE_FROM_NOTIFICATION },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -617,7 +656,7 @@ class AlarmService : Service() {
             .setDefaults(0) // We handle sound/vibration ourselves via MediaPlayer
             .setSilent(false)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissPI)
-            .addAction(android.R.drawable.ic_lock_idle_alarm, "Snooze 5m", snoozePI)
+            .addAction(android.R.drawable.ic_menu_send, "✓ Complete", completePI)
             .build()
     }
 
