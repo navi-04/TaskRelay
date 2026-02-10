@@ -350,53 +350,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Duration
-            Text(
-              'Duration *',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    value: _selectedHours,
-                    decoration: const InputDecoration(
-                      labelText: 'Hours',
-                      prefixIcon: Icon(Icons.schedule),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: List.generate(25, (i) => i)
-                        .map((h) => DropdownMenuItem(value: h, child: Text('$h h', style: const TextStyle(fontSize: 14))))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedHours = v!),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    value: _selectedMinutes,
-                    decoration: const InputDecoration(
-                      labelText: 'Minutes',
-                      prefixIcon: Icon(Icons.timer),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
-                        .map((m) => DropdownMenuItem(value: m, child: Text('$m m', style: const TextStyle(fontSize: 14))))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedMinutes = v!),
-                    validator: (v) {
-                      if (_selectedHours == 0 && (v == null || v == 0)) return 'Duration required';
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
+            // Estimation fields (mode-aware)
+            ..._buildEstimationFields(isDark),
             const SizedBox(height: 16),
 
             // Notes
@@ -546,19 +501,25 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   Future<void> _saveTask(TaskEntity task) async {
     if (!_formKey.currentState!.validate()) return;
 
-    final durationMinutes = (_selectedHours * 60) + _selectedMinutes;
+    final mode = ref.read(settingsProvider).estimationMode;
+    int durationMinutes;
 
-    if (durationMinutes < 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Duration must be at least 5 minutes'), backgroundColor: AppTheme.warning),
-      );
-      return;
-    }
-    if (durationMinutes > 24 * 60) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Duration cannot exceed 24 hours'), backgroundColor: AppTheme.warning),
-      );
-      return;
+    if (mode == EstimationMode.timeBased) {
+      durationMinutes = (_selectedHours * 60) + _selectedMinutes;
+      if (durationMinutes < 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Duration must be at least 5 minutes'), backgroundColor: AppTheme.warning),
+        );
+        return;
+      }
+      if (durationMinutes > 24 * 60) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Duration cannot exceed 24 hours'), backgroundColor: AppTheme.warning),
+        );
+        return;
+      }
+    } else {
+      durationMinutes = task.durationMinutes; // keep existing
     }
 
     // Check overlay permission if alarm set
