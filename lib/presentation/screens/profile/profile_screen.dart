@@ -352,17 +352,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 label: Text(
                   mode == EstimationMode.timeBased
                       ? 'Time'
-                      : mode == EstimationMode.weightBased
-                          ? 'Weight'
-                          : 'Count',
+                      : 'Count',
                   style: const TextStyle(fontSize: 13),
                 ),
                 icon: Icon(
                   mode == EstimationMode.timeBased
                       ? Icons.schedule
-                      : mode == EstimationMode.weightBased
-                          ? Icons.fitness_center
-                          : Icons.format_list_numbered,
+                      : Icons.format_list_numbered,
                   size: 18,
                 ),
               );
@@ -371,24 +367,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onSelectionChanged: (Set<EstimationMode> selected) {
               final newMode = selected.first;
               ref.read(settingsProvider.notifier).updateEstimationMode(newMode.index);
-              // Bulk-sync weight <-> duration on existing tasks
-              ref.read(taskStateProvider.notifier).syncTaskEstimationValues(newMode);
             },
           ),
           const SizedBox(height: 16),
           // Conditional limit input based on mode
           if (currentMode == EstimationMode.timeBased)
             _buildTimeLimitSection(context, settings),
-          if (currentMode == EstimationMode.weightBased)
-            _buildLimitRow(
-              context,
-              label: 'Daily Weight Limit',
-              value: settings.dailyWeightLimit as int,
-              suffix: 'pts',
-              min: 1,
-              max: 10000,
-              onSave: (v) => ref.read(settingsProvider.notifier).updateDailyWeightLimit(v),
-            ),
           if (currentMode == EstimationMode.countBased)
             _buildLimitRow(
               context,

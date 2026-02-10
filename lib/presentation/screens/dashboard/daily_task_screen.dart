@@ -228,8 +228,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
           if (h > 0 && m > 0) return '${h}h ${m}m';
           if (h > 0) return '${h}h';
           return '${m}m';
-        case EstimationMode.weightBased:
-          return '$val pts';
         case EstimationMode.countBased:
           return '$val';
       }
@@ -237,9 +235,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
 
     final progressLabel = mode == EstimationMode.timeBased
         ? 'Time'
-        : mode == EstimationMode.weightBased
-            ? 'Weight'
-            : 'Tasks';
+        : 'Tasks';
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -630,15 +626,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           ),
                         ),
                         const SizedBox(width: 6),
-                        // Duration / Weight (mode-dependent)
+                        // Duration (mode-dependent)
                         if (ref.watch(settingsProvider).estimationMode == EstimationMode.timeBased)
                           _buildChip(
                             task.formattedDuration,
-                            AppTheme.info,
-                          )
-                        else if (ref.watch(settingsProvider).estimationMode == EstimationMode.weightBased)
-                          _buildChip(
-                            task.formattedWeight,
                             AppTheme.info,
                           ),
                         if (task.isCarriedOver) ...[
@@ -1096,9 +1087,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     int selectedHours = task != null ? task.durationMinutes ~/ 60 : 0;
     int selectedMinutes = task != null ? task.durationMinutes % 60 : 30;
     
-    // Initialize weight
-    int selectedWeight = task?.weight ?? 1;
-    
     TaskType selectedType = task?.taskType ?? TaskType.task;
     TaskPriority selectedPriority = task?.priority ?? TaskPriority.medium;
     bool isPermanent = task?.isPermanent ?? false;
@@ -1293,43 +1281,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           ),
                         ],
                       ),
-                    ] else if (estimationMode == EstimationMode.weightBased) ...[
-                      Text(
-                        'Weight *',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[300] 
-                              : Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<int>(
-                        value: selectedWeight,
-                        decoration: const InputDecoration(
-                          labelText: 'Weight',
-                          prefixIcon: Icon(Icons.fitness_center),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100].map((w) {
-                          return DropdownMenuItem(
-                            value: w,
-                            child: Text('$w pt${w != 1 ? 's' : ''}', style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setModalState(() {
-                            selectedWeight = value!;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null || value < 1) return 'Weight required';
-                          return null;
-                        },
-                      ),
                     ],
-                    // Count-based: no duration/weight field
+                    // Count-based: no duration field
                     const SizedBox(height: 16),
                     
                     // Notes
@@ -1567,21 +1520,13 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   }
                                 }
                                 
-                                // Auto-sync weight <-> duration across modes
-                                final effectiveWeight = estimationMode == EstimationMode.timeBased
-                                    ? (durationMinutes / 30).round().clamp(1, 100)
-                                    : selectedWeight;
-                                final effectiveDuration = estimationMode == EstimationMode.weightBased
-                                    ? (selectedWeight * 30).clamp(5, 1440)
-                                    : durationMinutes;
-
                                 if (isEditing) {
                                   notifier.updateTask(task.copyWith(
                                     title: titleController.text.trim(),
                                     description: descriptionController.text.trim().isEmpty 
                                         ? null 
                                         : descriptionController.text.trim(),
-                                    durationMinutes: effectiveDuration,
+                                    durationMinutes: durationMinutes,
                                     taskType: selectedType,
                                     priority: selectedPriority,
                                     notes: notesController.text.trim().isEmpty
@@ -1589,7 +1534,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
-                                    weight: effectiveWeight,
                                   ));
                                 } else {
                                   notifier.addTask(
@@ -1598,7 +1542,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     description: descriptionController.text.trim().isEmpty 
                                         ? null 
                                         : descriptionController.text.trim(),
-                                    durationMinutes: effectiveDuration,
+                                    durationMinutes: durationMinutes,
                                     taskType: selectedType,
                                     priority: selectedPriority,
                                     notes: notesController.text.trim().isEmpty
@@ -1606,7 +1550,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
-                                    weight: effectiveWeight,
                                   );
                                 }
                                 

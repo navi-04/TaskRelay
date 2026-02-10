@@ -152,7 +152,6 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   
   int selectedHours = 0;
   int selectedMinutes = 30;
-  int selectedWeight = 1;
   TaskType selectedType = TaskType.task;
   TaskPriority selectedPriority = TaskPriority.medium;
   bool isPermanent = false;
@@ -528,36 +527,6 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
           ],
         ),
       ];
-    } else if (mode == EstimationMode.weightBased) {
-      return [
-        Text(
-          'Weight *',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[300]
-                : Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<int>(
-          value: selectedWeight,
-          decoration: const InputDecoration(
-            labelText: 'Weight',
-            prefixIcon: Icon(Icons.fitness_center),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100].map((w) {
-            return DropdownMenuItem(value: w, child: Text('$w pt${w != 1 ? 's' : ''}', style: const TextStyle(fontSize: 14)));
-          }).toList(),
-          onChanged: (v) => setState(() => selectedWeight = v!),
-          validator: (v) {
-            if (v == null || v < 1) return 'Weight required';
-            return null;
-          },
-        ),
-      ];
     } else {
       return []; // count-based: no field
     }
@@ -634,21 +603,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         }
       }
       
-      // Auto-sync weight <-> duration across modes
-      final effectiveWeight = estimationMode == EstimationMode.timeBased
-          ? (durationMinutes / 30).round().clamp(1, 100)
-          : selectedWeight;
-      final effectiveDuration = estimationMode == EstimationMode.weightBased
-          ? (selectedWeight * 30).clamp(5, 1440)
-          : durationMinutes;
-
       notifier.addTask(
         id: const Uuid().v4(),
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty 
             ? null 
             : _descriptionController.text.trim(),
-        durationMinutes: effectiveDuration,
+        durationMinutes: durationMinutes,
         taskType: selectedType,
         priority: selectedPriority,
         notes: _notesController.text.trim().isEmpty
@@ -656,7 +617,6 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             : _notesController.text.trim(),
         isPermanent: isPermanent,
         alarmTime: effectiveAlarmTime,
-        weight: effectiveWeight,
       );
       
       Navigator.pop(context);
