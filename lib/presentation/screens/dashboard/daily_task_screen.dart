@@ -1572,7 +1572,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     ? (durationMinutes / 30).round().clamp(1, 100)
                                     : selectedWeight;
                                 final effectiveDuration = estimationMode == EstimationMode.weightBased
-                                    ? selectedWeight * 30
+                                    ? (selectedWeight * 30).clamp(5, 1440)
                                     : durationMinutes;
 
                                 if (isEditing) {

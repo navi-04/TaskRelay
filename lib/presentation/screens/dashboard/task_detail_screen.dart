@@ -540,7 +540,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         ? (durationMinutes / 30).round().clamp(1, 100)
         : _selectedWeight;
     final effectiveDuration = mode == EstimationMode.weightBased
-        ? _selectedWeight * 30
+        ? (_selectedWeight * 30).clamp(5, 1440)
         : durationMinutes;
 
     ref.read(taskStateProvider.notifier).updateTask(task.copyWith(

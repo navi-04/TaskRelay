@@ -776,7 +776,7 @@ class _TaskItem extends ConsumerWidget {
                                     ? (durationMinutes / 30).round().clamp(1, 100)
                                     : selectedWeight;
                                 final effectiveDuration = estimationMode == EstimationMode.weightBased
-                                    ? selectedWeight * 30
+                                    ? (selectedWeight * 30).clamp(5, 1440)
                                     : durationMinutes;
 
                                 notifier.updateTask(task.copyWith(

@@ -385,7 +385,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           updated = task.copyWith(weight: derivedWeight);
         } else if (newMode == EstimationMode.timeBased) {
           // Derive duration from weight: 30 min per 1 pt
-          final derivedDuration = task.weight * 30;
+          final derivedDuration = (task.weight * 30).clamp(5, 1440);
           updated = task.copyWith(durationMinutes: derivedDuration);
         } else {
           // Count mode — no sync needed
