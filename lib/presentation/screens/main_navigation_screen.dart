@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../providers/settings_provider.dart';
 import '../providers/task_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/providers.dart';
 import '../../data/models/task_type.dart';
 import '../../data/models/task_priority.dart';
 import '../../core/theme/app_theme.dart';
