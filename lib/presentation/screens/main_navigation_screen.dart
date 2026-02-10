@@ -9,6 +9,7 @@ import '../../data/models/task_type.dart';
 import '../../data/models/task_priority.dart';
 import '../../data/models/estimation_mode.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/date_utils.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'dashboard/daily_task_screen.dart';
 import 'dashboard/calendar_screen.dart';
@@ -614,6 +615,22 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
 
   Future<void> _submitTask() async {
     if (_formKey.currentState!.validate()) {
+      // Block adding tasks to past dates
+      final selectedDate = ref.read(taskStateProvider).selectedDate;
+      if (DateHelper.isPast(DateHelper.parseDate(selectedDate))) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Cannot add tasks to past dates'),
+            backgroundColor: AppTheme.warning,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
+      }
+
       final estimationMode = ref.read(settingsProvider).estimationMode;
       final durationMinutes = estimationMode == EstimationMode.timeBased
           ? (selectedHours * 60) + selectedMinutes

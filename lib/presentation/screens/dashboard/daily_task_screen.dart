@@ -201,11 +201,13 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddTaskBottomSheet(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Task'),
-      ),
+      floatingActionButton: DateHelper.isPast(DateHelper.parseDate(taskState.selectedDate))
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _showAddTaskBottomSheet(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Task'),
+            ),
     );
   }
   
