@@ -15,6 +15,7 @@ import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -36,10 +37,17 @@ import androidx.core.app.NotificationCompat
 /**
  * Foreground service that handles a triggered alarm.
  *
- * Shows alarm UI as a SYSTEM OVERLAY WINDOW — this bypasses Activity
- * launching which OnePlus/ColorOS silently blocks from background.
- * The overlay window is added directly via WindowManager and shows
- * over everything including the lock screen.
+ * CRITICAL ORDER OF OPERATIONS for reliable lock-screen display:
+ * 1. Post notification with fullScreenIntent via startForeground() FIRST
+ *    → Android triggers FSI immediately if screen is off/locked
+ * 2. Start alarm sound + vibration
+ * 3. After a delay (3s), check if AlarmActivity appeared
+ *    → If not, show overlay window as fallback
+ *
+ * NEVER wake the screen or launch activities BEFORE posting the FSI
+ * notification. Doing so makes Android treat the device as "in use"
+ * and it will show a heads-up notification instead of the full-screen
+ * intent.
  */
 class AlarmService : Service() {
 
@@ -50,7 +58,17 @@ class AlarmService : Service() {
         const val ACTION_STOP_ALARM  = "com.example.sampleapp.ACTION_STOP_ALARM"
 
         private const val ALARM_NOTIFICATION_ID = 888
-        private const val ALARM_CHANNEL_ID = "alarm_trigger_v3"
+
+        // ── FRESH channel ID — avoids any cached importance from old installs ──
+        private const val ALARM_CHANNEL_ID = "alarm_critical_v5"
+
+        // Old channel IDs to delete
+        private val OLD_CHANNEL_IDS = listOf(
+            "alarm_trigger_channel",
+            "alarm_trigger_v2",
+            "alarm_trigger_v3",
+            "alarm_trigger_v4"
+        )
 
         fun stopAlarm(context: Context) {
             try {
@@ -68,6 +86,7 @@ class AlarmService : Service() {
     private var vibrator: Vibrator? = null
     private var overlayView: View? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var partialWakeLock: PowerManager.WakeLock? = null
     private var currentTaskTitle: String = ""
     private var currentNotificationId: Int = 0
 
@@ -107,59 +126,58 @@ class AlarmService : Service() {
         currentTaskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
         currentNotificationId = intent.getIntExtra("notificationId", 0)
 
-        Log.d(TAG, "🔔 Starting alarm → $currentTaskTitle")
+        Log.d(TAG, "🔔 Starting alarm → $currentTaskTitle (ID: $currentNotificationId)")
 
-        // ── 1. FIRST: Go foreground with full-screen intent notification ──
-        // This MUST happen before acquiring wake lock! If the device is
-        // locked/idle, Android will trigger the full-screen intent and
-        // launch AlarmActivity over the lock screen. If we wake the
-        // screen first, Android treats the device as "in use" and just
-        // shows a heads-up notification instead.
-        
-        // Acquire PARTIAL_WAKE_LOCK immediately to ensure CPU runs
-        // while we wait for the delay.
-        // Acquire PARTIAL_WAKE_LOCK immediately to ensure CPU runs
-        acquirePartialWakeLock()
-        
-        // ── 0. IMMEDIATE LAUNCH ATTEMPT (Brute force) ────────────────
-        // Try to launch activity directly. If "Display over other apps" 
-        // is granted, this often works better than FSI on some OEMs.
-        tryLaunchActivity(currentTaskTitle)
-
+        // ── STEP 1: Go foreground with FSI notification IMMEDIATELY ──
+        // This is the ONLY reliable way to show UI on the lock screen.
+        // Android triggers the fullScreenIntent when:
+        //   • The notification channel has IMPORTANCE_HIGH
+        //   • The screen is off OR the keyguard is showing
+        //   • The app has USE_FULL_SCREEN_INTENT permission
+        //
+        // ⚠️ Do NOT wake the screen or launch activities before this!
+        // That makes Android think the device is "in use" and it will
+        // show a heads-up notification instead of launching AlarmActivity.
         try {
             val notification = buildNotification(currentTaskTitle, currentNotificationId)
             startForeground(ALARM_NOTIFICATION_ID, notification)
-            Log.d(TAG, "✅ Foreground started — full-screen intent may trigger on lock screen")
+            Log.d(TAG, "✅ Foreground started with FSI — system will launch AlarmActivity if screen is off")
         } catch (e: Exception) {
             Log.e(TAG, "❌ startForeground failed: ${e.message}", e)
         }
 
-        // ── 2. Play sound immediately ────────────────────────────────
-        startSound()
+        // ── STEP 2: Acquire partial wake lock to keep CPU running ────
+        // PARTIAL only — does NOT turn screen on (that would break FSI)
+        acquirePartialWakeLock()
 
-        // ── 3. Vibrate immediately ───────────────────────────────────
+        // ── STEP 3: Start sound + vibration immediately ──────────────
+        startSound()
         startVibration()
 
-        // ── 4. After a short delay, wake screen + show overlay ───────
-        // The 250ms delay gives the full-screen intent time to fire.
+        // ── STEP 4: Delayed fallback — only if FSI didn't launch Activity ──
+        // Wait 3 seconds for the FSI to trigger and AlarmActivity to appear.
+        // If it didn't (OEM blocked it, permission missing, etc.), use fallback.
         Handler(Looper.getMainLooper()).postDelayed({
-            // Now we force the screen on (Full Wake Lock)
+            if (AlarmActivity.currentInstance != null) {
+                // AlarmActivity is already showing — FSI worked!
+                Log.d(TAG, "✅ AlarmActivity is visible — FSI triggered successfully")
+                releasePartialWakeLock()
+                return@postDelayed
+            }
+
+            Log.w(TAG, "⚠️ AlarmActivity NOT visible after 3s — using fallback mechanisms")
+
+            // Now it's safe to wake the screen (FSI had its chance)
             acquireFullWakeLock()
 
             // Try to dismiss non-secure keyguard
             tryDismissKeyguard()
 
-            // Show overlay (primary UI when screen is unlocked,
-            // fallback when full-screen intent didn't fire)
+            // Show overlay window as fallback (needs SYSTEM_ALERT_WINDOW)
             showOverlay(currentTaskTitle)
-            
-            // ALSO try to launch activity explicitly as a backup
-            // This ensures that if overlay is blocked, activity might still show
-            tryLaunchActivity(currentTaskTitle)
-            
-            // Release the partial lock now that we have the full one
+
             releasePartialWakeLock()
-        }, 250)
+        }, 3000)
     }
 
     /**
@@ -200,6 +218,12 @@ class AlarmService : Service() {
             Log.e(TAG, "⚠️ Could not finish AlarmActivity: ${e.message}")
         }
 
+        // Cancel the ongoing notification
+        try {
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.cancel(ALARM_NOTIFICATION_ID)
+        } catch (_: Exception) {}
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
@@ -211,21 +235,22 @@ class AlarmService : Service() {
 
     // ─── Wake lock ───────────────────────────────────────────────────
 
-    // ─── Wake lock ───────────────────────────────────────────────────
-
-    private var partialWakeLock: PowerManager.WakeLock? = null
-
     private fun acquirePartialWakeLock() {
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            partialWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SampleApp:AlarmPartial")
+            partialWakeLock = pm.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "SampleApp:AlarmPartial"
+            )
             partialWakeLock?.acquire(60_000L) // 1 min timeout
-            Log.d(TAG, "✅ Partial wake lock acquired")
-        } catch (e: Exception) { Log.e(TAG, "Partial WL failed: $e") }
+            Log.d(TAG, "✅ Partial wake lock acquired (CPU only, screen stays off)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Partial WL failed: $e")
+        }
     }
-    
+
     private fun releasePartialWakeLock() {
-         try {
+        try {
             if (partialWakeLock?.isHeld == true) partialWakeLock?.release()
         } catch (_: Exception) {}
         partialWakeLock = null
@@ -241,7 +266,7 @@ class AlarmService : Service() {
                 "SampleApp:AlarmWake"
             )
             wakeLock?.acquire(5 * 60_000L) // 5 minutes max
-            Log.d(TAG, "✅ Full Screen wake lock acquired — screen ON")
+            Log.d(TAG, "✅ Full wake lock acquired — screen ON")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Wake lock failed: ${e.message}", e)
         }
@@ -258,9 +283,15 @@ class AlarmService : Service() {
         releasePartialWakeLock()
     }
 
-    // ─── Overlay Window (the actual alarm UI) ────────────────────────
+    // ─── Overlay Window (fallback alarm UI) ──────────────────────────
 
     private fun showOverlay(taskTitle: String) {
+        // Don't show overlay if AlarmActivity is already visible
+        if (AlarmActivity.currentInstance != null) {
+            Log.d(TAG, "✅ AlarmActivity already showing — skipping overlay")
+            return
+        }
+
         if (overlayView != null) {
             Log.d(TAG, "⚠️ Overlay already showing")
             return
@@ -269,15 +300,12 @@ class AlarmService : Service() {
         // Check overlay permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             Log.e(TAG, "❌ No SYSTEM_ALERT_WINDOW permission — cannot show overlay")
-            // Fall back to trying Activity launch
-            tryLaunchActivity(taskTitle)
             return
         }
 
         try {
             val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-            // Window params — shows over EVERYTHING including lock screen
             val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
@@ -295,26 +323,21 @@ class AlarmService : Service() {
                         WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                         WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                PixelFormat.TRANSLUCENT  // TRANSLUCENT composites over keyguard correctly
+                PixelFormat.TRANSLUCENT
             )
             params.gravity = Gravity.CENTER
 
-            // Allow overlay to extend into display cutout (notch) area
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 params.layoutInDisplayCutoutMode =
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
 
-            // Build the alarm UI programmatically
             overlayView = buildAlarmUI(taskTitle)
-
             wm.addView(overlayView, params)
-            Log.d(TAG, "✅ Overlay window added — alarm UI visible!")
+            Log.d(TAG, "✅ Overlay window added — fallback alarm UI visible!")
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ Overlay failed: ${e.message}", e)
-            // Fall back to Activity
-            tryLaunchActivity(taskTitle)
         }
     }
 
@@ -332,25 +355,6 @@ class AlarmService : Service() {
         }
     }
 
-    private fun tryLaunchActivity(taskTitle: String) {
-        try {
-            val activityIntent = Intent(this, AlarmActivity::class.java).apply {
-                putExtra("taskTitle", taskTitle)
-                putExtra("notificationId", currentNotificationId)
-                addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                )
-            }
-            startActivity(activityIntent)
-            Log.d(TAG, "✅ Activity launched as fallback")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Activity fallback also failed: ${e.message}", e)
-        }
-    }
-
     /**
      * Build the alarm UI programmatically — orange fullscreen with
      * time, task title, snooze and dismiss buttons.
@@ -359,15 +363,13 @@ class AlarmService : Service() {
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
 
-        // Root layout — orange background
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setBackgroundColor(0xFFFF6B35.toInt()) // orange
+            setBackgroundColor(0xFFFF6B35.toInt())
             setPadding(dp(32), dp(60), dp(32), dp(48))
         }
 
-        // Alarm icon
         val icon = TextView(this).apply {
             text = "⏰"
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 80f)
@@ -375,7 +377,6 @@ class AlarmService : Service() {
         }
         root.addView(icon)
 
-        // Current time
         val now = java.util.Calendar.getInstance()
         val timeStr = String.format(
             "%02d:%02d",
@@ -389,13 +390,11 @@ class AlarmService : Service() {
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
         }
-        val timeParams = LinearLayout.LayoutParams(
+        root.addView(timeView, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(24) }
-        root.addView(timeView, timeParams)
+        ).apply { topMargin = dp(24) })
 
-        // Task title
         val titleView = TextView(this).apply {
             text = taskTitle
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
@@ -403,36 +402,30 @@ class AlarmService : Service() {
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
         }
-        val titleParams = LinearLayout.LayoutParams(
+        root.addView(titleView, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(32) }
-        root.addView(titleView, titleParams)
+        ).apply { topMargin = dp(32) })
 
-        // "Task Alarm" label
         val label = TextView(this).apply {
             text = "Task Alarm"
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
             setTextColor(Color.argb(230, 255, 255, 255))
             gravity = Gravity.CENTER
         }
-        val labelParams = LinearLayout.LayoutParams(
+        root.addView(label, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(16) }
-        root.addView(label, labelParams)
+        ).apply { topMargin = dp(16) })
 
         // Spacer
-        val spacer = View(this)
-        root.addView(spacer, LinearLayout.LayoutParams(0, 0, 1f))
+        root.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f))
 
-        // Button container
         val btnContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
 
-        // Snooze button
         val snoozeBtn = Button(this).apply {
             text = "Snooze\n5 min"
             setTextColor(0xFFFF6B35.toInt())
@@ -449,12 +442,10 @@ class AlarmService : Service() {
                 handleStopAlarm()
             }
         }
-        val snoozeLp = LinearLayout.LayoutParams(0, dp(64), 1f).apply {
+        btnContainer.addView(snoozeBtn, LinearLayout.LayoutParams(0, dp(64), 1f).apply {
             marginEnd = dp(12)
-        }
-        btnContainer.addView(snoozeBtn, snoozeLp)
+        })
 
-        // Dismiss button
         val dismissBtn = Button(this).apply {
             text = "Dismiss"
             setTextColor(0xFFFF6B35.toInt())
@@ -467,10 +458,9 @@ class AlarmService : Service() {
                 handleStopAlarm()
             }
         }
-        val dismissLp = LinearLayout.LayoutParams(0, dp(64), 1f).apply {
+        btnContainer.addView(dismissBtn, LinearLayout.LayoutParams(0, dp(64), 1f).apply {
             marginStart = dp(12)
-        }
-        btnContainer.addView(dismissBtn, dismissLp)
+        })
 
         root.addView(btnContainer, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -492,43 +482,75 @@ class AlarmService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Delete old channel if it exists (cached settings might block full-screen intent)
-            // Delete old channels to avoid clutter/conflicts
             val nm = getSystemService(NotificationManager::class.java)
-            try { nm.deleteNotificationChannel("alarm_trigger_channel") } catch (_: Exception) {}
-            try { nm.deleteNotificationChannel("alarm_trigger_v2") } catch (_: Exception) {}
+
+            // Delete ALL old channels to avoid cached importance issues
+            for (oldId in OLD_CHANNEL_IDS) {
+                try { nm.deleteNotificationChannel(oldId) } catch (_: Exception) {}
+            }
+
+            // Build alarm sound URI for the channel
+            val alarmSoundUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+            val alarmAudioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
 
             val channel = NotificationChannel(
-                ALARM_CHANNEL_ID, "Critical Alarm Alerts",
-                NotificationManager.IMPORTANCE_HIGH
+                ALARM_CHANNEL_ID,
+                "Critical Alarm Alerts",
+                NotificationManager.IMPORTANCE_HIGH  // Maximum allowed for channels
             ).apply {
                 description = "Full-screen alarm notifications that show over lock screen"
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 1000, 500, 1000, 500, 1000)
                 enableLights(true)
-                // Set audio attributes to ALARM to ensure high priority handling
-                setSound(null, null)
+                lightColor = 0xFFFF6B35.toInt()
+                // Set alarm sound on the channel — critical for some OEMs to treat
+                // this as a true alarm notification and honor the fullScreenIntent
+                setSound(alarmSoundUri, alarmAudioAttributes)
             }
             nm.createNotificationChannel(channel)
+            Log.d(TAG, "✅ Notification channel '$ALARM_CHANNEL_ID' created (IMPORTANCE_HIGH, alarm sound, bypass DND)")
         }
     }
 
     private fun buildNotification(taskTitle: String, notificationId: Int): Notification {
+        // ── Full-screen intent → AlarmActivity ──
         val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra("taskTitle", taskTitle)
             putExtra("notificationId", notificationId)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or 
-                     Intent.FLAG_ACTIVITY_SINGLE_TOP or 
-                     Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_NO_USER_ACTION or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
+            )
         }
         val fullScreenPI = PendingIntent.getActivity(
             this, notificationId, fullScreenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        // ── Dismiss action ──
         val dismissPI = PendingIntent.getService(
-            this, 0,
+            this, notificationId + 900000,
             Intent(this, AlarmService::class.java).apply { action = ACTION_STOP_ALARM },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // ── Snooze action ──
+        val snoozeIntent = Intent(this, AlarmService::class.java).apply {
+            action = ACTION_STOP_ALARM
+            // Snooze is handled by just dismissing — the activity/overlay handles rescheduling
+        }
+        val snoozePI = PendingIntent.getService(
+            this, notificationId + 800000, snoozeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -536,14 +558,18 @@ class AlarmService : Service() {
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("⏰ Alarm")
             .setContentText(taskTitle)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(taskTitle))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setFullScreenIntent(fullScreenPI, true)
-            .setContentIntent(fullScreenPI) // Required by some OEMs
+            .setContentIntent(fullScreenPI)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setDefaults(0) // We handle sound/vibration ourselves via MediaPlayer
+            .setSilent(false)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissPI)
+            .addAction(android.R.drawable.ic_lock_idle_alarm, "Snooze 5m", snoozePI)
             .build()
     }
 

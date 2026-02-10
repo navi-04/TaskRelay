@@ -78,31 +78,38 @@ class NotificationService {
     
     if (androidPlugin == null) return;
     
-    // Task Alarms Channel - High priority with alarm sound and vibration
-    // Using channel ID v3 with proper alarm ringtone configuration
-    // 
-    // NOTE: To use a custom alarm ringtone, add alarm_sound.mp3 or alarm_sound.ogg
-    // to android/app/src/main/res/raw/ directory
-    // See android/app/src/main/res/raw/README_ALARM_SOUND.md for details
+    // Task Alarms Channel - Maximum priority with alarm sound
+    // Using channel ID v5 — MUST match AlarmService.ALARM_CHANNEL_ID on native side.
+    // Using a fresh channel ID avoids Android caching a lower importance from old installs.
     //
-    // ALTERNATIVE APPROACH: If you don't add a custom sound file, the system will
-    // use the default notification sound. To use no custom sound, remove the 'sound' parameter below.
+    // NOTE: This channel is also created natively in AlarmService.kt.
+    // Creating it from Flutter ensures it exists before any alarm is scheduled.
     final alarmChannel = AndroidNotificationChannel(
-      'task_alarms_v3',
-      'Task Alarms',
-      description: 'Alarm notifications for scheduled tasks',
+      'alarm_critical_v5',
+      'Critical Alarm Alerts',
+      description: 'Full-screen alarm notifications that show over lock screen',
       importance: Importance.max,
       playSound: true,
-      sound: const RawResourceAndroidNotificationSound('alarm_sound'),  // Custom alarm ringtone
-      // ALTERNATIVE: Remove the 'sound' line above to use default notification sound
+      sound: const RawResourceAndroidNotificationSound('alarm_sound'),
       enableVibration: true,
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
       enableLights: true,
       ledColor: const Color(0xFFFF6B35),
       showBadge: true,
     );
-    
+
     await androidPlugin.createNotificationChannel(alarmChannel);
+
+    // Delete old alarm channels to avoid confusion
+    try {
+      await androidPlugin.deleteNotificationChannel('task_alarms_v3');
+    } catch (_) {}
+    try {
+      await androidPlugin.deleteNotificationChannel('alarm_trigger_v3');
+    } catch (_) {}
+    try {
+      await androidPlugin.deleteNotificationChannel('alarm_trigger_v4');
+    } catch (_) {}
     
     // Daily Reminder Channel
     const reminderChannel = AndroidNotificationChannel(

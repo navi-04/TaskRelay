@@ -2,6 +2,7 @@ package com.example.sampleapp
 
 import android.app.Activity
 import android.app.KeyguardManager
+import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
@@ -14,10 +15,14 @@ import android.widget.TextView
 /**
  * Full-screen alarm Activity shown over the lock screen.
  *
- * Uses EVERY possible mechanism to ensure it displays:
- *   • Window flags (legacy + modern APIs)
- *   • KeyguardManager dismiss
- *   • PowerManager wake lock as last resort
+ * Launched via fullScreenIntent on the alarm notification.
+ * Uses EVERY possible mechanism to ensure it displays on lock screen:
+ *   - Window flags (legacy + modern APIs)
+ *   - setShowWhenLocked / setTurnScreenOn (API 27+)
+ *   - KeyguardManager.requestDismissKeyguard (for secure lock screens)
+ *   - PowerManager wake lock (last resort screen wake)
+ *
+ * Works on Android 10–14 including Samsung, OnePlus, Xiaomi.
  */
 class AlarmActivity : Activity() {
 
@@ -37,51 +42,19 @@ class AlarmActivity : Activity() {
         super.onCreate(savedInstanceState)
         currentInstance = this
         Log.d(TAG, "🔔 AlarmActivity onCreate")
-        
-        // ── 1. Set flags FIRST so window can show over lock screen ──
-        try {
-            // Apply LEGACY flags (still needed for some behaviors)
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-            )
-            
-            // Apply MODERN API (Android 8.1+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                setShowWhenLocked(true)
-                setTurnScreenOn(true)
-                setShowWhenLocked(true)
-                setTurnScreenOn(true)
-            }
-            
-            // Apply WAKE LOCK (Absolute backup)
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            @Suppress("DEPRECATION")
-            screenWakeLock = pm.newWakeLock(
-                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
-                        PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                "SampleApp:AlarmActivityWake"
-            )
-            screenWakeLock?.acquire(30_000L) // 30 seconds max
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error setting flags: ${e.message}", e)
-        }
 
-        try {
-            taskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
-            notificationId = intent.getIntExtra("notificationId", 0)
-            Log.d(TAG, "  Task: $taskTitle  ID: $notificationId")
+        // ── 1. Apply ALL lock screen flags BEFORE setContentView ─────
+        applyLockScreenFlags()
 
-            // ── 2. THEN set content ───────────────────────────────────
+        // ── 2. Extract intent data ───────────────────────────────────
+        taskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
+        notificationId = intent.getIntExtra("notificationId", 0)
+        Log.d(TAG, "  Task: $taskTitle  ID: $notificationId")
+
+        // ── 3. Set content + bind views ──────────────────────────────
+        try {
             setContentView(R.layout.activity_alarm)
-            Log.d(TAG, "✅ setContentView done")
 
-            // ── 3. Bind views ────────────────────────────────────────
             findViewById<TextView>(R.id.alarmTitle).text = taskTitle
             findViewById<TextView>(R.id.alarmTime).text = currentTimeString()
 
@@ -92,9 +65,84 @@ class AlarmActivity : Activity() {
                 snoozeAlarm()
             }
 
-            Log.d(TAG, "✅ AlarmActivity fully ready and visible")
+            Log.d(TAG, "✅ AlarmActivity fully ready")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error in onCreate UI setup: ${e.message}", e)
+        }
+
+        // ── 4. Request keyguard dismiss (for secure lock screens) ────
+        requestKeyguardDismiss()
+    }
+
+    /**
+     * Apply every possible mechanism to show over lock screen and wake display.
+     */
+    private fun applyLockScreenFlags() {
+        try {
+            // ── LEGACY window flags (needed for Android < 8.1 and some OEMs) ──
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
+
+            // ── MODERN API (Android 8.1+ / API 27+) ──
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                setShowWhenLocked(true)
+                setTurnScreenOn(true)
+            }
+
+            // ── WAKE LOCK — force screen on as absolute backup ──
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            screenWakeLock = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                        PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "SampleApp:AlarmActivityWake"
+            )
+            screenWakeLock?.acquire(60_000L) // 60 seconds max
+
+            Log.d(TAG, "✅ Lock screen flags applied + wake lock acquired")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error setting lock screen flags: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Request keyguard dismissal. On secure lock screens (PIN/pattern/fingerprint),
+     * this shows the unlock prompt overlaid on our Activity. Once the user
+     * authenticates, the keyguard is dismissed and our Activity is fully interactive.
+     *
+     * On non-secure lock screens, this immediately dismisses the keyguard.
+     */
+    private fun requestKeyguardDismiss() {
+        try {
+            val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                km.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+                    override fun onDismissSucceeded() {
+                        Log.d(TAG, "✅ Keyguard dismissed successfully")
+                    }
+                    override fun onDismissCancelled() {
+                        Log.w(TAG, "⚠️ Keyguard dismiss cancelled by user")
+                    }
+                    override fun onDismissError() {
+                        Log.e(TAG, "❌ Keyguard dismiss error")
+                    }
+                })
+            } else {
+                // Pre-O: use deprecated API
+                @Suppress("DEPRECATION")
+                val keyguardLock = km.newKeyguardLock("AlarmActivity")
+                @Suppress("DEPRECATION")
+                keyguardLock.disableKeyguard()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "⚠️ requestDismissKeyguard failed: ${e.message}", e)
         }
     }
 
@@ -117,6 +165,19 @@ class AlarmActivity : Activity() {
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────────
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        // Handle re-launch if already showing (singleTask/singleTop)
+        setIntent(intent)
+        taskTitle = intent.getStringExtra("taskTitle") ?: taskTitle
+        notificationId = intent.getIntExtra("notificationId", notificationId)
+        try {
+            findViewById<TextView>(R.id.alarmTitle)?.text = taskTitle
+            findViewById<TextView>(R.id.alarmTime)?.text = currentTimeString()
+        } catch (_: Exception) {}
+        Log.d(TAG, "🔔 onNewIntent — updated for: $taskTitle")
+    }
 
     override fun onDestroy() {
         currentInstance = null

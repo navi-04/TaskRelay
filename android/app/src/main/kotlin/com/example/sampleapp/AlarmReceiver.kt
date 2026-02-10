@@ -12,13 +12,14 @@ import android.util.Log
  * BroadcastReceiver triggered by AlarmManager.setAlarmClock().
  *
  * Starts AlarmService which handles EVERYTHING:
- *   - Posts notification with fullScreenIntent (shows Activity on lock screen)
- *   - Shows overlay window (for unlocked screen)
- *   - Plays alarm sound + vibration
+ *   1. Posts notification with fullScreenIntent → AlarmActivity (lock screen)
+ *   2. Plays alarm sound + vibration
+ *   3. Shows overlay window as fallback (if FSI didn't fire)
  *
- * IMPORTANT: We do NOT acquire wake lock here. If we wake the screen
- * before the notification fires, Android treats the device as "in use"
- * and won't trigger the full-screen intent — breaking lock screen display.
+ * IMPORTANT: We do NOT launch AlarmActivity directly here.
+ * Android 10+ blocks background activity launches from receivers.
+ * The fullScreenIntent on the notification is the correct mechanism
+ * — Android launches AlarmActivity when the screen is off/locked.
  */
 class AlarmReceiver : BroadcastReceiver() {
 
@@ -29,15 +30,11 @@ class AlarmReceiver : BroadcastReceiver() {
         val notificationId = intent.getIntExtra("notificationId", 0)
         Log.d(TAG, "  Task: $taskTitle, ID: $notificationId")
 
-        // ── IMPORTANT: Do NOT acquire wake lock here! ────────────────
-        // If we turn the screen on now, Android thinks the device is
-        // "in use" and will NOT trigger the notification's full-screen
-        // intent. The full-screen intent is the ONLY reliable way to
-        // show AlarmActivity over the lock screen on OnePlus/ColorOS.
-        // The service will handle screen wake AFTER the notification
-        // full-screen intent has had a chance to fire.
-
-        // ── Start AlarmService — it handles everything ───────────────
+        // ── Start AlarmService — it posts FSI notification + plays sound ─
+        // Do NOT launch AlarmActivity directly. Do NOT wake screen.
+        // The service will call startForeground() with a fullScreenIntent
+        // notification, and Android will launch AlarmActivity if the screen
+        // is off or the keyguard is showing.
         try {
             val svcIntent = Intent(context, AlarmService::class.java).apply {
                 action = AlarmService.ACTION_START_ALARM
