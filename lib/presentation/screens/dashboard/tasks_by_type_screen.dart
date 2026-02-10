@@ -771,19 +771,27 @@ class _TaskItem extends ConsumerWidget {
                                 
                                 final notifier = ref.read(taskStateProvider.notifier);
                                 
+                                // Auto-sync weight <-> duration across modes
+                                final effectiveWeight = estimationMode == EstimationMode.timeBased
+                                    ? (durationMinutes / 30).round().clamp(1, 100)
+                                    : selectedWeight;
+                                final effectiveDuration = estimationMode == EstimationMode.weightBased
+                                    ? selectedWeight * 30
+                                    : durationMinutes;
+
                                 notifier.updateTask(task.copyWith(
                                   title: titleController.text.trim(),
                                   description: descriptionController.text.trim().isEmpty 
                                       ? null 
                                       : descriptionController.text.trim(),
-                                  durationMinutes: durationMinutes,
+                                  durationMinutes: effectiveDuration,
                                   taskType: selectedType,
                                   priority: selectedPriority,
                                   notes: notesController.text.trim().isEmpty
                                       ? null
                                       : notesController.text.trim(),
                                   isPermanent: isPermanent,
-                                  weight: selectedWeight,
+                                  weight: effectiveWeight,
                                 ));
                                 
                                 Navigator.pop(context);

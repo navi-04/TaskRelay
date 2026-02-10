@@ -1567,13 +1567,21 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   }
                                 }
                                 
+                                // Auto-sync weight <-> duration across modes
+                                final effectiveWeight = estimationMode == EstimationMode.timeBased
+                                    ? (durationMinutes / 30).round().clamp(1, 100)
+                                    : selectedWeight;
+                                final effectiveDuration = estimationMode == EstimationMode.weightBased
+                                    ? selectedWeight * 30
+                                    : durationMinutes;
+
                                 if (isEditing) {
                                   notifier.updateTask(task.copyWith(
                                     title: titleController.text.trim(),
                                     description: descriptionController.text.trim().isEmpty 
                                         ? null 
                                         : descriptionController.text.trim(),
-                                    durationMinutes: durationMinutes,
+                                    durationMinutes: effectiveDuration,
                                     taskType: selectedType,
                                     priority: selectedPriority,
                                     notes: notesController.text.trim().isEmpty
@@ -1581,7 +1589,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
-                                    weight: selectedWeight,
+                                    weight: effectiveWeight,
                                   ));
                                 } else {
                                   notifier.addTask(
@@ -1590,7 +1598,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     description: descriptionController.text.trim().isEmpty 
                                         ? null 
                                         : descriptionController.text.trim(),
-                                    durationMinutes: durationMinutes,
+                                    durationMinutes: effectiveDuration,
                                     taskType: selectedType,
                                     priority: selectedPriority,
                                     notes: notesController.text.trim().isEmpty
@@ -1598,7 +1606,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         : notesController.text.trim(),
                                     isPermanent: isPermanent,
                                     alarmTime: effectiveAlarmTime,
-                                    weight: selectedWeight,
+                                    weight: effectiveWeight,
                                   );
                                 }
                                 

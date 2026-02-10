@@ -535,16 +535,24 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       }
     }
 
+    // Auto-sync weight <-> duration across modes
+    final effectiveWeight = mode == EstimationMode.timeBased
+        ? (durationMinutes / 30).round().clamp(1, 100)
+        : _selectedWeight;
+    final effectiveDuration = mode == EstimationMode.weightBased
+        ? _selectedWeight * 30
+        : durationMinutes;
+
     ref.read(taskStateProvider.notifier).updateTask(task.copyWith(
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-      durationMinutes: durationMinutes,
+      durationMinutes: effectiveDuration,
       taskType: _selectedType,
       priority: _selectedPriority,
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       isPermanent: _isPermanent,
       alarmTime: effectiveAlarmTime,
-      weight: _selectedWeight,
+      weight: effectiveWeight,
     ));
 
     setState(() => _isEditing = false);

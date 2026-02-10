@@ -634,13 +634,21 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         }
       }
       
+      // Auto-sync weight <-> duration across modes
+      final effectiveWeight = estimationMode == EstimationMode.timeBased
+          ? (durationMinutes / 30).round().clamp(1, 100)
+          : selectedWeight;
+      final effectiveDuration = estimationMode == EstimationMode.weightBased
+          ? selectedWeight * 30
+          : durationMinutes;
+
       notifier.addTask(
         id: const Uuid().v4(),
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty 
             ? null 
             : _descriptionController.text.trim(),
-        durationMinutes: durationMinutes,
+        durationMinutes: effectiveDuration,
         taskType: selectedType,
         priority: selectedPriority,
         notes: _notesController.text.trim().isEmpty
@@ -648,7 +656,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             : _notesController.text.trim(),
         isPermanent: isPermanent,
         alarmTime: effectiveAlarmTime,
-        weight: selectedWeight,
+        weight: effectiveWeight,
       );
       
       Navigator.pop(context);
