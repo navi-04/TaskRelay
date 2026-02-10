@@ -75,6 +75,14 @@ class _MyAppState extends ConsumerState<MyApp> {
         print('🔔 Task completed from alarm UI: $taskId ($taskTitle)');
         ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
       };
+
+      // Process any pending completions from alarm UI (persisted via SharedPreferences
+      // when the user tapped "Mark as Complete" while the app was not running)
+      final pendingCompletions = await ref.read(notificationServiceProvider).getPendingCompletions();
+      for (final taskId in pendingCompletions) {
+        print('🔔 Processing pending alarm completion: $taskId');
+        await ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
+      }
       
       // Process any pending carry-overs (this will also refresh task state)
       final carryOverResult = await ref.read(taskStateProvider.notifier).processCarryOverAndRefresh();

@@ -89,6 +89,16 @@ class MainActivity : FlutterActivity() {
                     AlarmReceiver.cancelAlarm(context, notificationId)
                     result.success(true)
                 }
+                "getPendingCompletions" -> {
+                    // Read and clear pending task completions from SharedPreferences.
+                    // These were persisted by AlarmActivity/overlay when user tapped
+                    // "Mark as Complete" while the app process was not alive.
+                    val prefs = context.getSharedPreferences("alarm_completions", Context.MODE_PRIVATE)
+                    val pending = prefs.getStringSet("pending_task_ids", emptySet())?.toList() ?: emptyList()
+                    prefs.edit().remove("pending_task_ids").apply()
+                    Log.d(TAG, "📋 getPendingCompletions: ${pending.size} pending → $pending")
+                    result.success(pending)
+                }
                 "checkExactAlarmPermission" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager

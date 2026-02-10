@@ -465,7 +465,11 @@ class AlarmService : Service() {
             stateListAnimator = null
             setOnClickListener {
                 Log.d(TAG, "✅ Complete pressed (overlay)")
-                // Send broadcast to Flutter to mark task as complete
+                // Persist to SharedPreferences (survives process death)
+                if (currentTaskId.isNotEmpty()) {
+                    AlarmActivity.persistPendingCompletion(this@AlarmService, currentTaskId)
+                }
+                // Also send broadcast (works if MainActivity is alive)
                 if (currentTaskId.isNotEmpty()) {
                     val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
                         setPackage(packageName)

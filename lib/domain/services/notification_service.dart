@@ -27,6 +27,23 @@ class NotificationService {
   /// Callback invoked when user taps "Mark as Complete" from the alarm UI.
   /// Set this from your provider/controller to handle task completion.
   void Function(String taskId, String taskTitle)? onTaskCompletedFromAlarm;
+
+  /// Retrieve task IDs that were marked complete from the native alarm UI
+  /// while the Flutter engine was not running. The native side persists these
+  /// to SharedPreferences so they survive process death.
+  Future<List<String>> getPendingCompletions() async {
+    try {
+      final result = await platform.invokeMethod<List<dynamic>>('getPendingCompletions');
+      final ids = result?.cast<String>() ?? [];
+      if (ids.isNotEmpty) {
+        print('📋 Found ${ids.length} pending completions from alarm: $ids');
+      }
+      return ids;
+    } catch (e) {
+      print('⚠️ getPendingCompletions failed: $e');
+      return [];
+    }
+  }
   
   /// Initialize notification service
   Future<void> initialize() async {

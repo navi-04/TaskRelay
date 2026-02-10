@@ -27,14 +27,6 @@ import android.widget.TextView
  */
 class AlarmActivity : Activity() {
 
-    companion object {
-        private const val TAG = "AlarmActivity"
-        /** Static reference so AlarmService can finish this Activity
-         *  when the alarm is dismissed from the overlay window. */
-        @JvmStatic
-        var currentInstance: AlarmActivity? = null
-    }
-
     private lateinit var taskTitle: String
     private var taskId: String = ""
     private var notificationId: Int = 0
@@ -162,8 +154,12 @@ class AlarmActivity : Activity() {
         Log.d(TAG, "✅ Mark as Complete pressed — taskId: $taskId")
         AlarmService.stopAlarm(this)
 
-        // Send broadcast to Flutter to mark task as complete
         if (taskId.isNotEmpty()) {
+            // ── PERSIST to SharedPreferences (survives app/process death) ──
+            // This is the PRIMARY mechanism — Flutter reads it on next launch.
+            persistPendingCompletion(this, taskId)
+
+            // ── ALSO send broadcast (works if MainActivity is alive) ──
             val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
                 setPackage(packageName)
                 putExtra("taskId", taskId)
@@ -175,6 +171,30 @@ class AlarmActivity : Activity() {
 
         releaseWakeLock()
         finish()
+    }
+
+    companion object {
+        private const val TAG = "AlarmActivity"
+        private const val PREFS_NAME = "alarm_completions"
+        private const val KEY_PENDING = "pending_task_ids"
+
+        /** Static reference so AlarmService can finish this Activity
+         *  when the alarm is dismissed from the overlay window. */
+        @JvmStatic
+        var currentInstance: AlarmActivity? = null
+
+        /**
+         * Persist a task completion to SharedPreferences so Flutter can pick it up
+         * even if the app process was killed when the alarm fired.
+         */
+        @JvmStatic
+        fun persistPendingCompletion(context: Context, taskId: String) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val pending = prefs.getStringSet(KEY_PENDING, mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+            pending.add(taskId)
+            prefs.edit().putStringSet(KEY_PENDING, pending).apply()
+            Log.d("AlarmActivity", "💾 Persisted pending completion: $taskId (total: ${pending.size})")
+        }
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────────
