@@ -505,7 +505,9 @@ class AlarmService : Service() {
         val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra("taskTitle", taskTitle)
             putExtra("notificationId", notificationId)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or 
+                     Intent.FLAG_ACTIVITY_SINGLE_TOP or 
+                     Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         val fullScreenPI = PendingIntent.getActivity(
             this, notificationId, fullScreenIntent,
