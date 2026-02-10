@@ -94,6 +94,7 @@ class MainActivity : FlutterActivity() {
                 "requestSystemAlertWindowPermission" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
                         try {
+                            android.widget.Toast.makeText(context, "Please grant 'Display over other apps' for Alarm", android.widget.Toast.LENGTH_LONG).show()
                             val intent = Intent(
                                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                 Uri.parse("package:$packageName")
@@ -103,6 +104,39 @@ class MainActivity : FlutterActivity() {
                             result.success(true)
                         } catch (e: Exception) {
                             Log.e(TAG, "❌ Cannot request overlay permission: ${e.message}", e)
+                            result.success(false)
+                        }
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "checkFullScreenIntentPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                        result.success(nm.canUseFullScreenIntent())
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "requestFullScreenIntentPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        try {
+                            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                            if (!nm.canUseFullScreenIntent()) {
+                                android.widget.Toast.makeText(context, "Please allow 'Full Screen Intent' for Alarm", android.widget.Toast.LENGTH_LONG).show()
+                                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                                intent.data = Uri.parse("package:$packageName")
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ Cannot request full screen intent permission: ${e.message}", e)
+                            // Fallback to generic settings
+                            try {
+                                val intent = Intent(Settings.ACTION_SETTINGS)
+                                startActivity(intent)
+                            } catch (_: Exception) {}
                             result.success(false)
                         }
                     } else {

@@ -167,12 +167,26 @@ class NotificationService {
     // when the full-screen intent is blocked.
     // Use MethodChannel to avoid permission_handler plugin issues on Windows
     try {
+      print('🔍 Checking SYSTEM_ALERT_WINDOW permission...');
       final hasOverlayPermission = await platform.invokeMethod<bool>('checkSystemAlertWindowPermission') ?? false;
       if (!hasOverlayPermission) {
+        print('⚠️ SYSTEM_ALERT_WINDOW denied. Requesting...');
         await platform.invokeMethod('requestSystemAlertWindowPermission');
+      } else {
+        print('✅ SYSTEM_ALERT_WINDOW granted');
+      }
+      
+      // Request USE_FULL_SCREEN_INTENT (Android 14+)
+      print('🔍 Checking USE_FULL_SCREEN_INTENT permission...');
+      final hasFullScreenPermission = await platform.invokeMethod<bool>('checkFullScreenIntentPermission') ?? false;
+      if (!hasFullScreenPermission) {
+        print('⚠️ USE_FULL_SCREEN_INTENT denied. Requesting...');
+        await platform.invokeMethod('requestFullScreenIntentPermission');
+      } else {
+        print('✅ USE_FULL_SCREEN_INTENT granted');
       }
     } catch (e) {
-      print('❌ Error checking/requesting overlay permission: $e');
+      print('❌ Error checking/requesting permissions: $e');
     }
 
     // iOS permissions are handled by the local notifications plugin
