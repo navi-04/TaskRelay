@@ -98,8 +98,10 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         ));
   
   /// Load tasks for currently selected date
-  void loadTasksForSelectedDate() async {
-    state = state.copyWith(isLoading: true);
+  void loadTasksForSelectedDate({bool showLoading = false}) async {
+    if (showLoading) {
+      state = state.copyWith(isLoading: true);
+    }
     
     try {
       // Get date-specific tasks (non-permanent tasks for this date)
@@ -152,7 +154,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   void loadTasksForToday() {
     final today = DateHelper.formatDate(DateHelper.getToday());
     state = state.copyWith(selectedDate: today);
-    loadTasksForSelectedDate();
+    loadTasksForSelectedDate(showLoading: true);
   }
   
   /// Process carry-over and refresh tasks
@@ -171,7 +173,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   /// Change selected date
   void selectDate(String date) {
     state = state.copyWith(selectedDate: date);
-    loadTasksForSelectedDate();
+    loadTasksForSelectedDate(showLoading: true);
   }
   
   /// Add a new task
@@ -206,24 +208,27 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       
       // Schedule alarm if alarmTime is set
       if (alarmTime != null) {
-        // Ensure permissions are granted
-        final hasPermissions = await _notificationService.areNotificationsEnabled();
-        if (!hasPermissions) {
-          await _notificationService.requestPermissions();
+        try {
+          final hasPermissions = await _notificationService.areNotificationsEnabled();
+          if (!hasPermissions) {
+            await _notificationService.requestPermissions();
+          }
+          await _notificationService.scheduleTaskAlarm(
+            taskId: id,
+            taskTitle: title,
+            alarmTime: alarmTime,
+            isPermanent: isPermanent,
+          );
+        } catch (_) {
+          // Alarm scheduling failed — continue, task is already saved
         }
-        
-        await _notificationService.scheduleTaskAlarm(
-          taskId: id,
-          taskTitle: title,
-          alarmTime: alarmTime,
-          isPermanent: isPermanent,
-        );
       }
       
       await _updateSummary();
-      loadTasksForSelectedDate();
     } catch (e) {
       state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
     }
   }
   
@@ -239,29 +244,30 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       await _taskRepository.updateTask(task);
       
       // Handle alarm updates
-      if (task.alarmTime != null) {
-        // Ensure permissions are granted
-        final hasPermissions = await _notificationService.areNotificationsEnabled();
-        if (!hasPermissions) {
-          await _notificationService.requestPermissions();
+      try {
+        if (task.alarmTime != null) {
+          final hasPermissions = await _notificationService.areNotificationsEnabled();
+          if (!hasPermissions) {
+            await _notificationService.requestPermissions();
+          }
+          await _notificationService.scheduleTaskAlarm(
+            taskId: task.id,
+            taskTitle: task.title,
+            alarmTime: task.alarmTime!,
+            isPermanent: task.isPermanent,
+          );
+        } else if (oldTask.alarmTime != null && task.alarmTime == null) {
+          await _notificationService.cancelTaskAlarm(task.id);
         }
-        
-        // Schedule new/updated alarm
-        await _notificationService.scheduleTaskAlarm(
-          taskId: task.id,
-          taskTitle: task.title,
-          alarmTime: task.alarmTime!,
-          isPermanent: task.isPermanent,
-        );
-      } else if (oldTask.alarmTime != null && task.alarmTime == null) {
-        // Alarm was removed, cancel it
-        await _notificationService.cancelTaskAlarm(task.id);
+      } catch (_) {
+        // Alarm update failed — continue, task data is already saved
       }
       
       await _updateSummary();
-      loadTasksForSelectedDate();
     } catch (e) {
       state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
     }
   }
   
@@ -273,9 +279,10 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       
       await _taskRepository.deleteTask(id);
       await _updateSummary();
-      loadTasksForSelectedDate();
     } catch (e) {
       state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
     }
   }
   
@@ -287,30 +294,31 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       
       await _taskRepository.toggleTaskCompletion(id);
       
-      // If task was incomplete (now COMPLETED) and had an alarm, cancel it
-      if (!task.isCompleted && task.alarmTime != null) {
-        await _notificationService.cancelTaskAlarm(id);
-      }
-      // If task was complete (now INCOMPLETE) and has a future alarm, reschedule it
-      else if (task.isCompleted && task.alarmTime != null) {
-         // Ensure permissions are granted
-         final hasPermissions = await _notificationService.areNotificationsEnabled();
-         if (!hasPermissions) {
-           await _notificationService.requestPermissions();
-         }
-         
-         await _notificationService.scheduleTaskAlarm(
+      // Handle alarm for completion toggle
+      try {
+        if (!task.isCompleted && task.alarmTime != null) {
+          await _notificationService.cancelTaskAlarm(id);
+        } else if (task.isCompleted && task.alarmTime != null) {
+          final hasPermissions = await _notificationService.areNotificationsEnabled();
+          if (!hasPermissions) {
+            await _notificationService.requestPermissions();
+          }
+          await _notificationService.scheduleTaskAlarm(
             taskId: task.id,
             taskTitle: task.title,
             alarmTime: task.alarmTime!,
             isPermanent: task.isPermanent,
-         );
+          );
+        }
+      } catch (_) {
+        // Alarm update failed — continue
       }
       
       await _updateSummary();
-      loadTasksForSelectedDate();
     } catch (e) {
       state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
     }
   }
   
