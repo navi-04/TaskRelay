@@ -23,6 +23,10 @@ class NotificationService {
   static const platform = MethodChannel('com.example.sampleapp/alarm');
   
   bool _initialized = false;
+
+  /// Callback invoked when user taps "Mark as Complete" from the alarm UI.
+  /// Set this from your provider/controller to handle task completion.
+  void Function(String taskId, String taskTitle)? onTaskCompletedFromAlarm;
   
   /// Initialize notification service
   Future<void> initialize() async {
