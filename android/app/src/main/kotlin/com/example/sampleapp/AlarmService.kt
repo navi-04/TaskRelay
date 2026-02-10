@@ -50,7 +50,7 @@ class AlarmService : Service() {
         const val ACTION_STOP_ALARM  = "com.example.sampleapp.ACTION_STOP_ALARM"
 
         private const val ALARM_NOTIFICATION_ID = 888
-        private const val ALARM_CHANNEL_ID = "alarm_trigger_v2"
+        private const val ALARM_CHANNEL_ID = "alarm_trigger_v3"
 
         fun stopAlarm(context: Context) {
             try {
@@ -118,9 +118,14 @@ class AlarmService : Service() {
         
         // Acquire PARTIAL_WAKE_LOCK immediately to ensure CPU runs
         // while we wait for the delay.
-        // while we wait for the delay.
+        // Acquire PARTIAL_WAKE_LOCK immediately to ensure CPU runs
         acquirePartialWakeLock()
         
+        // ── 0. IMMEDIATE LAUNCH ATTEMPT (Brute force) ────────────────
+        // Try to launch activity directly. If "Display over other apps" 
+        // is granted, this often works better than FSI on some OEMs.
+        tryLaunchActivity(currentTaskTitle)
+
         try {
             val notification = buildNotification(currentTaskTitle, currentNotificationId)
             startForeground(ALARM_NOTIFICATION_ID, notification)
@@ -334,8 +339,9 @@ class AlarmService : Service() {
                 putExtra("notificationId", currentNotificationId)
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                 )
             }
             startActivity(activityIntent)
@@ -487,11 +493,13 @@ class AlarmService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Delete old channel if it exists (cached settings might block full-screen intent)
+            // Delete old channels to avoid clutter/conflicts
             val nm = getSystemService(NotificationManager::class.java)
             try { nm.deleteNotificationChannel("alarm_trigger_channel") } catch (_: Exception) {}
+            try { nm.deleteNotificationChannel("alarm_trigger_v2") } catch (_: Exception) {}
 
             val channel = NotificationChannel(
-                ALARM_CHANNEL_ID, "Alarm Alerts",
+                ALARM_CHANNEL_ID, "Critical Alarm Alerts",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Full-screen alarm notifications that show over lock screen"
@@ -499,7 +507,8 @@ class AlarmService : Service() {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 enableVibration(true)
                 enableLights(true)
-                setSound(null, null) // Sound handled by MediaPlayer, not notification
+                // Set audio attributes to ALARM to ensure high priority handling
+                setSound(null, null)
             }
             nm.createNotificationChannel(channel)
         }
