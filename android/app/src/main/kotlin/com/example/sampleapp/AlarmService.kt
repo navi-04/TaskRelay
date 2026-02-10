@@ -118,9 +118,9 @@ class AlarmService : Service() {
         
         // Acquire PARTIAL_WAKE_LOCK immediately to ensure CPU runs
         // while we wait for the delay.
+        // while we wait for the delay.
         acquirePartialWakeLock()
         
-        try {
         try {
             val notification = buildNotification(currentTaskTitle, currentNotificationId)
             startForeground(ALARM_NOTIFICATION_ID, notification)
@@ -147,6 +147,10 @@ class AlarmService : Service() {
             // Show overlay (primary UI when screen is unlocked,
             // fallback when full-screen intent didn't fire)
             showOverlay(currentTaskTitle)
+            
+            // ALSO try to launch activity explicitly as a backup
+            // This ensures that if overlay is blocked, activity might still show
+            tryLaunchActivity(currentTaskTitle)
             
             // Release the partial lock now that we have the full one
             releasePartialWakeLock()

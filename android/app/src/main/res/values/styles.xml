@@ -15,4 +15,10 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/colorBackground</item>
     </style>
+
+    <style name="AlarmTheme" parent="@android:style/Theme.NoTitleBar.Fullscreen">
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowBackground">#FF6B35</item> <!-- Match alarm background color -->
+        <item name="android:windowShowWallpaper">false</item>
+    </style>
 </resources>
