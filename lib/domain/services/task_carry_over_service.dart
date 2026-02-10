@@ -1,6 +1,8 @@
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/day_summary_repository.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../data/models/task_entity.dart';
+import '../../data/models/reminder_type.dart';
 import '../../core/utils/date_utils.dart';
 import 'notification_service.dart';
 
