@@ -244,7 +244,4 @@ class TaskEntity extends Equatable {
       return '${minutes}m';
     }
   }
-
-  /// Get formatted weight string
-  String get formattedWeight => '$weight pt${weight != 1 ? 's' : ''}';
 }

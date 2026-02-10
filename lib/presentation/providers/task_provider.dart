@@ -362,8 +362,6 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   List<TaskEntity> getTasksInDateRange(String startDate, String endDate) {
     return _taskRepository.getTasksInDateRange(startDate, endDate);
   }
-}
-  }
 
   /// Clear all tasks
   Future<void> clearAllTasks() async {

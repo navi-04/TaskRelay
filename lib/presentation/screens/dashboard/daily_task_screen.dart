@@ -1215,7 +1215,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     ),
                     const SizedBox(height: 16),
                     
-                    // Duration / Weight / nothing (mode-dependent)
+                    // Duration (mode-dependent)
                     if (estimationMode == EstimationMode.timeBased) ...[
                       Text(
                         'Duration *',

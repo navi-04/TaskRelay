@@ -31,7 +31,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   late TaskType _selectedType;
   late TaskPriority _selectedPriority;
   late bool _isPermanent;
-  late int _selectedWeight;
   DateTime? _alarmTime;
   final _formKey = GlobalKey<FormState>();
   bool _controllersInitialized = false;
@@ -47,7 +46,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     _selectedType = TaskType.task;
     _selectedPriority = TaskPriority.medium;
     _isPermanent = false;
-    _selectedWeight = 1;
   }
 
   @override
@@ -68,7 +66,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       _selectedType = task.taskType;
       _selectedPriority = task.priority;
       _isPermanent = task.isPermanent;
-      _selectedWeight = task.weight;
       _alarmTime = task.alarmTime;
       _controllersInitialized = true;
     }
@@ -192,8 +189,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 _viewChip(task.priority.label, task.priority.color),
                 if (mode == EstimationMode.timeBased)
                   _viewChip(task.formattedDuration, AppTheme.info),
-                if (mode == EstimationMode.weightBased)
-                  _viewChip(task.formattedWeight, AppTheme.info),
                 if (task.isPermanent) _viewChip('Permanent', AppTheme.primaryColor),
                 if (task.isCarriedOver) _viewChip('Carried Over', Colors.amber),
               ],
@@ -535,24 +530,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       }
     }
 
-    // Auto-sync weight <-> duration across modes
-    final effectiveWeight = mode == EstimationMode.timeBased
-        ? (durationMinutes / 30).round().clamp(1, 100)
-        : _selectedWeight;
-    final effectiveDuration = mode == EstimationMode.weightBased
-        ? (_selectedWeight * 30).clamp(5, 1440)
-        : durationMinutes;
-
     ref.read(taskStateProvider.notifier).updateTask(task.copyWith(
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-      durationMinutes: effectiveDuration,
+      durationMinutes: durationMinutes,
       taskType: _selectedType,
       priority: _selectedPriority,
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       isPermanent: _isPermanent,
       alarmTime: effectiveAlarmTime,
-      weight: effectiveWeight,
     ));
 
     setState(() => _isEditing = false);
@@ -631,30 +617,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ),
             ),
           ],
-        ),
-      ];
-    } else if (mode == EstimationMode.weightBased) {
-      return [
-        Text(
-          'Weight',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: isDark ? Colors.grey[300] : Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<int>(
-          value: _selectedWeight,
-          decoration: const InputDecoration(
-            labelText: 'Weight (points)',
-            prefixIcon: Icon(Icons.fitness_center),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100]
-              .map((w) => DropdownMenuItem(value: w, child: Text('$w pts', style: const TextStyle(fontSize: 14))))
-              .toList(),
-          onChanged: (v) => setState(() => _selectedWeight = v!),
         ),
       ];
     } else {

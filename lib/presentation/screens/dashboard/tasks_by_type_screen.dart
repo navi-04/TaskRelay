@@ -315,8 +315,6 @@ class _TaskItem extends ConsumerWidget {
                         String label;
                         if (mode == EstimationMode.timeBased) {
                           label = '${task.durationMinutes} min';
-                        } else if (mode == EstimationMode.weightBased) {
-                          label = task.formattedWeight;
                         } else {
                           label = '1 task';
                         }
@@ -434,7 +432,6 @@ class _TaskItem extends ConsumerWidget {
     TaskType selectedType = task.taskType;
     TaskPriority selectedPriority = task.priority;
     bool isPermanent = task.isPermanent;
-    int selectedWeight = task.weight;
     final estimationMode = ref.read(settingsProvider).estimationMode;
     
     showModalBottomSheet(
@@ -626,37 +623,6 @@ class _TaskItem extends ConsumerWidget {
                           ),
                         ],
                       ),
-                    ] else if (estimationMode == EstimationMode.weightBased) ...[
-                      Text(
-                        'Weight',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[300] 
-                              : Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<int>(
-                        value: selectedWeight,
-                        decoration: const InputDecoration(
-                          labelText: 'Weight (points)',
-                          prefixIcon: Icon(Icons.fitness_center),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: [1, 2, 3, 5, 8, 10, 13, 15, 20, 25, 30, 40, 50, 75, 100].map((w) {
-                          return DropdownMenuItem(
-                            value: w,
-                            child: Text('$w pts', style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setModalState(() {
-                            selectedWeight = value!;
-                          });
-                        },
-                      ),
                     ],
                     const SizedBox(height: 16),
                     
@@ -771,27 +737,18 @@ class _TaskItem extends ConsumerWidget {
                                 
                                 final notifier = ref.read(taskStateProvider.notifier);
                                 
-                                // Auto-sync weight <-> duration across modes
-                                final effectiveWeight = estimationMode == EstimationMode.timeBased
-                                    ? (durationMinutes / 30).round().clamp(1, 100)
-                                    : selectedWeight;
-                                final effectiveDuration = estimationMode == EstimationMode.weightBased
-                                    ? (selectedWeight * 30).clamp(5, 1440)
-                                    : durationMinutes;
-
                                 notifier.updateTask(task.copyWith(
                                   title: titleController.text.trim(),
                                   description: descriptionController.text.trim().isEmpty 
                                       ? null 
                                       : descriptionController.text.trim(),
-                                  durationMinutes: effectiveDuration,
+                                  durationMinutes: durationMinutes,
                                   taskType: selectedType,
                                   priority: selectedPriority,
                                   notes: notesController.text.trim().isEmpty
                                       ? null
                                       : notesController.text.trim(),
                                   isPermanent: isPermanent,
-                                  weight: effectiveWeight,
                                 ));
                                 
                                 Navigator.pop(context);

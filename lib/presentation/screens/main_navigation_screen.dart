@@ -285,7 +285,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Duration / Weight / nothing (mode-dependent)
+                // Duration (mode-dependent)
                 ..._buildEstimationField(context),
                 const SizedBox(height: 16),
                 
