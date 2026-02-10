@@ -168,7 +168,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           child: _buildStatCard(
             context,
             'Daily Limit',
-            dashboard.formattedDailyLimit,
+            dashboard.formattedDailyLimitValue,
             '',
             Icons.schedule,
             AppTheme.info,
