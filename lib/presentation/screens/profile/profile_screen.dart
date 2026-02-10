@@ -72,11 +72,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildSectionHeader(context, 'Settings', Icons.settings),
             const SizedBox(height: 12),
 
-            // Daily Time Limit
-            _buildTimeLimitCard(context, settings),
-            const SizedBox(height: 12),
-
-            // Estimation Mode
+            // Estimation Mode & Limits
             _buildEstimationModeCard(context, settings),
             const SizedBox(height: 12),
 
@@ -234,105 +230,76 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildTimeLimitCard(BuildContext context, settings) {
-    // Ensure we have valid initial values
+  Widget _buildTimeLimitSection(BuildContext context, settings) {
     final currentHours = _selectedHours ?? (settings.dailyTimeLimitMinutes ~/ 60);
     final rawMinutes = settings.dailyTimeLimitMinutes % 60;
     final currentMinutes = _selectedMinutes ?? ((rawMinutes ~/ 15) * 15);
     
-    return GradientCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.info.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.schedule, color: AppTheme.info),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Daily Time Limit',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Max hours per day to avoid burnout',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[400] 
-                            : Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Daily Time Limit',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[300]
+                : Colors.grey[700],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              // Hours dropdown
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: currentHours.clamp(0, 24),
-                  decoration: const InputDecoration(
-                    labelText: 'Hours',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  items: List.generate(25, (index) => index).map((hour) {
-                    return DropdownMenuItem(
-                      value: hour,
-                      child: Text('$hour h'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedHours = value!;
-                    });
-                  },
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                value: currentHours.clamp(0, 24),
+                decoration: const InputDecoration(
+                  labelText: 'Hours',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
+                items: List.generate(25, (index) => index).map((hour) {
+                  return DropdownMenuItem(
+                    value: hour,
+                    child: Text('$hour h'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedHours = value!;
+                  });
+                },
               ),
-              const SizedBox(width: 12),
-              // Minutes dropdown
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: currentMinutes,
-                  decoration: const InputDecoration(
-                    labelText: 'Minutes',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  items: [0, 15, 30, 45].map((minute) {
-                    return DropdownMenuItem(
-                      value: minute,
-                      child: Text('$minute m'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedMinutes = value!;
-                    });
-                  },
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                value: currentMinutes,
+                decoration: const InputDecoration(
+                  labelText: 'Minutes',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
+                items: [0, 15, 30, 45].map((minute) {
+                  return DropdownMenuItem(
+                    value: minute,
+                    child: Text('$minute m'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedMinutes = value!;
+                  });
+                },
               ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () => _updateTimeLimit(_selectedHours ?? currentHours, _selectedMinutes ?? currentMinutes),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () => _updateTimeLimit(_selectedHours ?? currentHours, _selectedMinutes ?? currentMinutes),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -406,7 +373,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             },
           ),
           const SizedBox(height: 16),
-          // Conditional limit input
+          // Conditional limit input based on mode
+          if (currentMode == EstimationMode.timeBased)
+            _buildTimeLimitSection(context, settings),
           if (currentMode == EstimationMode.weightBased)
             _buildLimitRow(
               context,
