@@ -160,6 +160,12 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
     final dailyLimit = settings.effectiveDailyLimit;
     final usedValue = taskState.usedValueFor(mode);
     final remainingValue = (dailyLimit - usedValue).clamp(0, dailyLimit);
+
+    // Compute progress from mode-aware values
+    final modeProgressPercentage = dailyLimit > 0
+        ? ((usedValue / dailyLimit) * 100).clamp(0.0, 100.0)
+        : 0.0;
+    final modeIsOverLimit = usedValue > dailyLimit;
     
     return DashboardStats(
       todayDate: today,
@@ -169,8 +175,8 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
       dailyLimitMinutes: settings.dailyTimeLimitMinutes,
       usedMinutes: usedMinutes,
       remainingMinutes: remainingMinutes,
-      progressPercentage: progressPercentage,
-      isOverLimit: isOverLimit,
+      progressPercentage: modeProgressPercentage,
+      isOverLimit: modeIsOverLimit,
       estimationMode: mode,
       dailyLimit: dailyLimit,
       usedValue: usedValue,
