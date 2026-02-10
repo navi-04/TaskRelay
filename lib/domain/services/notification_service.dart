@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
 
@@ -153,27 +154,34 @@ class NotificationService {
   
   /// Request notification permissions (iOS)
   Future<bool> requestPermissions() async {
-    // Request Android 13+ notification permission
-    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    
-    if (androidPlugin != null) {
-      await androidPlugin.requestNotificationsPermission();
-      await androidPlugin.requestExactAlarmsPermission();
+    // Request Android permissions
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
     }
     
-    // Request iOS permissions
+    // Request exact alarm permission (Android 12+)
+    if (await Permission.scheduleExactAlarm.isDenied) {
+      await Permission.scheduleExactAlarm.request();
+    }
+
+    // Request SYSTEM_ALERT_WINDOW for lock screen overlay (Android 10+)
+    // This is CRITICAL for showing the alarm UI over lock screen on newer Androids
+    // when the full-screen intent is blocked.
+    if (await Permission.systemAlertWindow.isDenied) {
+      await Permission.systemAlertWindow.request();
+    }
+
+    // iOS permissions are handled by the local notifications plugin
     final iosPlugin = _notifications.resolvePlatformSpecificImplementation<
         IOSFlutterLocalNotificationsPlugin>();
     
     if (iosPlugin != null) {
-      final granted = await iosPlugin.requestPermissions(
+      await iosPlugin.requestPermissions(
         alert: true,
         badge: true,
         sound: true,
         critical: true,
       );
-      return granted ?? false;
     }
     
     return true;
