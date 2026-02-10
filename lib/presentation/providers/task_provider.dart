@@ -185,6 +185,12 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       
       // Schedule alarm if alarmTime is set
       if (alarmTime != null) {
+        // Ensure permissions are granted
+        final hasPermissions = await _notificationService.areNotificationsEnabled();
+        if (!hasPermissions) {
+          await _notificationService.requestPermissions();
+        }
+        
         await _notificationService.scheduleTaskAlarm(
           taskId: id,
           taskTitle: title,
@@ -213,6 +219,12 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       
       // Handle alarm updates
       if (task.alarmTime != null) {
+        // Ensure permissions are granted
+        final hasPermissions = await _notificationService.areNotificationsEnabled();
+        if (!hasPermissions) {
+          await _notificationService.requestPermissions();
+        }
+        
         // Schedule new/updated alarm
         await _notificationService.scheduleTaskAlarm(
           taskId: task.id,
@@ -254,9 +266,24 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       
       await _taskRepository.toggleTaskCompletion(id);
       
-      // If task was just completed and had an alarm, cancel it
+      // If task was incomplete (now COMPLETED) and had an alarm, cancel it
       if (!task.isCompleted && task.alarmTime != null) {
         await _notificationService.cancelTaskAlarm(id);
+      }
+      // If task was complete (now INCOMPLETE) and has a future alarm, reschedule it
+      else if (task.isCompleted && task.alarmTime != null) {
+         // Ensure permissions are granted
+         final hasPermissions = await _notificationService.areNotificationsEnabled();
+         if (!hasPermissions) {
+           await _notificationService.requestPermissions();
+         }
+         
+         await _notificationService.scheduleTaskAlarm(
+            taskId: task.id,
+            taskTitle: task.title,
+            alarmTime: task.alarmTime!,
+            isPermanent: task.isPermanent,
+         );
       }
       
       await _updateSummary();

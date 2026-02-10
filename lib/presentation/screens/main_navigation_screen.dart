@@ -24,6 +24,15 @@ class MainNavigationScreen extends ConsumerStatefulWidget {
 class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   int _currentIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    // Request notification permissions on app launch
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificationServiceProvider).requestPermissions();
+    });
+  }
+
   final List<Widget> _screens = const [
     DashboardScreen(),
     DailyTaskScreen(),
