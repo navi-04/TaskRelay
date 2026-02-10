@@ -105,8 +105,6 @@ class DashboardStats {
         if (h > 0 && m > 0) return '${h}h ${m}m';
         if (h > 0) return '${h}h';
         return '${m}m';
-      case EstimationMode.weightBased:
-        return '$value pts';
       case EstimationMode.countBased:
         return '$value';
     }
@@ -120,8 +118,6 @@ class DashboardStats {
     switch (estimationMode) {
       case EstimationMode.timeBased:
         return 'Time Used';
-      case EstimationMode.weightBased:
-        return 'Weight Used';
       case EstimationMode.countBased:
         return 'Tasks Added';
     }

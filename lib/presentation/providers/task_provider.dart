@@ -46,17 +46,11 @@ class TaskState {
   int get completedMinutes => completedTasks.fold(0, (sum, t) => sum + t.durationMinutes);
   int get pendingMinutes => pendingTasks.fold(0, (sum, t) => sum + t.durationMinutes);
 
-  int get totalWeight => tasks.fold(0, (sum, t) => sum + t.weight);
-  int get completedWeight => completedTasks.fold(0, (sum, t) => sum + t.weight);
-  int get pendingWeight => pendingTasks.fold(0, (sum, t) => sum + t.weight);
-
   /// Get the used value for a given estimation mode
   int usedValueFor(EstimationMode mode) {
     switch (mode) {
       case EstimationMode.timeBased:
         return totalMinutes;
-      case EstimationMode.weightBased:
-        return totalWeight;
       case EstimationMode.countBased:
         return tasks.length;
     }
@@ -67,8 +61,6 @@ class TaskState {
     switch (mode) {
       case EstimationMode.timeBased:
         return completedMinutes;
-      case EstimationMode.weightBased:
-        return completedWeight;
       case EstimationMode.countBased:
         return completedTasks.length;
     }
