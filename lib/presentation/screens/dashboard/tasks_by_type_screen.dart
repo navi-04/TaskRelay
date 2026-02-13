@@ -6,8 +6,6 @@ import '../../providers/settings_provider.dart';
 import '../../providers/custom_types_provider.dart';
 import '../../../data/models/estimation_mode.dart';
 import '../../../data/models/task_entity.dart';
-import '../../../data/models/task_type.dart';
-import '../../../data/models/task_priority.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -21,7 +19,7 @@ class TasksByTypeScreen extends ConsumerStatefulWidget {
 
 class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
   String _searchQuery = '';
-  final Map<TaskType, bool> _expandedSections = {};
+  final Map<String, bool> _expandedSections = {};
 
   @override
   Widget build(BuildContext context) {
@@ -39,22 +37,24 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
       return true;
     }).toList();
 
-    // Group tasks by type
-    final Map<TaskType, List<TaskEntity>> tasksByType = {};
+    // Group tasks by type ID
+    final customTypes = ref.watch(customTypesProvider);
+    final Map<String, List<TaskEntity>> tasksByType = {};
     for (final task in filteredTasks) {
-      if (!tasksByType.containsKey(task.taskType)) {
-        tasksByType[task.taskType] = [];
+      final typeId = task.effectiveTypeId;
+      if (!tasksByType.containsKey(typeId)) {
+        tasksByType[typeId] = [];
       }
-      tasksByType[task.taskType]!.add(task);
+      tasksByType[typeId]!.add(task);
     }
 
     // Sort types that have tasks
     final sortedTypes = tasksByType.keys.toList()
-      ..sort((a, b) => a.label.compareTo(b.label));
+      ..sort((a, b) => customTypes.taskTypeLabelById(a).compareTo(customTypes.taskTypeLabelById(b)));
 
     // Initialize expanded state for new types
-    for (final type in sortedTypes) {
-      _expandedSections.putIfAbsent(type, () => true);
+    for (final typeId in sortedTypes) {
+      _expandedSections.putIfAbsent(typeId, () => true);
     }
 
     return Scaffold(
@@ -74,8 +74,8 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
             onPressed: () {
               setState(() {
                 final expandAll = !_expandedSections.values.every((v) => v);
-                for (final type in sortedTypes) {
-                  _expandedSections[type] = expandAll;
+                for (final typeId in sortedTypes) {
+                  _expandedSections[typeId] = expandAll;
                 }
               });
             },
@@ -149,16 +149,16 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
                     padding: const EdgeInsets.all(16),
                     itemCount: sortedTypes.length,
                     itemBuilder: (context, index) {
-                      final type = sortedTypes[index];
-                      final tasks = tasksByType[type]!;
+                      final typeId = sortedTypes[index];
+                      final tasks = tasksByType[typeId]!;
 
                       return _TaskTypeSection(
-                        taskType: type,
+                        taskTypeId: typeId,
                         tasks: tasks,
-                        isExpanded: _expandedSections[type] ?? true,
+                        isExpanded: _expandedSections[typeId] ?? true,
                         onToggleExpand: () {
                           setState(() {
-                            _expandedSections[type] = !(_expandedSections[type] ?? true);
+                            _expandedSections[typeId] = !(_expandedSections[typeId] ?? true);
                           });
                         },
                       );
@@ -173,13 +173,13 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
 
 /// Section widget for each task type
 class _TaskTypeSection extends ConsumerWidget {
-  final TaskType taskType;
+  final String taskTypeId;
   final List<TaskEntity> tasks;
   final bool isExpanded;
   final VoidCallback onToggleExpand;
 
   const _TaskTypeSection({
-    required this.taskType,
+    required this.taskTypeId,
     required this.tasks,
     required this.isExpanded,
     required this.onToggleExpand,
@@ -208,7 +208,7 @@ class _TaskTypeSection extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      customTypes.taskTypeLabel(taskType),
+                      customTypes.taskTypeLabelById(taskTypeId),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -390,7 +390,7 @@ class _TaskItem extends ConsumerWidget {
         ),
         trailing: Builder(builder: (context) {
           final customTypes = ref.watch(customTypesProvider);
-          final pColor = customTypes.priorityColor(task.priority);
+          final pColor = customTypes.priorityColorById(task.effectivePriorityId);
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -398,7 +398,7 @@ class _TaskItem extends ConsumerWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              customTypes.priorityLabel(task.priority),
+              customTypes.priorityLabelById(task.effectivePriorityId),
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -421,8 +421,15 @@ class _TaskItem extends ConsumerWidget {
     int selectedHours = task.durationMinutes ~/ 60;
     int selectedMinutes = task.durationMinutes % 60;
     
-    TaskType selectedType = task.taskType;
-    TaskPriority selectedPriority = task.priority;
+    final customTypes = ref.read(customTypesProvider);
+    final defaultTypeId = customTypes.taskTypes.isNotEmpty ? customTypes.taskTypes.first.id : 'task';
+    final defaultPriorityId = customTypes.priorities.isNotEmpty ? customTypes.priorities.first.id : 'medium';
+    String selectedTypeId = customTypes.findTaskType(task.effectiveTypeId) != null
+        ? task.effectiveTypeId
+        : defaultTypeId;
+    String selectedPriorityId = customTypes.findPriority(task.effectivePriorityId) != null
+        ? task.effectivePriorityId
+        : defaultPriorityId;
     bool isRecurring = task.isRecurring;
     final estimationMode = ref.read(settingsProvider).estimationMode;
     
@@ -505,46 +512,42 @@ class _TaskItem extends ConsumerWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<TaskType>(
-                            value: selectedType,
+                          child: DropdownButtonFormField<String>(
+                            value: selectedTypeId,
                             decoration: const InputDecoration(
                               labelText: 'Type',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            items: TaskType.values.map((type) {
-                              final customTypes = ref.read(customTypesProvider);
-                              final label = customTypes.taskTypeLabel(type);
+                            items: ref.read(customTypesProvider).taskTypes.map((ct) {
                               return DropdownMenuItem(
-                                value: type,
-                                child: Text(label, style: const TextStyle(fontSize: 14)),
+                                value: ct.id,
+                                child: Text(ct.label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {
                               setModalState(() {
-                                selectedType = value!;
+                                selectedTypeId = value!;
                               });
                             },
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DropdownButtonFormField<TaskPriority>(
-                            value: selectedPriority,
+                          child: DropdownButtonFormField<String>(
+                            value: selectedPriorityId,
                             decoration: const InputDecoration(
                               labelText: 'Priority',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            items: TaskPriority.values.map((priority) {
-                              final customTypes = ref.read(customTypesProvider);
-                              final label = customTypes.priorityLabel(priority);
+                            items: ref.read(customTypesProvider).priorities.map((cp) {
                               return DropdownMenuItem(
-                                value: priority,
-                                child: Text(label, style: const TextStyle(fontSize: 14)),
+                                value: cp.id,
+                                child: Text(cp.label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {
                               setModalState(() {
-                                selectedPriority = value!;
+                                selectedPriorityId = value!;
                               });
                             },
                           ),
@@ -731,16 +734,18 @@ class _TaskItem extends ConsumerWidget {
                                   durationMinutes = task.durationMinutes; // keep existing
                                 }
                                 
+                                final customTypes = ref.read(customTypesProvider);
                                 final notifier = ref.read(taskStateProvider.notifier);
-                                
                                 notifier.updateTask(task.copyWith(
                                   title: titleController.text.trim(),
                                   description: descriptionController.text.trim().isEmpty 
                                       ? null 
                                       : descriptionController.text.trim(),
                                   durationMinutes: durationMinutes,
-                                  taskType: selectedType,
-                                  priority: selectedPriority,
+                                  taskType: customTypes.resolveTaskTypeEnum(selectedTypeId),
+                                  priority: customTypes.resolvePriorityEnum(selectedPriorityId),
+                                  taskTypeId: selectedTypeId,
+                                  priorityId: selectedPriorityId,
                                   notes: notesController.text.trim().isEmpty
                                       ? null
                                       : notesController.text.trim(),
@@ -774,4 +779,5 @@ class _TaskItem extends ConsumerWidget {
         ),
       ),
     );
-  }
+  }     
+}

@@ -6,8 +6,6 @@ import '../providers/task_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/custom_types_provider.dart';
 import '../providers/providers.dart';
-import '../../data/models/task_type.dart';
-import '../../data/models/task_priority.dart';
 import '../../data/models/estimation_mode.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/date_utils.dart';
@@ -143,13 +141,21 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   
   int selectedHours = 0;
   int selectedMinutes = 30;
-  TaskType selectedType = TaskType.task;
-  TaskPriority selectedPriority = TaskPriority.medium;
+  late String selectedTypeId;
+  late String selectedPriorityId;
   bool isRecurring = false;
   String? recurringStartDate;
   String? recurringEndDate;
   DateTime? alarmTime;
   int reminderTypeIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final customTypes = ref.read(customTypesProvider);
+    selectedTypeId = customTypes.taskTypes.isNotEmpty ? customTypes.taskTypes.first.id : 'task';
+    selectedPriorityId = customTypes.priorities.isNotEmpty ? customTypes.priorities.first.id : 'medium';
+  }
 
   @override
   void dispose() {
@@ -235,46 +241,42 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<TaskType>(
-                        value: selectedType,
+                      child: DropdownButtonFormField<String>(
+                        value: selectedTypeId,
                         decoration: const InputDecoration(
                           labelText: 'Type',
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
-                        items: TaskType.values.map((type) {
-                          final customTypes = ref.read(customTypesProvider);
-                          final label = customTypes.taskTypeLabel(type);
+                        items: ref.watch(customTypesProvider).taskTypes.map((ct) {
                           return DropdownMenuItem(
-                            value: type,
-                            child: Text(label, style: const TextStyle(fontSize: 14)),
+                            value: ct.id,
+                            child: Text(ct.label, style: const TextStyle(fontSize: 14)),
                           );
                         }).toList(),
                         onChanged: (value) {
                           setState(() {
-                            selectedType = value!;
+                            selectedTypeId = value!;
                           });
                         },
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: DropdownButtonFormField<TaskPriority>(
-                        value: selectedPriority,
+                      child: DropdownButtonFormField<String>(
+                        value: selectedPriorityId,
                         decoration: const InputDecoration(
                           labelText: 'Priority',
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
-                        items: TaskPriority.values.map((priority) {
-                          final customTypes = ref.read(customTypesProvider);
-                          final label = customTypes.priorityLabel(priority);
+                        items: ref.watch(customTypesProvider).priorities.map((cp) {
                           return DropdownMenuItem(
-                            value: priority,
-                            child: Text(label, style: const TextStyle(fontSize: 14)),
+                            value: cp.id,
+                            child: Text(cp.label, style: const TextStyle(fontSize: 14)),
                           );
                         }).toList(),
                         onChanged: (value) {
                           setState(() {
-                            selectedPriority = value!;
+                            selectedPriorityId = value!;
                           });
                         },
                       ),
@@ -783,6 +785,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         }
       }
       
+      final customTypes = ref.read(customTypesProvider);
       notifier.addTask(
         id: const Uuid().v4(),
         title: _titleController.text.trim(),
@@ -790,8 +793,10 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             ? null 
             : _descriptionController.text.trim(),
         durationMinutes: durationMinutes,
-        taskType: selectedType,
-        priority: selectedPriority,
+        taskType: customTypes.resolveTaskTypeEnum(selectedTypeId),
+        priority: customTypes.resolvePriorityEnum(selectedPriorityId),
+        taskTypeId: selectedTypeId,
+        priorityId: selectedPriorityId,
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),

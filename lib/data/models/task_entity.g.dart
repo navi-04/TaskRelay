@@ -38,13 +38,15 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       recurringStartDate: fields[18] as String?,
       recurringEndDate: fields[19] as String?,
       deletedDates: (fields[20] as List?)?.cast<String>() ?? [],
+      taskTypeId: fields[21] as String?,
+      priorityId: fields[22] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskEntity obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +88,11 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       ..writeByte(19)
       ..write(obj.recurringEndDate)
       ..writeByte(20)
-      ..write(obj.deletedDates);
+      ..write(obj.deletedDates)
+      ..writeByte(21)
+      ..write(obj.taskTypeId)
+      ..writeByte(22)
+      ..write(obj.priorityId);
   }
 
   @override

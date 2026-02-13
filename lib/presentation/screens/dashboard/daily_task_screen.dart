@@ -5,8 +5,6 @@ import '../../providers/task_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/custom_types_provider.dart';
 import '../../../data/models/task_entity.dart';
-import '../../../data/models/task_type.dart';
-import '../../../data/models/task_priority.dart';
 import '../../../data/models/estimation_mode.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
@@ -358,19 +356,16 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     final regularTasks = tasks.where((t) => !t.isRecurring).toList();
     
     // Sort: incomplete first, then by priority, then by duration
-    final priorityOrder = {
-      TaskPriority.critical: 0,
-      TaskPriority.high: 1,
-      TaskPriority.medium: 2,
-      TaskPriority.low: 3,
-    };
+    final customTypes = ref.watch(customTypesProvider);
     
     void sortTasks(List<TaskEntity> taskList) {
       taskList.sort((a, b) {
         if (a.isCompleted != b.isCompleted) {
           return a.isCompleted ? 1 : -1;
         }
-        final priorityCompare = priorityOrder[a.priority]!.compareTo(priorityOrder[b.priority]!);
+        final aPriority = customTypes.findPriority(a.effectivePriorityId);
+        final bPriority = customTypes.findPriority(b.effectivePriorityId);
+        final priorityCompare = (aPriority?.sortOrder ?? 99).compareTo(bPriority?.sortOrder ?? 99);
         if (priorityCompare != 0) return priorityCompare;
         return b.durationMinutes.compareTo(a.durationMinutes);
       });
@@ -489,22 +484,23 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   
   Widget _buildByTypeView(BuildContext context, List<TaskEntity> tasks) {
     final customTypes = ref.watch(customTypesProvider);
-    // Group tasks by type
-    final Map<TaskType, List<TaskEntity>> tasksByType = {};
+    // Group tasks by type ID
+    final Map<String, List<TaskEntity>> tasksByType = {};
     for (final task in tasks) {
-      if (!tasksByType.containsKey(task.taskType)) {
-        tasksByType[task.taskType] = [];
+      final typeId = task.effectiveTypeId;
+      if (!tasksByType.containsKey(typeId)) {
+        tasksByType[typeId] = [];
       }
-      tasksByType[task.taskType]!.add(task);
+      tasksByType[typeId]!.add(task);
     }
     
     // Sort types by custom label
-    final sortedTypes = tasksByType.keys.toList()
-      ..sort((a, b) => customTypes.taskTypeLabel(a).compareTo(customTypes.taskTypeLabel(b)));
+    final sortedTypeIds = tasksByType.keys.toList()
+      ..sort((a, b) => customTypes.taskTypeLabelById(a).compareTo(customTypes.taskTypeLabelById(b)));
     
     // Initialize expanded state
-    for (final type in sortedTypes) {
-      _expandedSections.putIfAbsent(type.name, () => true);
+    for (final typeId in sortedTypeIds) {
+      _expandedSections.putIfAbsent(typeId, () => true);
     }
     
     return ListView.builder(
@@ -512,13 +508,13 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         parent: AlwaysScrollableScrollPhysics(),
       ),
       padding: const EdgeInsets.all(12),
-      itemCount: sortedTypes.length,
+      itemCount: sortedTypeIds.length,
       itemBuilder: (context, index) {
-        final type = sortedTypes[index];
-        final typeTasks = tasksByType[type]!;
+        final typeId = sortedTypeIds[index];
+        final typeTasks = tasksByType[typeId]!;
         final permanentTasks = typeTasks.where((t) => t.isRecurring).toList();
         final regularTasks = typeTasks.where((t) => !t.isRecurring).toList();
-        final isExpanded = _expandedSections[type.name] ?? true;
+        final isExpanded = _expandedSections[typeId] ?? true;
         
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -529,7 +525,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               InkWell(
                 onTap: () {
                   setState(() {
-                    _expandedSections[type.name] = !isExpanded;
+                    _expandedSections[typeId] = !isExpanded;
                   });
                 },
                 borderRadius: BorderRadius.circular(12),
@@ -544,7 +540,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          customTypes.taskTypeLabel(type),
+                          customTypes.taskTypeLabelById(typeId),
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -635,30 +631,27 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   
   Widget _buildByPriorityView(BuildContext context, List<TaskEntity> tasks) {
     final customTypes = ref.watch(customTypesProvider);
-    // Group tasks by priority
-    final Map<TaskPriority, List<TaskEntity>> tasksByPriority = {};
+    // Group tasks by priority ID
+    final Map<String, List<TaskEntity>> tasksByPriority = {};
     for (final task in tasks) {
-      if (!tasksByPriority.containsKey(task.priority)) {
-        tasksByPriority[task.priority] = [];
+      final prioId = task.effectivePriorityId;
+      if (!tasksByPriority.containsKey(prioId)) {
+        tasksByPriority[prioId] = [];
       }
-      tasksByPriority[task.priority]!.add(task);
+      tasksByPriority[prioId]!.add(task);
     }
     
-    // Sort priorities (Critical -> High -> Medium -> Low)
-    final sortedPriorities = tasksByPriority.keys.toList()
+    // Sort priorities by sortOrder from custom types
+    final sortedPriorityIds = tasksByPriority.keys.toList()
       ..sort((a, b) {
-        final order = {
-          TaskPriority.critical: 0,
-          TaskPriority.high: 1,
-          TaskPriority.medium: 2,
-          TaskPriority.low: 3,
-        };
-        return order[a]!.compareTo(order[b]!);
+        final aP = customTypes.findPriority(a);
+        final bP = customTypes.findPriority(b);
+        return (aP?.sortOrder ?? 99).compareTo(bP?.sortOrder ?? 99);
       });
     
     // Initialize expanded state
-    for (final priority in sortedPriorities) {
-      _expandedSections.putIfAbsent(priority.name, () => true);
+    for (final prioId in sortedPriorityIds) {
+      _expandedSections.putIfAbsent(prioId, () => true);
     }
     
     return ListView.builder(
@@ -666,14 +659,14 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         parent: AlwaysScrollableScrollPhysics(),
       ),
       padding: const EdgeInsets.all(12),
-      itemCount: sortedPriorities.length,
+      itemCount: sortedPriorityIds.length,
       itemBuilder: (context, index) {
-        final priority = sortedPriorities[index];
-        final priorityTasks = tasksByPriority[priority]!;
+        final prioId = sortedPriorityIds[index];
+        final priorityTasks = tasksByPriority[prioId]!;
         final permanentTasks = priorityTasks.where((t) => t.isRecurring).toList();
         final regularTasks = priorityTasks.where((t) => !t.isRecurring).toList();
-        final isExpanded = _expandedSections[priority.name] ?? true;
-        final pColor = customTypes.priorityColor(priority);
+        final isExpanded = _expandedSections[prioId] ?? true;
+        final pColor = customTypes.priorityColorById(prioId);
         
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -684,7 +677,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               InkWell(
                 onTap: () {
                   setState(() {
-                    _expandedSections[priority.name] = !isExpanded;
+                    _expandedSections[prioId] = !isExpanded;
                   });
                 },
                 borderRadius: BorderRadius.circular(12),
@@ -699,7 +692,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          customTypes.priorityLabel(priority),
+                          customTypes.priorityLabelById(prioId),
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: pColor,
@@ -858,7 +851,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             : null,
         trailing: Builder(builder: (_) {
           final customTypes = ref.watch(customTypesProvider);
-          final pColor = customTypes.priorityColor(task.priority);
+          final pColor = customTypes.priorityColorById(task.effectivePriorityId);
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -870,7 +863,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    customTypes.taskTypeLabel(task.taskType),
+                    customTypes.taskTypeLabelById(task.effectiveTypeId),
                     style: const TextStyle(
                       fontSize: 10,
                       color: Colors.purple,
@@ -886,7 +879,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  customTypes.priorityLabel(task.priority),
+                  customTypes.priorityLabelById(task.effectivePriorityId),
                   style: TextStyle(
                     fontSize: 10,
                     color: pColor,
@@ -949,7 +942,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 border: task.isCompleted
                     ? null
                     : Border.all(
-                        color: task.priority.color.withOpacity(0.3),
+                        color: ref.watch(customTypesProvider).priorityColorById(task.effectivePriorityId).withOpacity(0.3),
                         width: 1,
                       ),
                 boxShadow: [
@@ -1036,7 +1029,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           child: Builder(builder: (_) {
                             final customTypes = ref.watch(customTypesProvider);
                             return _buildChip(
-                              customTypes.taskTypeLabel(task.taskType),
+                              customTypes.taskTypeLabelById(task.effectiveTypeId),
                               Colors.purple,
                             );
                           }),
@@ -1048,8 +1041,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           child: Builder(builder: (_) {
                             final customTypes = ref.watch(customTypesProvider);
                             return _buildChip(
-                              customTypes.priorityLabel(task.priority),
-                              customTypes.priorityColor(task.priority),
+                              customTypes.priorityLabelById(task.effectivePriorityId),
+                              customTypes.priorityColorById(task.effectivePriorityId),
                             );
                           }),
                         ),
@@ -1218,21 +1211,24 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         title: const Text('Change Task Type'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: TaskType.values.map((type) {
-            final isSelected = task.taskType == type;
+          children: customTypes.taskTypes.map((ct) {
+            final isSelected = task.effectiveTypeId == ct.id;
             return ListTile(
-              title: Text(customTypes.taskTypeLabel(type)),
+              title: Text(ct.label),
               trailing: isSelected
                   ? const Icon(Icons.check, color: AppTheme.success)
                   : null,
               onTap: () {
                 ref.read(taskStateProvider.notifier).updateTask(
-                  task.copyWith(taskType: type),
+                  task.copyWith(
+                    taskType: customTypes.resolveTaskTypeEnum(ct.id),
+                    taskTypeId: ct.id,
+                  ),
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Changed type to ${customTypes.taskTypeLabel(type)}'),
+                    content: Text('Changed type to ${ct.label}'),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -1252,21 +1248,24 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         title: const Text('Change Priority'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: TaskPriority.values.map((priority) {
-            final label = customTypes.priorityLabel(priority);
+          children: customTypes.priorities.map((cp) {
+            final isSelected = task.effectivePriorityId == cp.id;
             return ListTile(
-              title: Text(label),
-              trailing: task.priority == priority
+              title: Text(cp.label),
+              trailing: isSelected
                   ? const Icon(Icons.check, color: AppTheme.success)
                   : null,
               onTap: () {
                 ref.read(taskStateProvider.notifier).updateTask(
-                  task.copyWith(priority: priority),
+                  task.copyWith(
+                    priority: customTypes.resolvePriorityEnum(cp.id),
+                    priorityId: cp.id,
+                  ),
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Changed priority to $label'),
+                    content: Text('Changed priority to ${cp.label}'),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -1357,8 +1356,15 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     int selectedHours = task != null ? task.durationMinutes ~/ 60 : 0;
     int selectedMinutes = task != null ? task.durationMinutes % 60 : 30;
     
-    TaskType selectedType = task?.taskType ?? TaskType.task;
-    TaskPriority selectedPriority = task?.priority ?? TaskPriority.medium;
+    final customTypes = ref.read(customTypesProvider);
+    final defaultTypeId = customTypes.taskTypes.isNotEmpty ? customTypes.taskTypes.first.id : 'task';
+    final defaultPriorityId = customTypes.priorities.isNotEmpty ? customTypes.priorities.first.id : 'medium';
+    String selectedTypeId = (task != null && customTypes.findTaskType(task.effectiveTypeId) != null)
+        ? task.effectiveTypeId
+        : defaultTypeId;
+    String selectedPriorityId = (task != null && customTypes.findPriority(task.effectivePriorityId) != null)
+        ? task.effectivePriorityId
+        : defaultPriorityId;
     bool isRecurring = task?.isRecurring ?? false;
     String? recurringStartDate = task?.recurringStartDate;
     String? recurringEndDate = task?.recurringEndDate;
@@ -1444,46 +1450,42 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<TaskType>(
-                            value: selectedType,
+                          child: DropdownButtonFormField<String>(
+                            value: selectedTypeId,
                             decoration: const InputDecoration(
                               labelText: 'Type',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            items: TaskType.values.map((type) {
-                              final customTypes = ref.read(customTypesProvider);
-                              final label = customTypes.taskTypeLabel(type);
+                            items: ref.read(customTypesProvider).taskTypes.map((ct) {
                               return DropdownMenuItem(
-                                value: type,
-                                child: Text(label, style: const TextStyle(fontSize: 14)),
+                                value: ct.id,
+                                child: Text(ct.label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {
                               setModalState(() {
-                                selectedType = value!;
+                                selectedTypeId = value!;
                               });
                             },
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DropdownButtonFormField<TaskPriority>(
-                            value: selectedPriority,
+                          child: DropdownButtonFormField<String>(
+                            value: selectedPriorityId,
                             decoration: const InputDecoration(
                               labelText: 'Priority',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            items: TaskPriority.values.map((priority) {
-                              final customTypes = ref.read(customTypesProvider);
-                              final label = customTypes.priorityLabel(priority);
+                            items: ref.read(customTypesProvider).priorities.map((cp) {
                               return DropdownMenuItem(
-                                value: priority,
-                                child: Text(label, style: const TextStyle(fontSize: 14)),
+                                value: cp.id,
+                                child: Text(cp.label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {
                               setModalState(() {
-                                selectedPriority = value!;
+                                selectedPriorityId = value!;
                               });
                             },
                           ),
@@ -1963,6 +1965,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   }
                                 }
                                 
+                                final customTypes = ref.read(customTypesProvider);
                                 if (isEditing) {
                                   notifier.updateTask(task.copyWith(
                                     title: titleController.text.trim(),
@@ -1970,8 +1973,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         ? null 
                                         : descriptionController.text.trim(),
                                     durationMinutes: durationMinutes,
-                                    taskType: selectedType,
-                                    priority: selectedPriority,
+                                    taskType: customTypes.resolveTaskTypeEnum(selectedTypeId),
+                                    priority: customTypes.resolvePriorityEnum(selectedPriorityId),
+                                    taskTypeId: selectedTypeId,
+                                    priorityId: selectedPriorityId,
                                     notes: notesController.text.trim().isEmpty
                                         ? null
                                         : notesController.text.trim(),
@@ -1989,8 +1994,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                         ? null 
                                         : descriptionController.text.trim(),
                                     durationMinutes: durationMinutes,
-                                    taskType: selectedType,
-                                    priority: selectedPriority,
+                                    taskType: customTypes.resolveTaskTypeEnum(selectedTypeId),
+                                    priority: customTypes.resolvePriorityEnum(selectedPriorityId),
+                                    taskTypeId: selectedTypeId,
+                                    priorityId: selectedPriorityId,
                                     notes: notesController.text.trim().isEmpty
                                         ? null
                                         : notesController.text.trim(),

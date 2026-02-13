@@ -67,6 +67,81 @@ class CustomTypesState {
     }
     return priority.color;
   }
+
+  // ---- ID-based lookups (used by the new string-ID architecture) ----
+
+  /// Find a CustomTaskType by its ID.
+  CustomTaskType? findTaskType(String id) {
+    for (final ct in taskTypes) {
+      if (ct.id == id) return ct;
+    }
+    return null;
+  }
+
+  /// Find a CustomPriority by its ID.
+  CustomPriority? findPriority(String id) {
+    for (final cp in priorities) {
+      if (cp.id == id) return cp;
+    }
+    return null;
+  }
+
+  /// Get the display label for a task type by its string ID.
+  String taskTypeLabelById(String id) {
+    final ct = findTaskType(id);
+    if (ct != null) return ct.label;
+    // Fallback: try to match an enum by name
+    try {
+      final enumVal = TaskType.values.firstWhere((t) => t.name == id);
+      return enumVal.label;
+    } catch (_) {
+      return id; // last resort
+    }
+  }
+
+  /// Get the display label for a priority by its string ID.
+  String priorityLabelById(String id) {
+    final cp = findPriority(id);
+    if (cp != null) return cp.label;
+    try {
+      final enumVal = TaskPriority.values.firstWhere((p) => p.name == id);
+      return enumVal.label;
+    } catch (_) {
+      return id;
+    }
+  }
+
+  /// Get the display color for a priority by its string ID.
+  Color priorityColorById(String id) {
+    final cp = findPriority(id);
+    if (cp != null) return Color(cp.colorValue);
+    try {
+      final enumVal = TaskPriority.values.firstWhere((p) => p.name == id);
+      return enumVal.color;
+    } catch (_) {
+      return const Color(0xFF9E9E9E); // grey fallback
+    }
+  }
+
+  /// Resolve a task type string ID to its best-matching TaskType enum value.
+  /// Returns TaskType.task as default if no match.
+  TaskType resolveTaskTypeEnum(String id) {
+    try {
+      return TaskType.values.firstWhere((t) => t.name == id);
+    } catch (_) {
+      return TaskType.task;
+    }
+  }
+
+  /// Resolve a priority string ID to its best-matching TaskPriority enum value.
+  /// Returns TaskPriority.medium as default if no match.
+  TaskPriority resolvePriorityEnum(String id) {
+    try {
+      return TaskPriority.values.firstWhere((p) => p.name == id);
+    } catch (_) {
+      return TaskPriority.medium;
+    }
+  }
 }
 
 /// Custom Types State Notifier

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/task_entity.dart';
-import '../../../data/models/task_type.dart';
-import '../../../data/models/task_priority.dart';
 import '../../../data/models/estimation_mode.dart';
 import '../../../data/models/reminder_type.dart';
 import '../../../core/utils/date_utils.dart';
@@ -30,8 +28,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   late TextEditingController _notesController;
   late int _selectedHours;
   late int _selectedMinutes;
-  late TaskType _selectedType;
-  late TaskPriority _selectedPriority;
+  late String _selectedTypeId;
+  late String _selectedPriorityId;
   late bool _isRecurring;
   late String? _recurringStartDate;
   late String? _recurringEndDate;
@@ -48,8 +46,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     _notesController = TextEditingController();
     _selectedHours = 0;
     _selectedMinutes = 30;
-    _selectedType = TaskType.task;
-    _selectedPriority = TaskPriority.medium;
+    final customTypes = ref.read(customTypesProvider);
+    _selectedTypeId = customTypes.taskTypes.isNotEmpty ? customTypes.taskTypes.first.id : 'task';
+    _selectedPriorityId = customTypes.priorities.isNotEmpty ? customTypes.priorities.first.id : 'medium';
     _isRecurring = false;
     _recurringStartDate = null;
     _recurringEndDate = null;
@@ -65,13 +64,18 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   void _initFromTask(TaskEntity task) {
     if (!_controllersInitialized) {
+      final customTypes = ref.read(customTypesProvider);
       _titleController.text = task.title;
       _descriptionController.text = task.description ?? '';
       _notesController.text = task.notes ?? '';
       _selectedHours = task.durationMinutes ~/ 60;
       _selectedMinutes = task.durationMinutes % 60;
-      _selectedType = task.taskType;
-      _selectedPriority = task.priority;
+      _selectedTypeId = customTypes.findTaskType(task.effectiveTypeId) != null
+          ? task.effectiveTypeId
+          : (customTypes.taskTypes.isNotEmpty ? customTypes.taskTypes.first.id : 'task');
+      _selectedPriorityId = customTypes.findPriority(task.effectivePriorityId) != null
+          ? task.effectivePriorityId
+          : (customTypes.priorities.isNotEmpty ? customTypes.priorities.first.id : 'medium');
       _isRecurring = task.isRecurring;
       _recurringStartDate = task.recurringStartDate;
       _recurringEndDate = task.recurringEndDate;
@@ -187,8 +191,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _viewChip(customTypes.taskTypeLabel(task.taskType), Colors.purple),
-                _viewChip(customTypes.priorityLabel(task.priority), customTypes.priorityColor(task.priority)),
+                _viewChip(customTypes.taskTypeLabelById(task.effectiveTypeId), Colors.purple),
+                _viewChip(customTypes.priorityLabelById(task.effectivePriorityId), customTypes.priorityColorById(task.effectivePriorityId)),
                 if (mode == EstimationMode.timeBased)
                   _viewChip(task.formattedDuration, AppTheme.info),
                 if (task.isRecurring) _viewChip('Recurring', AppTheme.primaryColor),
@@ -317,40 +321,36 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<TaskType>(
-                    value: _selectedType,
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedTypeId,
                     decoration: const InputDecoration(
                       labelText: 'Type',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                    items: TaskType.values.map((type) {
-                          final customTypes = ref.read(customTypesProvider);
-                          final label = customTypes.taskTypeLabel(type);
+                    items: ref.watch(customTypesProvider).taskTypes.map((ct) {
                           return DropdownMenuItem(
-                            value: type,
-                            child: Text(label, style: const TextStyle(fontSize: 14)),
+                            value: ct.id,
+                            child: Text(ct.label, style: const TextStyle(fontSize: 14)),
                           );
                         }).toList(),
-                    onChanged: (v) => setState(() => _selectedType = v!),
+                    onChanged: (v) => setState(() => _selectedTypeId = v!),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<TaskPriority>(
-                    value: _selectedPriority,
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedPriorityId,
                     decoration: const InputDecoration(
                       labelText: 'Priority',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                    items: TaskPriority.values.map((priority) {
-                          final customTypes = ref.read(customTypesProvider);
-                          final label = customTypes.priorityLabel(priority);
+                    items: ref.watch(customTypesProvider).priorities.map((cp) {
                           return DropdownMenuItem(
-                            value: priority,
-                            child: Text(label, style: const TextStyle(fontSize: 14)),
+                            value: cp.id,
+                            child: Text(cp.label, style: const TextStyle(fontSize: 14)),
                           );
                         }).toList(),
-                    onChanged: (v) => setState(() => _selectedPriority = v!),
+                    onChanged: (v) => setState(() => _selectedPriorityId = v!),
                   ),
                 ),
               ],
@@ -712,12 +712,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       }
     }
 
+    final customTypes = ref.read(customTypesProvider);
     ref.read(taskStateProvider.notifier).updateTask(task.copyWith(
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       durationMinutes: durationMinutes,
-      taskType: _selectedType,
-      priority: _selectedPriority,
+      taskType: customTypes.resolveTaskTypeEnum(_selectedTypeId),
+      priority: customTypes.resolvePriorityEnum(_selectedPriorityId),
+      taskTypeId: _selectedTypeId,
+      priorityId: _selectedPriorityId,
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       isRecurring: _isRecurring,
       recurringStartDate: _isRecurring ? _recurringStartDate : null,

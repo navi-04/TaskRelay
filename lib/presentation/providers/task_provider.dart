@@ -201,6 +201,8 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     int reminderTypeIndex = 0,
     String? recurringStartDate,
     String? recurringEndDate,
+    String? taskTypeId,
+    String? priorityId,
   }) async {
     try {
       final effectiveRecurring = isRecurring || isPermanent;
@@ -219,6 +221,8 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         reminderTypeIndex: reminderTypeIndex,
         recurringStartDate: recurringStartDate,
         recurringEndDate: recurringEndDate,
+        taskTypeId: taskTypeId,
+        priorityId: priorityId,
       );
       
       await _taskRepository.addTask(task);

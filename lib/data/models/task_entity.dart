@@ -106,8 +106,24 @@ class TaskEntity extends Equatable {
   @HiveField(20)
   final List<String> deletedDates;
 
+  /// Custom task type ID (matches CustomTaskType.id from user storage)
+  /// Used for looking up the user-defined label. Falls back to taskType.name if null.
+  @HiveField(21)
+  final String? taskTypeId;
+
+  /// Custom priority ID (matches CustomPriority.id from user storage)
+  /// Used for looking up the user-defined label. Falls back to priority.name if null.
+  @HiveField(22)
+  final String? priorityId;
+
   /// Alias: use isRecurring everywhere in the app
   bool get isRecurring => isPermanent;
+
+  /// The effective type ID: custom ID if set, otherwise the enum name.
+  String get effectiveTypeId => taskTypeId ?? taskType.name;
+
+  /// The effective priority ID: custom ID if set, otherwise the enum name.
+  String get effectivePriorityId => priorityId ?? priority.name;
 
   /// Convenience getter for the enum value
   ReminderType get reminderType => ReminderType.fromIndex(reminderTypeIndex);
@@ -134,6 +150,8 @@ class TaskEntity extends Equatable {
     this.recurringStartDate,
     this.recurringEndDate,
     this.deletedDates = const [],
+    this.taskTypeId,
+    this.priorityId,
   });
   
   /// Create a new task
@@ -153,6 +171,8 @@ class TaskEntity extends Equatable {
     int reminderTypeIndex = 0,
     String? recurringStartDate,
     String? recurringEndDate,
+    String? taskTypeId,
+    String? priorityId,
   }) {
     return TaskEntity(
       id: id,
@@ -175,6 +195,8 @@ class TaskEntity extends Equatable {
       recurringStartDate: isPermanent ? (recurringStartDate ?? date) : null,
       recurringEndDate: isPermanent ? recurringEndDate : null,
       deletedDates: const [],
+      taskTypeId: taskTypeId,
+      priorityId: priorityId,
     );
   }
   
@@ -204,6 +226,8 @@ class TaskEntity extends Equatable {
     Object? recurringStartDate = _unset,
     Object? recurringEndDate = _unset,
     List<String>? deletedDates,
+    Object? taskTypeId = _unset,
+    Object? priorityId = _unset,
   }) {
     final effectivePermanent = isRecurring ?? isPermanent ?? this.isPermanent;
     return TaskEntity(
@@ -228,6 +252,8 @@ class TaskEntity extends Equatable {
       recurringStartDate: recurringStartDate is _Unset ? this.recurringStartDate : recurringStartDate as String?,
       recurringEndDate: recurringEndDate is _Unset ? this.recurringEndDate : recurringEndDate as String?,
       deletedDates: deletedDates ?? this.deletedDates,
+      taskTypeId: taskTypeId is _Unset ? this.taskTypeId : taskTypeId as String?,
+      priorityId: priorityId is _Unset ? this.priorityId : priorityId as String?,
     );
   }
   
@@ -278,6 +304,8 @@ class TaskEntity extends Equatable {
         recurringStartDate,
         recurringEndDate,
         deletedDates,
+        taskTypeId,
+        priorityId,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")
