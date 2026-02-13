@@ -809,7 +809,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               if (labelController.text.isNotEmpty) {
                 ref.read(customTypesProvider.notifier).addTaskType(
                   labelController.text,
-                  '📌',
+                  '',
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -858,7 +858,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ref.read(customTypesProvider.notifier).updateTaskType(
                   type.id,
                   labelController.text,
-                  type.emoji,
+                  '',
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -981,7 +981,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 if (labelController.text.isNotEmpty) {
                   ref.read(customTypesProvider.notifier).addPriority(
                     labelController.text,
-                    '⭐',
+                    '',
                     selectedColorValue,
                   );
                   Navigator.pop(context);
@@ -1073,7 +1073,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ref.read(customTypesProvider.notifier).updatePriority(
                     priority.id,
                     labelController.text,
-                    priority.emoji,
+                    '',
                     selectedColorValue,
                   );
                   Navigator.pop(context);

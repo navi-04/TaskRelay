@@ -241,17 +241,12 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                           labelText: 'Type',
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
-                        items: ref.read(customTypesProvider).taskTypes.map((customType) {
-                          final enumType = _getTaskTypeFromId(customType.id);
+                        items: TaskType.values.map((type) {
+                          final customTypes = ref.read(customTypesProvider);
+                          final label = customTypes.taskTypeLabel(type);
                           return DropdownMenuItem(
-                            value: enumType,
-                            child: Row(
-                              children: [
-                                Text(customType.emoji, style: const TextStyle(fontSize: 14)),
-                                const SizedBox(width: 8),
-                                Text(customType.label, style: const TextStyle(fontSize: 14)),
-                              ],
-                            ),
+                            value: type,
+                            child: Text(label, style: const TextStyle(fontSize: 14)),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -270,9 +265,11 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         items: TaskPriority.values.map((priority) {
+                          final customTypes = ref.read(customTypesProvider);
+                          final label = customTypes.priorityLabel(priority);
                           return DropdownMenuItem(
                             value: priority,
-                            child: Text(priority.label, style: const TextStyle(fontSize: 14)),
+                            child: Text(label, style: const TextStyle(fontSize: 14)),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -832,30 +829,6 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
           ),
         );
       }
-    }
-  }
-
-  // Helper method to convert CustomTaskType ID to TaskType enum
-  TaskType _getTaskTypeFromId(String id) {
-    switch (id) {
-      case 'task':
-        return TaskType.task;
-      case 'bug':
-        return TaskType.bug;
-      case 'feature':
-        return TaskType.feature;
-      case 'story':
-        return TaskType.story;
-      case 'epic':
-        return TaskType.epic;
-      case 'improvement':
-        return TaskType.improvement;
-      case 'subtask':
-        return TaskType.subtask;
-      case 'research':
-        return TaskType.research;
-      default:
-        return TaskType.task; // fallback for custom types
     }
   }
 }

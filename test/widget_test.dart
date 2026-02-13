@@ -93,13 +93,10 @@ void main() {
   });
 
   group('TaskPriority', () {
-    test('all priorities have non-empty emoji', () {
+    test('all priorities have valid labels', () {
       for (final priority in TaskPriority.values) {
-        expect(priority.emoji.isNotEmpty, true,
-            reason: '${priority.name} should have a non-empty emoji');
-        // Ensure no corrupted replacement characters
-        expect(priority.emoji.contains('�'), false,
-            reason: '${priority.name} emoji should not contain replacement character');
+        expect(priority.label.isNotEmpty, true,
+            reason: '${priority.name} should have a non-empty label');
       }
     });
   });

@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 import '../../data/models/custom_task_type.dart';
+import '../../data/models/task_type.dart';
+import '../../data/models/task_priority.dart';
 import '../../data/datasources/custom_type_local_datasource.dart';
 
 /// Singleton instance for custom type data source
@@ -36,6 +39,33 @@ class CustomTypesState {
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
+  }
+
+  /// Get the display label for a TaskType enum value.
+  /// Uses the custom label if the user has renamed it, otherwise falls back to enum label.
+  String taskTypeLabel(TaskType type) {
+    for (final ct in taskTypes) {
+      if (ct.id == type.name) return ct.label;
+    }
+    return type.label;
+  }
+
+  /// Get the display label for a TaskPriority enum value.
+  /// Uses the custom label if the user has renamed it, otherwise falls back to enum label.
+  String priorityLabel(TaskPriority priority) {
+    for (final cp in priorities) {
+      if (cp.id == priority.name) return cp.label;
+    }
+    return priority.label;
+  }
+
+  /// Get the display color for a TaskPriority enum value.
+  /// Uses the custom color if the user has changed it, otherwise falls back to enum color.
+  Color priorityColor(TaskPriority priority) {
+    for (final cp in priorities) {
+      if (cp.id == priority.name) return Color(cp.colorValue);
+    }
+    return priority.color;
   }
 }
 

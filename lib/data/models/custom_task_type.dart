@@ -29,7 +29,7 @@ class CustomTaskType extends Equatable {
     this.sortOrder = 0,
   });
   
-  String get displayName => '$emoji $label';
+  String get displayName => label;
   
   CustomTaskType copyWith({
     String? id,
@@ -52,14 +52,14 @@ class CustomTaskType extends Equatable {
   
   /// Default task types
   static List<CustomTaskType> get defaults => [
-    const CustomTaskType(id: 'task', label: 'Task', emoji: '📋', isDefault: true, sortOrder: 0),
-    const CustomTaskType(id: 'bug', label: 'Bug', emoji: '🐛', isDefault: true, sortOrder: 1),
-    const CustomTaskType(id: 'feature', label: 'Feature', emoji: '✨', isDefault: true, sortOrder: 2),
-    const CustomTaskType(id: 'story', label: 'Story', emoji: '📖', isDefault: true, sortOrder: 3),
-    const CustomTaskType(id: 'epic', label: 'Epic', emoji: '🎯', isDefault: true, sortOrder: 4),
-    const CustomTaskType(id: 'improvement', label: 'Improvement', emoji: '🔧', isDefault: true, sortOrder: 5),
-    const CustomTaskType(id: 'subtask', label: 'Subtask', emoji: '📝', isDefault: true, sortOrder: 6),
-    const CustomTaskType(id: 'research', label: 'Research', emoji: '🔍', isDefault: true, sortOrder: 7),
+    const CustomTaskType(id: 'task', label: 'Task', emoji: '', isDefault: true, sortOrder: 0),
+    const CustomTaskType(id: 'bug', label: 'Bug', emoji: '', isDefault: true, sortOrder: 1),
+    const CustomTaskType(id: 'feature', label: 'Feature', emoji: '', isDefault: true, sortOrder: 2),
+    const CustomTaskType(id: 'story', label: 'Story', emoji: '', isDefault: true, sortOrder: 3),
+    const CustomTaskType(id: 'epic', label: 'Epic', emoji: '', isDefault: true, sortOrder: 4),
+    const CustomTaskType(id: 'improvement', label: 'Improvement', emoji: '', isDefault: true, sortOrder: 5),
+    const CustomTaskType(id: 'subtask', label: 'Subtask', emoji: '', isDefault: true, sortOrder: 6),
+    const CustomTaskType(id: 'research', label: 'Research', emoji: '', isDefault: true, sortOrder: 7),
   ];
 }
 
@@ -93,7 +93,7 @@ class CustomPriority extends Equatable {
     this.sortOrder = 0,
   });
   
-  String get displayName => '$emoji $label';
+  String get displayName => label;
   
   CustomPriority copyWith({
     String? id,
@@ -118,9 +118,9 @@ class CustomPriority extends Equatable {
   
   /// Default priorities
   static List<CustomPriority> get defaults => [
-    const CustomPriority(id: 'low', label: 'Low', emoji: '🔵', colorValue: 0xFF2196F3, isDefault: true, sortOrder: 0),
-    const CustomPriority(id: 'medium', label: 'Medium', emoji: '🟡', colorValue: 0xFFFF9800, isDefault: true, sortOrder: 1),
-    const CustomPriority(id: 'high', label: 'High', emoji: '🔴', colorValue: 0xFFF44336, isDefault: true, sortOrder: 2),
-    const CustomPriority(id: 'critical', label: 'Critical', emoji: '🔥', colorValue: 0xFFFF5722, isDefault: true, sortOrder: 3),
+    const CustomPriority(id: 'low', label: 'Low', emoji: '', colorValue: 0xFF2196F3, isDefault: true, sortOrder: 0),
+    const CustomPriority(id: 'medium', label: 'Medium', emoji: '', colorValue: 0xFFFF9800, isDefault: true, sortOrder: 1),
+    const CustomPriority(id: 'high', label: 'High', emoji: '', colorValue: 0xFFF44336, isDefault: true, sortOrder: 2),
+    const CustomPriority(id: 'critical', label: 'Critical', emoji: '', colorValue: 0xFFFF5722, isDefault: true, sortOrder: 3),
   ];
 }

@@ -6,33 +6,32 @@ part 'task_type.g.dart';
 @HiveType(typeId: 3)
 enum TaskType {
   @HiveField(0)
-  task('Task', '📋'),
+  task('Task'),
 
   @HiveField(1)
-  bug('Bug', '🐛'),
+  bug('Bug'),
 
   @HiveField(2)
-  feature('Feature', '✨'),
+  feature('Feature'),
 
   @HiveField(3)
-  story('Story', '📖'),
+  story('Story'),
 
   @HiveField(4)
-  epic('Epic', '🎯'),
+  epic('Epic'),
 
   @HiveField(5)
-  improvement('Improvement', '🔧'),
+  improvement('Improvement'),
 
   @HiveField(6)
-  subtask('Subtask', '📝'),
+  subtask('Subtask'),
 
   @HiveField(7)
-  research('Research', '🔍');
+  research('Research');
 
-  const TaskType(this.label, this.emoji);
+  const TaskType(this.label);
 
   final String label;
-  final String emoji;
 
-  String get displayName => '$emoji $label';
+  String get displayName => label;
 }

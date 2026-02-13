@@ -172,7 +172,7 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
 }
 
 /// Section widget for each task type
-class _TaskTypeSection extends StatelessWidget {
+class _TaskTypeSection extends ConsumerWidget {
   final TaskType taskType;
   final List<TaskEntity> tasks;
   final bool isExpanded;
@@ -186,7 +186,8 @@ class _TaskTypeSection extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customTypes = ref.watch(customTypesProvider);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -207,7 +208,7 @@ class _TaskTypeSection extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      taskType.label,
+                      customTypes.taskTypeLabel(taskType),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -387,36 +388,27 @@ class _TaskItem extends ConsumerWidget {
             ),
           ],
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: _getPriorityColor(task.priority).withOpacity(0.2),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            task.priority.label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: _getPriorityColor(task.priority),
+        trailing: Builder(builder: (context) {
+          final customTypes = ref.watch(customTypesProvider);
+          final pColor = customTypes.priorityColor(task.priority);
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: pColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
             ),
-          ),
-        ),
+            child: Text(
+              customTypes.priorityLabel(task.priority),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: pColor,
+              ),
+            ),
+          );
+        }),
       ),
     );
-  }
-
-  Color _getPriorityColor(TaskPriority priority) {
-    switch (priority) {
-      case TaskPriority.critical:
-        return Colors.red;
-      case TaskPriority.high:
-        return Colors.orange;
-      case TaskPriority.medium:
-        return Colors.blue;
-      case TaskPriority.low:
-        return Colors.green;
-    }
   }
 
   void _showEditTaskBottomSheet(BuildContext context, WidgetRef ref, TaskEntity task) {
@@ -519,17 +511,12 @@ class _TaskItem extends ConsumerWidget {
                               labelText: 'Type',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            items: ref.read(customTypesProvider).taskTypes.map((customType) {
-                              final enumType = _getTaskTypeFromId(customType.id);
+                            items: TaskType.values.map((type) {
+                              final customTypes = ref.read(customTypesProvider);
+                              final label = customTypes.taskTypeLabel(type);
                               return DropdownMenuItem(
-                                value: enumType,
-                                child: Row(
-                                  children: [
-                                    Text(customType.emoji, style: const TextStyle(fontSize: 14)),
-                                    const SizedBox(width: 8),
-                                    Text(customType.label, style: const TextStyle(fontSize: 14)),
-                                  ],
-                                ),
+                                value: type,
+                                child: Text(label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -548,9 +535,11 @@ class _TaskItem extends ConsumerWidget {
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
                             items: TaskPriority.values.map((priority) {
+                              final customTypes = ref.read(customTypesProvider);
+                              final label = customTypes.priorityLabel(priority);
                               return DropdownMenuItem(
                                 value: priority,
-                                child: Text(priority.label, style: const TextStyle(fontSize: 14)),
+                                child: Text(label, style: const TextStyle(fontSize: 14)),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -786,28 +775,3 @@ class _TaskItem extends ConsumerWidget {
       ),
     );
   }
-
-  // Helper method to convert CustomTaskType ID to TaskType enum
-  TaskType _getTaskTypeFromId(String id) {
-    switch (id) {
-      case 'task':
-        return TaskType.task;
-      case 'bug':
-        return TaskType.bug;
-      case 'feature':
-        return TaskType.feature;
-      case 'story':
-        return TaskType.story;
-      case 'epic':
-        return TaskType.epic;
-      case 'improvement':
-        return TaskType.improvement;
-      case 'subtask':
-        return TaskType.subtask;
-      case 'research':
-        return TaskType.research;
-      default:
-        return TaskType.task; // fallback for custom types
-    }
-  }
-}
