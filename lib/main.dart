@@ -72,7 +72,6 @@ class _MyAppState extends ConsumerState<MyApp> {
 
       // Wire up "Mark as Complete" callback from native alarm UI
       ref.read(notificationServiceProvider).onTaskCompletedFromAlarm = (taskId, taskTitle) {
-        print('🔔 Task completed from alarm UI: $taskId ($taskTitle)');
         ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
       };
 
@@ -80,7 +79,6 @@ class _MyAppState extends ConsumerState<MyApp> {
       // when the user tapped "Mark as Complete" while the app was not running)
       final pendingCompletions = await ref.read(notificationServiceProvider).getPendingCompletions();
       for (final taskId in pendingCompletions) {
-        print('🔔 Processing pending alarm completion: $taskId');
         await ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
       }
       
@@ -93,8 +91,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       
       // Show carry-over notification if tasks were carried
       if (carryOverResult.hasCarriedTasks) {
-        print('Carried over ${carryOverResult.carriedCount} tasks '
-            'with total time ${carryOverResult.formattedTime}');
+        // Tasks carried over
       }
       
       // Invalidate providers to refresh UI with actual data
@@ -104,7 +101,6 @@ class _MyAppState extends ConsumerState<MyApp> {
         _isInitialized = true;
       });
     } catch (e) {
-      print('Initialization error: $e');
       setState(() {
         _isInitialized = true; // Allow app to start even if error
       });

@@ -145,11 +145,6 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
         : (todaySummary?.totalMinutes ?? 0);
     // Clamp to 0 minimum (can't have negative remaining time)
     final remainingMinutes = (settings.dailyTimeLimitMinutes - usedMinutes).clamp(0, settings.dailyTimeLimitMinutes);
-    // Clamp to 100% maximum for display purposes
-    final progressPercentage = settings.dailyTimeLimitMinutes > 0
-        ? ((usedMinutes / settings.dailyTimeLimitMinutes) * 100).clamp(0.0, 100.0)
-        : 0.0;
-    final isOverLimit = usedMinutes > settings.dailyTimeLimitMinutes;
 
     // Mode-aware values
     final mode = settings.estimationMode;

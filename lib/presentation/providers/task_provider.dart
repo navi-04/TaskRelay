@@ -105,36 +105,44 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     }
     
     try {
-      // Get date-specific tasks (non-permanent tasks for this date)
+      // Get date-specific tasks (non-recurring tasks for this date)
       final dateTasks = _taskRepository.getTasksForDate(state.selectedDate)
-          .where((task) => !task.isPermanent)
+          .where((task) => !task.isRecurring)
           .toList();
       
-      // Get permanent tasks - only for dates >= creation date
-      final permanentTasks = _taskRepository.getPermanentTasks();
+      // Get recurring tasks - only for dates within their range and not deleted
+      final recurringTasks = _taskRepository.getRecurringTasks();
       
-      // Update permanent tasks for the selected date
-      final updatedPermanentTasks = <TaskEntity>[];
-      for (final task in permanentTasks) {
-        // Only show permanent tasks on or after their creation date
-        if (state.selectedDate.compareTo(task.createdDate) >= 0) {
-          // If the task's current date doesn't match selected date, reset completion
-          if (task.currentDate != state.selectedDate) {
-            final updatedTask = task.copyWith(
-              currentDate: state.selectedDate,
-              isCompleted: false,
-            );
-            updatedPermanentTasks.add(updatedTask);
-            // Update in database
-            await _taskRepository.updateTask(updatedTask);
-          } else {
-            updatedPermanentTasks.add(task);
-          }
+      // Update recurring tasks for the selected date
+      final updatedRecurringTasks = <TaskEntity>[];
+      for (final task in recurringTasks) {
+        // Determine effective start/end dates
+        final startDate = task.recurringStartDate ?? task.createdDate;
+        final endDate = task.recurringEndDate;
+        
+        // Only show if selected date is within [startDate, endDate] range
+        if (state.selectedDate.compareTo(startDate) < 0) continue;
+        if (endDate != null && state.selectedDate.compareTo(endDate) > 0) continue;
+        
+        // Skip if this date has been individually deleted
+        if (task.deletedDates.contains(state.selectedDate)) continue;
+        
+        // If the task's current date doesn't match selected date, reset completion
+        if (task.currentDate != state.selectedDate) {
+          final updatedTask = task.copyWith(
+            currentDate: state.selectedDate,
+            isCompleted: false,
+          );
+          updatedRecurringTasks.add(updatedTask);
+          // Update in database
+          await _taskRepository.updateTask(updatedTask);
+        } else {
+          updatedRecurringTasks.add(task);
         }
       }
       
       // Combine both lists
-      final allTasks = [...dateTasks, ...updatedPermanentTasks];
+      final allTasks = [...dateTasks, ...updatedRecurringTasks];
       
       state = state.copyWith(
         tasks: allTasks,
@@ -188,10 +196,14 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     String? notes,
     List<String> tags = const [],
     bool isPermanent = false,
+    bool isRecurring = false,
     DateTime? alarmTime,
     int reminderTypeIndex = 0,
+    String? recurringStartDate,
+    String? recurringEndDate,
   }) async {
     try {
+      final effectiveRecurring = isRecurring || isPermanent;
       final task = TaskEntity.create(
         id: id,
         title: title,
@@ -202,9 +214,11 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         priority: priority,
         notes: notes,
         tags: tags,
-        isPermanent: isPermanent,
+        isPermanent: effectiveRecurring,
         alarmTime: alarmTime,
         reminderTypeIndex: reminderTypeIndex,
+        recurringStartDate: recurringStartDate,
+        recurringEndDate: recurringEndDate,
       );
       
       await _taskRepository.addTask(task);
@@ -222,7 +236,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskId: id,
               taskTitle: title,
               alarmTime: alarmTime,
-              isPermanent: isPermanent,
+              isPermanent: effectiveRecurring,
               taskDate: taskDate,
             );
           } else {
@@ -230,7 +244,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskId: id,
               taskTitle: title,
               alarmTime: alarmTime,
-              isPermanent: isPermanent,
+              isPermanent: effectiveRecurring,
               taskDate: taskDate,
             );
           }
@@ -305,6 +319,49 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       await _notificationService.cancelTaskAlarm(id);
       
       await _taskRepository.deleteTask(id);
+      await _updateSummary();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
+    }
+  }
+  
+  /// Delete a recurring task for a single date only (hides it on that day)
+  Future<void> deleteRecurringTaskForDate(String id, String date) async {
+    try {
+      final task = state.tasks.firstWhere((t) => t.id == id);
+      final updatedDeletedDates = [...task.deletedDates, date];
+      await _taskRepository.updateTask(task.copyWith(
+        deletedDates: updatedDeletedDates,
+      ));
+      await _updateSummary();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
+    }
+  }
+  
+  /// Delete a recurring task from a given date onwards (sets end date)
+  Future<void> deleteRecurringTaskFromDate(String id, String fromDate) async {
+    try {
+      final task = state.tasks.firstWhere((t) => t.id == id);
+      final startDate = task.recurringStartDate ?? task.createdDate;
+      
+      // If deleting from the start date, delete entirely
+      if (fromDate.compareTo(startDate) <= 0) {
+        await _notificationService.cancelTaskAlarm(id);
+        await _taskRepository.deleteTask(id);
+      } else {
+        // Set end date to day before fromDate
+        final from = DateHelper.parseDate(fromDate);
+        final dayBefore = from.subtract(const Duration(days: 1));
+        final endDateStr = DateHelper.formatDate(dayBefore);
+        await _taskRepository.updateTask(task.copyWith(
+          recurringEndDate: endDateStr,
+        ));
+      }
       await _updateSummary();
     } catch (e) {
       state = state.copyWith(error: e.toString());

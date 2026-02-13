@@ -30,18 +30,21 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       taskType: fields[10] as TaskType,
       priority: fields[11] as TaskPriority,
       notes: fields[12] as String?,
-      tags: (fields[13] as List).cast<String>(),
-      isPermanent: fields[14] as bool,
+      tags: (fields[13] as List?)?.cast<String>() ?? [],
+      isPermanent: fields[14] as bool? ?? false,
       alarmTime: fields[15] as DateTime?,
       weight: fields[16] as int? ?? 1,
       reminderTypeIndex: fields[17] as int? ?? 0,
+      recurringStartDate: fields[18] as String?,
+      recurringEndDate: fields[19] as String?,
+      deletedDates: (fields[20] as List?)?.cast<String>() ?? [],
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskEntity obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -77,7 +80,13 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       ..writeByte(16)
       ..write(obj.weight)
       ..writeByte(17)
-      ..write(obj.reminderTypeIndex);
+      ..write(obj.reminderTypeIndex)
+      ..writeByte(18)
+      ..write(obj.recurringStartDate)
+      ..writeByte(19)
+      ..write(obj.recurringEndDate)
+      ..writeByte(20)
+      ..write(obj.deletedDates);
   }
 
   @override

@@ -153,13 +153,18 @@ class TaskRepository {
     return getTasksForDate(date).where((task) => task.isCarriedOver).toList();
   }
   
-  /// Get all permanent tasks
-  List<TaskEntity> getPermanentTasks() {
+  /// Get all recurring (permanent) tasks
+  List<TaskEntity> getRecurringTasks() {
     try {
-      return _dataSource.getPermanentTasks();
+      return _dataSource.getRecurringTasks();
     } catch (e) {
       return [];
     }
+  }
+
+  /// Get all permanent tasks (backward compat alias)
+  List<TaskEntity> getPermanentTasks() {
+    return getRecurringTasks();
   }
   
   /// Get tasks in date range

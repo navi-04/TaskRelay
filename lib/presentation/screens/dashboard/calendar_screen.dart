@@ -243,7 +243,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   ) {
     final summaries = calendarData.values.toList();
     
-    final daysWithTasks = summaries.where((s) => s.hasTasks).length;
     final completedDays = summaries.where((s) => s.isFullyCompleted).length;
     final partialDays = summaries.where((s) => 
         s.hasTasks && s.completedTasks > 0 && !s.isFullyCompleted).length;
@@ -415,30 +414,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   fontSize: 10,
                 ),
             overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildSummaryRow(
-    BuildContext context,
-    String label,
-    dynamic value, [
-    Color? color,
-  ]) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(
-            value.toString(),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
           ),
         ],
       ),

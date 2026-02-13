@@ -124,8 +124,6 @@ class TaskCarryOverService {
     String endDate,
     int daysDifference,
   ) async {
-    print('Processing multi-day carry-over: $daysDifference days');
-    
     final processedDates = <String>[];
     DateTime currentDate = DateHelper.parseDate(startDate);
     final endDateTime = DateHelper.parseDate(endDate);
@@ -221,9 +219,8 @@ class TaskCarryOverService {
             taskDate: targetDateTime,
           );
         }
-        print('🔔 Rescheduled ${task.reminderType == ReminderType.fullAlarm ? "alarm" : "notification"} for carried-over task "${task.title}" to $targetDate');
       } catch (e) {
-        print('⚠️ Failed to reschedule alarm for task "${task.title}": $e');
+        // Failed to reschedule alarm
       }
     }
   }

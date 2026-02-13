@@ -35,12 +35,8 @@ class NotificationService {
     try {
       final result = await platform.invokeMethod<List<dynamic>>('getPendingCompletions');
       final ids = result?.cast<String>() ?? [];
-      if (ids.isNotEmpty) {
-        print('📋 Found ${ids.length} pending completions from alarm: $ids');
-      }
       return ids;
     } catch (e) {
-      print('⚠️ getPendingCompletions failed: $e');
       return [];
     }
   }
@@ -48,8 +44,6 @@ class NotificationService {
   /// Initialize notification service
   Future<void> initialize() async {
     if (_initialized) return;
-    
-    print('🔧 Initializing TaskRelay NotificationService...');
     
     // Initialize timezone
     tz_data.initializeTimeZones();
@@ -61,7 +55,6 @@ class NotificationService {
       // If device timezone name isn't found in the database, use UTC as fallback
       tz.setLocalLocation(tz.UTC);
     }
-    print('  ✅ Timezone: ${tz.local.name}');
     
     // Android initialization settings
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -93,13 +86,11 @@ class NotificationService {
       if (call.method == 'onTaskCompletedFromAlarm') {
         final taskId = call.arguments['taskId'] as String? ?? '';
         final taskTitle = call.arguments['taskTitle'] as String? ?? '';
-        print('✅ Received onTaskCompletedFromAlarm: taskId=$taskId title=$taskTitle');
         onTaskCompletedFromAlarm?.call(taskId, taskTitle);
       }
     });
 
     _initialized = true;
-    print('  ✅ NotificationService ready!');
   }
   
   /// Create Android notification channels with sound and vibration
@@ -186,7 +177,6 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     // Handle notification tap - can navigate to specific screen
     // This can be extended with navigation logic
-    print('Notification tapped: ${response.payload}');
   }
   
   /// Request basic notification & exact alarm permissions (silent — no dialog).
@@ -242,7 +232,7 @@ class NotificationService {
     try {
       await platform.invokeMethod('requestSystemAlertWindowPermission');
     } catch (e) {
-      print('❌ openOverlayPermissionSettings: $e');
+      // Permission request failed
     }
   }
 
@@ -251,7 +241,7 @@ class NotificationService {
     try {
       await platform.invokeMethod('requestFullScreenIntentPermission');
     } catch (e) {
-      print('❌ openFullScreenIntentSettings: $e');
+      // Permission request failed
     }
   }
 
@@ -572,18 +562,7 @@ class NotificationService {
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
-    
-    final timeUntil = scheduledDate.difference(now);
-    
-    print('\n🔔 ========== SCHEDULING FULL-SCREEN ALARM ==========');
-    print('  📋 Task: "$taskTitle"');
-    print('  🆔 Notification ID: $notificationId');
-    print('  🕐 Current time: ${now.toString()}');
-    print('  ⏰ Scheduled for: ${scheduledDate.toString()}');
-    print('  ⏱️  Time until alarm: ${timeUntil.inHours}h ${timeUntil.inMinutes % 60}m ${timeUntil.inSeconds % 60}s');
-    print('  🔁 Daily repeat: $isPermanent');
-    print('  📱 Full-screen: YES (works over lock screen)');
-    
+
     try {
       // Use native Android alarm with full-screen intent
       await platform.invokeMethod('scheduleFullScreenAlarm', {
@@ -593,10 +572,7 @@ class NotificationService {
         'triggerTimeMillis': scheduledDate.millisecondsSinceEpoch,
         'isPermanent': isPermanent,
       });
-      
-      print('✅ Full-screen alarm scheduled successfully');
     } catch (e) {
-      print('❌ Error scheduling full-screen alarm: $e');
       rethrow;
     }
   }
@@ -612,7 +588,7 @@ class NotificationService {
         'notificationId': notificationId,
       });
     } catch (e) {
-      print('❌ Error canceling alarm: $e');
+      // Cancel failed
     }
     await _notifications.cancel(notificationId);
   }
@@ -650,12 +626,6 @@ class NotificationService {
 
     final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
 
-    print('\n🔔 ========== SCHEDULING SIMPLE NOTIFICATION ==========');
-    print('  📋 Task: "$taskTitle"');
-    print('  🆔 Notification ID: $notificationId');
-    print('  ⏰ Scheduled for: ${scheduledDate.toString()}');
-    print('  🔁 Daily repeat: $isPermanent');
-    print('  📱 Full-screen: NO (simple notification)');
 
     const androidDetails = AndroidNotificationDetails(
       'task_reminder',
@@ -688,7 +658,5 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: isPermanent ? DateTimeComponents.time : null,
     );
-
-    print('✅ Simple notification scheduled successfully');
   }
 }

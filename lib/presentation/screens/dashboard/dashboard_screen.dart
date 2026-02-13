@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/task_provider.dart';
-import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 
@@ -114,17 +113,13 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildGreetingSection(BuildContext context) {
     final hour = DateTime.now().hour;
     String greeting;
-    IconData icon;
     
     if (hour < 12) {
       greeting = 'Good Morning! ☀️';
-      icon = Icons.wb_sunny;
     } else if (hour < 17) {
       greeting = 'Good Afternoon! 🌤️';
-      icon = Icons.wb_cloudy;
     } else {
       greeting = 'Good Evening! 🌙';
-      icon = Icons.nights_stay;
     }
     
     return Column(
@@ -656,7 +651,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
               _buildWeeklyStat(
                 context,
-                '${(stats['averageDailyLoad'] as double? ?? 0).toStringAsFixed(1)}',
+                (stats['averageDailyLoad'] as double? ?? 0).toStringAsFixed(1),
                 'Avg Load',
                 Icons.fitness_center,
                 AppTheme.info,

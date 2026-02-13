@@ -30,21 +30,12 @@ class SettingsStateNotifier extends StateNotifier<SettingsEntity> {
   ) : super(SettingsEntity.defaults());
   // Don't auto-load on construction - wait for explicit init
   
-  void _loadSettings() {
-    try {
-      state = _repository.getSettings();
-    } catch (e) {
-      // If box not initialized yet, keep defaults
-      print('Settings not loaded yet: $e');
-    }
-  }
-  
   /// Reload settings from repository
   void reloadSettings() {
     try {
       state = _repository.getSettings();
     } catch (e) {
-      print('Error reloading settings: $e');
+      // Ignore errors during reload
     }
   }
   

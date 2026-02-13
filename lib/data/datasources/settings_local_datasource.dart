@@ -14,8 +14,6 @@ class SettingsLocalDataSource {
       _box = await Hive.openBox<SettingsEntity>(_boxName);
     } catch (e) {
       // If box fails to open (likely due to schema changes), delete and recreate
-      print('Error opening settings box: $e');
-      print('Deleting corrupted box and creating new one...');
       await Hive.deleteBoxFromDisk(_boxName);
       _box = await Hive.openBox<SettingsEntity>(_boxName);
     }

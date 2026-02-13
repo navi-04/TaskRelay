@@ -13,8 +13,6 @@ class TaskLocalDataSource {
       _box = await Hive.openBox<TaskEntity>(_boxName);
     } catch (e) {
       // If box fails to open (likely due to schema changes), delete and recreate
-      print('Error opening task box: $e');
-      print('Deleting corrupted box and creating new one...');
       await Hive.deleteBoxFromDisk(_boxName);
       _box = await Hive.openBox<TaskEntity>(_boxName);
     }
@@ -106,9 +104,14 @@ class TaskLocalDataSource {
     return _taskBox.values.where((task) => task.isCarriedOver).toList();
   }
   
-  /// Get all permanent tasks
-  List<TaskEntity> getPermanentTasks() {
+  /// Get all recurring (permanent) tasks
+  List<TaskEntity> getRecurringTasks() {
     return _taskBox.values.where((task) => task.isPermanent).toList();
+  }
+
+  /// Get all permanent tasks (alias for backward compatibility)
+  List<TaskEntity> getPermanentTasks() {
+    return getRecurringTasks();
   }
   
   /// Clear all tasks (use with caution)

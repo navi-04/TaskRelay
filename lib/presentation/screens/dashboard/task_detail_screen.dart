@@ -9,6 +9,7 @@ import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/custom_types_provider.dart';
 import '../../providers/providers.dart';
 
 /// Full-page Task Detail screen with view and edit modes.
@@ -31,7 +32,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   late int _selectedMinutes;
   late TaskType _selectedType;
   late TaskPriority _selectedPriority;
-  late bool _isPermanent;
+  late bool _isRecurring;
+  late String? _recurringStartDate;
+  late String? _recurringEndDate;
   DateTime? _alarmTime;
   int _reminderTypeIndex = 0;
   final _formKey = GlobalKey<FormState>();
@@ -47,7 +50,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     _selectedMinutes = 30;
     _selectedType = TaskType.task;
     _selectedPriority = TaskPriority.medium;
-    _isPermanent = false;
+    _isRecurring = false;
+    _recurringStartDate = null;
+    _recurringEndDate = null;
   }
 
   @override
@@ -67,19 +72,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       _selectedMinutes = task.durationMinutes % 60;
       _selectedType = task.taskType;
       _selectedPriority = task.priority;
-      _isPermanent = task.isPermanent;
+      _isRecurring = task.isRecurring;
+      _recurringStartDate = task.recurringStartDate;
+      _recurringEndDate = task.recurringEndDate;
       _alarmTime = task.alarmTime;
       _reminderTypeIndex = task.reminderTypeIndex;
       _controllersInitialized = true;
-    }
-  }
-
-  TaskEntity? _findTask() {
-    final tasks = ref.read(taskStateProvider).tasks;
-    try {
-      return tasks.firstWhere((t) => t.id == widget.taskId);
-    } catch (_) {
-      return null;
     }
   }
 
@@ -192,7 +190,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 _viewChip(task.priority.label, task.priority.color),
                 if (mode == EstimationMode.timeBased)
                   _viewChip(task.formattedDuration, AppTheme.info),
-                if (task.isPermanent) _viewChip('Permanent', AppTheme.primaryColor),
+                if (task.isRecurring) _viewChip('Recurring', AppTheme.primaryColor),
                 if (task.isCarriedOver) _viewChip('Carried Over', Colors.amber),
               ],
             );
@@ -324,9 +322,20 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       labelText: 'Type',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                    items: TaskType.values
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t.label, style: const TextStyle(fontSize: 14))))
-                        .toList(),
+                    items: ref.read(customTypesProvider).taskTypes
+                        .map((customType) {
+                          final enumType = _getTaskTypeFromId(customType.id);
+                          return DropdownMenuItem(
+                            value: enumType, 
+                            child: Row(
+                              children: [
+                                Text(customType.emoji, style: const TextStyle(fontSize: 14)),
+                                const SizedBox(width: 8),
+                                Text(customType.label, style: const TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                     onChanged: (v) => setState(() => _selectedType = v!),
                   ),
                 ),
@@ -363,7 +372,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Permanent toggle
+            // Recurring toggle
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -373,25 +382,116 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   color: isDark ? Colors.blue.withOpacity(0.3) : Colors.blue.withOpacity(0.2),
                 ),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  const Icon(Icons.repeat, color: AppTheme.primaryColor, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    children: [
+                      const Icon(Icons.repeat, color: AppTheme.primaryColor, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Recursive Task',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text('Repeats within a date range',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                )),
+                          ],
+                        ),
+                      ),
+                      Switch(value: _isRecurring, onChanged: (v) {
+                        setState(() {
+                          _isRecurring = v;
+                          if (v && _recurringStartDate == null) {
+                            _recurringStartDate = DateHelper.formatDate(DateTime.now());
+                            _recurringEndDate = DateHelper.formatDate(DateTime.now().add(const Duration(days: 30)));
+                          }
+                        });
+                      }),
+                    ],
+                  ),
+                  if (_isRecurring) ...[
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        Text('Permanent Task',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Text('Shows up every day until deleted',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
-                            )),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _recurringStartDate != null ? DateHelper.parseDate(_recurringStartDate!) : DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setState(() => _recurringStartDate = DateHelper.formatDate(picked));
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _recurringStartDate != null
+                                        ? DateHelper.formatDateForDisplay(DateHelper.parseDate(_recurringStartDate!))
+                                        : 'From',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
+                        ),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _recurringEndDate != null ? DateHelper.parseDate(_recurringEndDate!) : DateTime.now().add(const Duration(days: 30)),
+                                firstDate: _recurringStartDate != null ? DateHelper.parseDate(_recurringStartDate!) : DateTime(2020),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setState(() => _recurringEndDate = DateHelper.formatDate(picked));
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _recurringEndDate != null
+                                        ? DateHelper.formatDateForDisplay(DateHelper.parseDate(_recurringEndDate!))
+                                        : 'To',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  Switch(value: _isPermanent, onChanged: (v) => setState(() => _isPermanent = v)),
+                  ],
                 ],
               ),
             ),
@@ -619,7 +719,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       taskType: _selectedType,
       priority: _selectedPriority,
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-      isPermanent: _isPermanent,
+      isRecurring: _isRecurring,
+      recurringStartDate: _isRecurring ? _recurringStartDate : null,
+      recurringEndDate: _isRecurring ? _recurringEndDate : null,
       alarmTime: effectiveAlarmTime,
       reminderTypeIndex: _reminderTypeIndex,
     ));
@@ -792,5 +894,29 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         ],
       ),
     );
+  }
+
+  // Helper method to convert CustomTaskType ID to TaskType enum
+  TaskType _getTaskTypeFromId(String id) {
+    switch (id) {
+      case 'task':
+        return TaskType.task;
+      case 'bug':
+        return TaskType.bug;
+      case 'feature':
+        return TaskType.feature;
+      case 'story':
+        return TaskType.story;
+      case 'epic':
+        return TaskType.epic;
+      case 'improvement':
+        return TaskType.improvement;
+      case 'subtask':
+        return TaskType.subtask;
+      case 'research':
+        return TaskType.research;
+      default:
+        return TaskType.task; // fallback for custom types
+    }
   }
 }

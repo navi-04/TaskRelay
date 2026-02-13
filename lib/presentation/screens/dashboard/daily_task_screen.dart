@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/custom_types_provider.dart';
 import '../../../data/models/task_entity.dart';
 import '../../../data/models/task_type.dart';
 import '../../../data/models/task_priority.dart';
@@ -11,8 +12,17 @@ import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../providers/providers.dart';
-import 'tasks_by_type_screen.dart';
 import 'task_detail_screen.dart';
+
+/// View mode for displaying tasks
+enum TaskViewMode {
+  all('All'),
+  byType('By Type'),
+  byPriority('By Priority');
+  
+  final String label;
+  const TaskViewMode(this.label);
+}
 
 /// Daily Task Screen - Modern design with improved UX
 class DailyTaskScreen extends ConsumerStatefulWidget {
@@ -27,7 +37,8 @@ class DailyTaskScreen extends ConsumerStatefulWidget {
 class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _searchQuery = '';
-  TaskPriority? _priorityFilter;
+  TaskViewMode _viewMode = TaskViewMode.all;
+  final Map<String, bool> _expandedSections = {}; // For type/priority sections
   
   @override
   void initState() {
@@ -58,111 +69,99 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        toolbarHeight: 70,
+        title: Row(
           children: [
-            Text(isToday ? 'Today\'s Tasks' : 'Tasks'),
+            Text(
+              isToday ? 'Today\'s Tasks' : 'Tasks',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 12),
             Text(
               displayDate,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? Colors.grey[400] 
-                    : Colors.grey[600],
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.white,
                 fontWeight: FontWeight.normal,
               ),
             ),
           ],
         ),
         automaticallyImplyLeading: widget.selectedDate != null,
-        actions: [
-          // View by Type button
-          IconButton(
-            icon: const Icon(Icons.category_outlined),
-            tooltip: 'View by Type',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const TasksByTypeScreen(),
-                ),
-              );
-            },
-          ),
-          // Filter button
-          PopupMenuButton<TaskPriority?>(
-            icon: Icon(
-              _priorityFilter != null ? Icons.filter_alt : Icons.filter_alt_outlined,
-              color: _priorityFilter != null ? AppTheme.primaryColor : null,
-            ),
-            tooltip: 'Filter by priority',
-            onSelected: (priority) {
-              setState(() {
-                _priorityFilter = _priorityFilter == priority ? null : priority;
-              });
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem<TaskPriority?>(
-                value: null,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.clear,
-                      color: _priorityFilter == null ? AppTheme.primaryColor : null,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('All Priorities'),
-                  ],
-                ),
-              ),
-              ...TaskPriority.values.map((priority) => PopupMenuItem(
-                value: priority,
-                child: Row(
-                  children: [
-                    Text(priority.label),
-                    if (_priorityFilter == priority) ...[
-                      const Spacer(),
-                      const Icon(Icons.check, color: AppTheme.primaryColor, size: 18),
-                    ],
-                  ],
-                ),
-              )),
-            ],
-          ),
-        ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(110),
+          preferredSize: const Size.fromHeight(100),
           child: Column(
             children: [
-              // Search bar
+              // Search bar and view mode selector
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search tasks...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: Theme.of(context).cardColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search tasks...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: Theme.of(context).cardColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
+                    const SizedBox(width: 8),
+                    // View mode dropdown
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButton<TaskViewMode>(
+                        value: _viewMode,
+                        underline: const SizedBox(),
+                        icon: const Icon(Icons.arrow_drop_down),
+                        borderRadius: BorderRadius.circular(12),
+                        items: TaskViewMode.values.map((mode) {
+                          return DropdownMenuItem(
+                            value: mode,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(mode.label),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (mode) {
+                          if (mode != null) {
+                            setState(() {
+                              _viewMode = mode;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               // Tab bar
@@ -332,14 +331,31 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
       ).toList();
     }
     
-    // Apply priority filter
-    if (_priorityFilter != null) {
-      tasks = tasks.where((t) => t.priority == _priorityFilter).toList();
+    if (tasks.isEmpty) {
+      return EmptyStateWidget(
+        icon: completedFilter == true 
+            ? Icons.check_circle_outline 
+            : Icons.task_alt,
+        title: _getEmptyTitle(completedFilter),
+        subtitle: _getEmptySubtitle(completedFilter),
+      );
     }
     
-    // Separate permanent and regular tasks
-    final permanentTasks = tasks.where((t) => t.isPermanent).toList();
-    final regularTasks = tasks.where((t) => !t.isPermanent).toList();
+    // Render based on view mode
+    switch (_viewMode) {
+      case TaskViewMode.all:
+        return _buildAllTasksView(context, tasks);
+      case TaskViewMode.byType:
+        return _buildByTypeView(context, tasks);
+      case TaskViewMode.byPriority:
+        return _buildByPriorityView(context, tasks);
+    }
+  }
+  
+  Widget _buildAllTasksView(BuildContext context, List<TaskEntity> tasks) {
+    // Separate recursive and regular tasks
+    final permanentTasks = tasks.where((t) => t.isRecurring).toList();
+    final regularTasks = tasks.where((t) => !t.isRecurring).toList();
     
     // Sort: incomplete first, then by priority, then by duration
     final priorityOrder = {
@@ -363,16 +379,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     sortTasks(permanentTasks);
     sortTasks(regularTasks);
     
-    if (tasks.isEmpty) {
-      return EmptyStateWidget(
-        icon: completedFilter == true 
-            ? Icons.check_circle_outline 
-            : Icons.task_alt,
-        title: _getEmptyTitle(completedFilter),
-        subtitle: _getEmptySubtitle(completedFilter),
-      );
-    }
-    
     return ListView.builder(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
@@ -384,7 +390,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         // Permanent tasks section
         if (permanentTasks.isNotEmpty) {
           if (index == 0) {
-            // Section header for permanent tasks
+            // Section header for recursive tasks
             return Padding(
               padding: const EdgeInsets.only(bottom: 8, top: 4),
               child: Row(
@@ -396,7 +402,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'PERMANENT TASKS',
+                    'RECURSIVE TASKS',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -417,7 +423,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               ),
             );
           } else if (index <= permanentTasks.length) {
-            // Permanent task item
+            // Recursive task item
             return AnimatedTaskTile(
               index: index - 1,
               child: _buildTaskCard(context, permanentTasks[index - 1]),
@@ -478,6 +484,413 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         
         return const SizedBox.shrink();
       },
+    );
+  }
+  
+  Widget _buildByTypeView(BuildContext context, List<TaskEntity> tasks) {
+    // Group tasks by type
+    final Map<TaskType, List<TaskEntity>> tasksByType = {};
+    for (final task in tasks) {
+      if (!tasksByType.containsKey(task.taskType)) {
+        tasksByType[task.taskType] = [];
+      }
+      tasksByType[task.taskType]!.add(task);
+    }
+    
+    // Sort types
+    final sortedTypes = tasksByType.keys.toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    
+    // Initialize expanded state
+    for (final type in sortedTypes) {
+      _expandedSections.putIfAbsent(type.label, () => true);
+    }
+    
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      padding: const EdgeInsets.all(12),
+      itemCount: sortedTypes.length,
+      itemBuilder: (context, index) {
+        final type = sortedTypes[index];
+        final typeTasks = tasksByType[type]!;
+        final permanentTasks = typeTasks.where((t) => t.isRecurring).toList();
+        final regularTasks = typeTasks.where((t) => !t.isRecurring).toList();
+        final isExpanded = _expandedSections[type.label] ?? true;
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Type header
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _expandedSections[type.label] = !isExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isExpanded ? Icons.expand_more : Icons.chevron_right,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          type.label,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${typeTasks.length}',
+                          style: TextStyle(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Tasks list (collapsible)
+              if (isExpanded) ...[
+                const Divider(height: 1),
+                // Recursive tasks in this type
+                if (permanentTasks.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.repeat,
+                          size: 14,
+                          color: AppTheme.primaryColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Recursive',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ...permanentTasks.map((task) => _buildCompactTaskItem(context, task, showType: false)),
+                ],
+                // Regular tasks in this type
+                if (regularTasks.isNotEmpty) ...[
+                  if (permanentTasks.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.task_alt,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Regular',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[600],
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ...regularTasks.map((task) => _buildCompactTaskItem(context, task, showType: false)),
+                ],
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildByPriorityView(BuildContext context, List<TaskEntity> tasks) {
+    // Group tasks by priority
+    final Map<TaskPriority, List<TaskEntity>> tasksByPriority = {};
+    for (final task in tasks) {
+      if (!tasksByPriority.containsKey(task.priority)) {
+        tasksByPriority[task.priority] = [];
+      }
+      tasksByPriority[task.priority]!.add(task);
+    }
+    
+    // Sort priorities (Critical -> High -> Medium -> Low)
+    final sortedPriorities = tasksByPriority.keys.toList()
+      ..sort((a, b) {
+        final order = {
+          TaskPriority.critical: 0,
+          TaskPriority.high: 1,
+          TaskPriority.medium: 2,
+          TaskPriority.low: 3,
+        };
+        return order[a]!.compareTo(order[b]!);
+      });
+    
+    // Initialize expanded state
+    for (final priority in sortedPriorities) {
+      _expandedSections.putIfAbsent(priority.label, () => true);
+    }
+    
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      padding: const EdgeInsets.all(12),
+      itemCount: sortedPriorities.length,
+      itemBuilder: (context, index) {
+        final priority = sortedPriorities[index];
+        final priorityTasks = tasksByPriority[priority]!;
+        final permanentTasks = priorityTasks.where((t) => t.isRecurring).toList();
+        final regularTasks = priorityTasks.where((t) => !t.isRecurring).toList();
+        final isExpanded = _expandedSections[priority.label] ?? true;
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Priority header
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _expandedSections[priority.label] = !isExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isExpanded ? Icons.expand_more : Icons.chevron_right,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          priority.label,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: priority.color,
+                              ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: priority.color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${priorityTasks.length}',
+                          style: TextStyle(
+                            color: priority.color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Tasks list (collapsible)
+              if (isExpanded) ...[
+                const Divider(height: 1),
+                // Recursive tasks in this priority
+                if (permanentTasks.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.repeat,
+                          size: 14,
+                          color: AppTheme.primaryColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Recursive',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ...permanentTasks.map((task) => _buildCompactTaskItem(context, task)),
+                ],
+                // Regular tasks in this priority
+                if (regularTasks.isNotEmpty) ...[
+                  if (permanentTasks.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.task_alt,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Regular',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[600],
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ...regularTasks.map((task) => _buildCompactTaskItem(context, task)),
+                ],
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildCompactTaskItem(BuildContext context, TaskEntity task, {bool showType = true}) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor,
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: ListTile(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TaskDetailScreen(taskId: task.id),
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: GestureDetector(
+          onTap: () {
+            ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: task.isCompleted 
+                  ? AppTheme.success 
+                  : Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: task.isCompleted 
+                    ? AppTheme.success 
+                    : (Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey[500]! 
+                        : Colors.grey[400]!),
+                width: 2,
+              ),
+            ),
+            child: task.isCompleted
+                ? const Icon(Icons.check, color: Colors.white, size: 16)
+                : null,
+          ),
+        ),
+        title: Text(
+          task.title,
+          style: TextStyle(
+            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+            color: task.isCompleted ? Colors.grey : null,
+          ),
+        ),
+        subtitle: task.description != null && task.description!.isNotEmpty
+            ? Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  task.description!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              )
+            : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showType)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  task.taskType.label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.purple,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            if (showType) const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: task.priority.color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                task.priority.label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: task.priority.color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
   
@@ -641,10 +1054,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                             Colors.amber,
                           ),
                         ],
-                        if (task.isPermanent) ...[
+                        if (task.isRecurring) ...[
                           const SizedBox(width: 6),
                           _buildChip(
-                            'Permanent',
+                            'Recursive',
                             AppTheme.primaryColor,
                           ),
                         ],
@@ -705,6 +1118,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   }
   
   Future<bool?> _confirmDelete(BuildContext context, TaskEntity task) async {
+    if (task.isRecurring) {
+      return _showRecurringDeleteDialog(context, task);
+    }
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -730,34 +1146,116 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     );
   }
   
+  Future<bool?> _showRecurringDeleteDialog(BuildContext context, TaskEntity task) async {
+    final selectedDate = ref.read(taskStateProvider).selectedDate;
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Recurring Task'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('How would you like to delete "${task.title}"?'),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.today, color: Colors.orange),
+              title: const Text('This day only'),
+              subtitle: const Text('Task will still appear on other days'),
+              onTap: () {
+                ref.read(taskStateProvider.notifier).deleteRecurringTaskForDate(task.id, selectedDate);
+                Navigator.pop(context, true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.update, color: Colors.red),
+              title: const Text('This & all upcoming'),
+              subtitle: const Text('Task will stop appearing from today onwards'),
+              onTap: () {
+                ref.read(taskStateProvider.notifier).deleteRecurringTaskFromDate(task.id, selectedDate);
+                Navigator.pop(context, true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('Delete entirely'),
+              subtitle: const Text('Remove this task completely'),
+              onTap: () {
+                ref.read(taskStateProvider.notifier).deleteTask(task.id);
+                Navigator.pop(context, true);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   void _showChangeTypeDialog(BuildContext context, TaskEntity task) {
+    final customTypes = ref.read(customTypesProvider).taskTypes;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Change Task Type'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: TaskType.values.map((type) => ListTile(
-            title: Text(type.label),
-            trailing: task.taskType == type
-                ? const Icon(Icons.check, color: AppTheme.success)
-                : null,
-            onTap: () {
-              ref.read(taskStateProvider.notifier).updateTask(
-                task.copyWith(taskType: type),
-              );
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Changed type to ${type.label}'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-          )).toList(),
+          children: customTypes.map((type) {
+            // Map custom type ID to TaskType enum
+            final enumType = _getTaskTypeFromId(type.id);
+            final isSelected = task.taskType == enumType;
+            return ListTile(
+              leading: Text(type.emoji, style: const TextStyle(fontSize: 20)),
+              title: Text(type.label),
+              trailing: isSelected
+                  ? const Icon(Icons.check, color: AppTheme.success)
+                  : null,
+              onTap: () {
+                ref.read(taskStateProvider.notifier).updateTask(
+                  task.copyWith(taskType: enumType),
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Changed type to ${type.label}'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            );
+          }).toList(),
         ),
       ),
     );
+  }
+
+  // Helper method to convert CustomTaskType ID to TaskType enum
+  TaskType _getTaskTypeFromId(String id) {
+    switch (id) {
+      case 'task':
+        return TaskType.task;
+      case 'bug':
+        return TaskType.bug;
+      case 'feature':
+        return TaskType.feature;
+      case 'story':
+        return TaskType.story;
+      case 'epic':
+        return TaskType.epic;
+      case 'improvement':
+        return TaskType.improvement;
+      case 'subtask':
+        return TaskType.subtask;
+      case 'research':
+        return TaskType.research;
+      default:
+        return TaskType.task; // fallback for custom types
+    }
   }
   
   void _showChangePriorityDialog(BuildContext context, TaskEntity task) {
@@ -853,228 +1351,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     );
   }
   
-  void _showTaskDetails(BuildContext context, TaskEntity task) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.9,
-        minChildSize: 0.3,
-        builder: (context, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SingleChildScrollView(
-            controller: scrollController,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[600] 
-                            : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Title
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          task.title,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            decoration: task.isCompleted 
-                                ? TextDecoration.lineThrough 
-                                : null,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showEditTaskBottomSheet(context, task);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Tags row - make type and priority editable
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showChangeTypeDialog(context, task);
-                        },
-                        child: _buildEditableDetailChip(
-                          task.taskType.label,
-                          Colors.purple,
-                          isEditable: true,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showChangePriorityDialog(context, task);
-                        },
-                        child: _buildEditableDetailChip(
-                          task.priority.label,
-                          task.priority.color,
-                          isEditable: true,
-                        ),
-                      ),
-                      _buildDetailChip('Duration: ${task.formattedDuration}', AppTheme.info),
-                      if (task.isCompleted)
-                        _buildDetailChip('✓ Completed', AppTheme.success),
-                      if (task.isCarriedOver)
-                        _buildDetailChip('↪ Carried Over', Colors.amber),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Description
-                  if (task.description != null && task.description!.isNotEmpty) ...[
-                    Text(
-                      'Description',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[400] 
-                            : Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(task.description!),
-                    const SizedBox(height: 24),
-                  ],
-                  
-                  // Notes
-                  if (task.notes != null && task.notes!.isNotEmpty) ...[
-                    Text(
-                      'Notes',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[400] 
-                            : Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[800] 
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(task.notes!),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
-                            Navigator.pop(context);
-                          },
-                          icon: Icon(task.isCompleted ? Icons.undo : Icons.check),
-                          label: Text(task.isCompleted ? 'Mark Incomplete' : 'Complete'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close),
-                          label: const Text('Close'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildDetailChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildEditableDetailChip(String label, Color color, {bool isEditable = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-          if (isEditable) ...[
-            const SizedBox(width: 4),
-            Icon(Icons.edit, size: 14, color: color),
-          ],
-        ],
-      ),
-    );
-  }
-  
   void _showAddTaskBottomSheet(BuildContext context) {
     _showTaskFormBottomSheet(context, null);
-  }
-  
-  void _showEditTaskBottomSheet(BuildContext context, TaskEntity task) {
-    _showTaskFormBottomSheet(context, task);
   }
   
   void _showTaskFormBottomSheet(BuildContext context, TaskEntity? task) {
@@ -1091,7 +1369,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     
     TaskType selectedType = task?.taskType ?? TaskType.task;
     TaskPriority selectedPriority = task?.priority ?? TaskPriority.medium;
-    bool isPermanent = task?.isPermanent ?? false;
+    bool isRecurring = task?.isRecurring ?? false;
+    String? recurringStartDate = task?.recurringStartDate;
+    String? recurringEndDate = task?.recurringEndDate;
     DateTime? alarmTime = task?.alarmTime;
     int reminderTypeIndex = task?.reminderTypeIndex ?? 0;
     
@@ -1180,10 +1460,17 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                               labelText: 'Type',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            items: TaskType.values.map((type) {
+                            items: ref.read(customTypesProvider).taskTypes.map((customType) {
+                              final enumType = _getTaskTypeFromId(customType.id);
                               return DropdownMenuItem(
-                                value: type,
-                                child: Text(type.label, style: const TextStyle(fontSize: 14)),
+                                value: enumType,
+                                child: Row(
+                                  children: [
+                                    Text(customType.emoji, style: const TextStyle(fontSize: 14)),
+                                    const SizedBox(width: 8),
+                                    Text(customType.label, style: const TextStyle(fontSize: 14)),
+                                  ],
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -1299,7 +1586,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     ),
                     const SizedBox(height: 16),
                     
-                    // Permanent task toggle
+                    // Recursive task toggle
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -1313,44 +1600,131 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                               : Colors.blue.withOpacity(0.2),
                         ),
                       ),
-                      child: Row(
+                      child: Column(
                         children: [
-                          Icon(
-                            Icons.repeat,
-                            color: AppTheme.primaryColor,
-                            size: 20,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.repeat,
+                                color: AppTheme.primaryColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Recursive Task',
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Repeats within a date range',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context).brightness == Brightness.dark 
+                                            ? Colors.grey[400] 
+                                            : Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: isRecurring,
+                                onChanged: (value) {
+                                  setModalState(() {
+                                    isRecurring = value;
+                                    if (value && recurringStartDate == null) {
+                                      recurringStartDate = DateHelper.formatDate(DateTime.now());
+                                      recurringEndDate = DateHelper.formatDate(DateTime.now().add(const Duration(days: 30)));
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          if (isRecurring) ...[
+                            const SizedBox(height: 12),
+                            Row(
                               children: [
-                                Text(
-                                  'Permanent Task',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: recurringStartDate != null ? DateHelper.parseDate(recurringStartDate!) : DateTime.now(),
+                                        firstDate: DateTime(2020),
+                                        lastDate: DateTime(2100),
+                                      );
+                                      if (picked != null) {
+                                        setModalState(() => recurringStartDate = DateHelper.formatDate(picked));
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            recurringStartDate != null
+                                                ? DateHelper.formatDateForDisplay(DateHelper.parseDate(recurringStartDate!))
+                                                : 'From',
+                                            style: Theme.of(context).textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Shows up every day until deleted',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                        ? Colors.grey[400] 
-                                        : Colors.grey[600],
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
+                                ),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: recurringEndDate != null ? DateHelper.parseDate(recurringEndDate!) : DateTime.now().add(const Duration(days: 30)),
+                                        firstDate: recurringStartDate != null ? DateHelper.parseDate(recurringStartDate!) : DateTime(2020),
+                                        lastDate: DateTime(2100),
+                                      );
+                                      if (picked != null) {
+                                        setModalState(() => recurringEndDate = DateHelper.formatDate(picked));
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            recurringEndDate != null
+                                                ? DateHelper.formatDateForDisplay(DateHelper.parseDate(recurringEndDate!))
+                                                : 'To',
+                                            style: Theme.of(context).textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          Switch(
-                            value: isPermanent,
-                            onChanged: (value) {
-                              setModalState(() {
-                                isPermanent = value;
-                              });
-                            },
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -1614,7 +1988,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     notes: notesController.text.trim().isEmpty
                                         ? null
                                         : notesController.text.trim(),
-                                    isPermanent: isPermanent,
+                                    isRecurring: isRecurring,
+                                    recurringStartDate: isRecurring ? recurringStartDate : null,
+                                    recurringEndDate: isRecurring ? recurringEndDate : null,
                                     alarmTime: effectiveAlarmTime,
                                     reminderTypeIndex: reminderTypeIndex,
                                   ));
@@ -1631,7 +2007,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     notes: notesController.text.trim().isEmpty
                                         ? null
                                         : notesController.text.trim(),
-                                    isPermanent: isPermanent,
+                                    isRecurring: isRecurring,
+                                    recurringStartDate: isRecurring ? recurringStartDate : null,
+                                    recurringEndDate: isRecurring ? recurringEndDate : null,
                                     alarmTime: effectiveAlarmTime,
                                     reminderTypeIndex: reminderTypeIndex,
                                   );

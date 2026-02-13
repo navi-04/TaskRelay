@@ -280,7 +280,7 @@ class StatisticsScreen extends ConsumerWidget {
               _buildWeeklyStatItem(
                 context,
                 'Avg Load',
-                '${(stats['averageDailyLoad'] as double? ?? 0).toStringAsFixed(1)}',
+                (stats['averageDailyLoad'] as double? ?? 0).toStringAsFixed(1),
                 AppTheme.info,
               ),
             ],
@@ -462,7 +462,7 @@ class StatisticsScreen extends ConsumerWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: achievements.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final achievement = achievements[index];
           return SizedBox(

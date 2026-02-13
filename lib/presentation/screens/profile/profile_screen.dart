@@ -8,8 +8,6 @@ import '../../providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../widgets/common_widgets.dart';
-import '../../../data/models/task_type.dart';
-import '../../../data/models/task_priority.dart';
 import '../../../data/models/custom_task_type.dart';
 import '../../../data/models/estimation_mode.dart';
 
@@ -21,7 +19,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
   int? _selectedHours;
   int? _selectedMinutes;
   bool _initialized = false;
@@ -1161,123 +1158,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
-  
-  void _showChangeDefaultTypeDialog(BuildContext context) {
-    final settings = ref.read(settingsProvider);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Default Task Type'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: TaskType.values.map((type) {
-              final isSelected = type == settings.defaultTaskType;
-              return ListTile(
-                title: Text(type.label),
-                selected: isSelected,
-                selectedTileColor: AppTheme.primaryColor.withOpacity(0.1),
-                trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryColor) : null,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                onTap: () {
-                  ref.read(settingsProvider.notifier).updateDefaultTaskType(type);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Default task type set to ${type.label}'),
-                      backgroundColor: AppTheme.success,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _showChangeDefaultPriorityDialog(BuildContext context) {
-    final settings = ref.read(settingsProvider);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Default Priority'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: TaskPriority.values.map((priority) {
-            final isSelected = priority == settings.defaultPriority;
-            return ListTile(
-              title: Text(priority.label),
-              selected: isSelected,
-              selectedTileColor: priority.color.withOpacity(0.1),
-              trailing: isSelected ? Icon(Icons.check, color: priority.color) : null,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              onTap: () {
-                ref.read(settingsProvider.notifier).updateDefaultPriority(priority);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Default priority set to ${priority.label}'),
-                    backgroundColor: priority.color,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypeChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.grey[800] 
-            : Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 12),
-      ),
-    );
-  }
-
-  Widget _buildPriorityChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
 
   Widget _buildAboutCard(BuildContext context) {
     return GradientCard(
@@ -1952,56 +1832,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               foregroundColor: Colors.white,
             ),
             child: const Text('Clear Everything'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResetButton(BuildContext context) {
-    return Center(
-      child: OutlinedButton.icon(
-        onPressed: () => _showResetConfirmation(context),
-        icon: const Icon(Icons.restore, color: AppTheme.error),
-        label: const Text(
-          'Reset to Defaults',
-          style: TextStyle(color: AppTheme.error),
-        ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppTheme.error),
-        ),
-      ),
-    );
-  }
-
-  void _showResetConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset Settings'),
-        content: const Text(
-          'This will reset all settings to their default values. This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(settingsProvider.notifier).resetToDefaults();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Settings reset to defaults'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error,
-            ),
-            child: const Text('Reset'),
           ),
         ],
       ),

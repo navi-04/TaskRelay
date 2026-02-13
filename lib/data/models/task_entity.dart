@@ -78,7 +78,7 @@ class TaskEntity extends Equatable {
   @HiveField(13)
   final List<String> tags;
 
-  /// Whether this is a permanent task that appears every day
+  /// Whether this is a recurring task (formerly "permanent")
   @HiveField(14)
   final bool isPermanent;
 
@@ -93,6 +93,21 @@ class TaskEntity extends Equatable {
   /// Reminder type: 0 = full alarm (lock-screen), 1 = simple notification
   @HiveField(17)
   final int reminderTypeIndex;
+
+  /// Start date for the recurring range (yyyy-MM-dd). Defaults to createdDate.
+  @HiveField(18)
+  final String? recurringStartDate;
+
+  /// End date for the recurring range (yyyy-MM-dd). Null = no end date.
+  @HiveField(19)
+  final String? recurringEndDate;
+
+  /// Dates where this recurring task has been individually deleted (yyyy-MM-dd list)
+  @HiveField(20)
+  final List<String> deletedDates;
+
+  /// Alias: use isRecurring everywhere in the app
+  bool get isRecurring => isPermanent;
 
   /// Convenience getter for the enum value
   ReminderType get reminderType => ReminderType.fromIndex(reminderTypeIndex);
@@ -116,6 +131,9 @@ class TaskEntity extends Equatable {
     this.alarmTime,
     this.weight = 1,
     this.reminderTypeIndex = 0,
+    this.recurringStartDate,
+    this.recurringEndDate,
+    this.deletedDates = const [],
   });
   
   /// Create a new task
@@ -133,6 +151,8 @@ class TaskEntity extends Equatable {
     DateTime? alarmTime,
     int weight = 1,
     int reminderTypeIndex = 0,
+    String? recurringStartDate,
+    String? recurringEndDate,
   }) {
     return TaskEntity(
       id: id,
@@ -152,6 +172,9 @@ class TaskEntity extends Equatable {
       alarmTime: alarmTime,
       weight: weight,
       reminderTypeIndex: reminderTypeIndex,
+      recurringStartDate: isPermanent ? (recurringStartDate ?? date) : null,
+      recurringEndDate: isPermanent ? recurringEndDate : null,
+      deletedDates: const [],
     );
   }
   
@@ -174,10 +197,15 @@ class TaskEntity extends Equatable {
     Object? notes = _unset,
     List<String>? tags,
     bool? isPermanent,
+    bool? isRecurring,
     Object? alarmTime = _unset,
     int? weight,
     int? reminderTypeIndex,
+    Object? recurringStartDate = _unset,
+    Object? recurringEndDate = _unset,
+    List<String>? deletedDates,
   }) {
+    final effectivePermanent = isRecurring ?? isPermanent ?? this.isPermanent;
     return TaskEntity(
       id: id ?? this.id,
       title: title ?? this.title,
@@ -193,10 +221,13 @@ class TaskEntity extends Equatable {
       priority: priority ?? this.priority,
       notes: notes is _Unset ? this.notes : notes as String?,
       tags: tags ?? this.tags,
-      isPermanent: isPermanent ?? this.isPermanent,
+      isPermanent: effectivePermanent,
       alarmTime: alarmTime is _Unset ? this.alarmTime : alarmTime as DateTime?,
       weight: weight ?? this.weight,
       reminderTypeIndex: reminderTypeIndex ?? this.reminderTypeIndex,
+      recurringStartDate: recurringStartDate is _Unset ? this.recurringStartDate : recurringStartDate as String?,
+      recurringEndDate: recurringEndDate is _Unset ? this.recurringEndDate : recurringEndDate as String?,
+      deletedDates: deletedDates ?? this.deletedDates,
     );
   }
   
@@ -244,6 +275,9 @@ class TaskEntity extends Equatable {
         alarmTime,
         weight,
         reminderTypeIndex,
+        recurringStartDate,
+        recurringEndDate,
+        deletedDates,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")

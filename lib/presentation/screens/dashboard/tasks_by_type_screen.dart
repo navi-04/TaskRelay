@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import '../../providers/providers.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/custom_types_provider.dart';
 import '../../../data/models/estimation_mode.dart';
 import '../../../data/models/task_entity.dart';
 import '../../../data/models/task_type.dart';
@@ -431,7 +431,7 @@ class _TaskItem extends ConsumerWidget {
     
     TaskType selectedType = task.taskType;
     TaskPriority selectedPriority = task.priority;
-    bool isPermanent = task.isPermanent;
+    bool isRecurring = task.isRecurring;
     final estimationMode = ref.read(settingsProvider).estimationMode;
     
     showModalBottomSheet(
@@ -519,10 +519,17 @@ class _TaskItem extends ConsumerWidget {
                               labelText: 'Type',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            items: TaskType.values.map((type) {
+                            items: ref.read(customTypesProvider).taskTypes.map((customType) {
+                              final enumType = _getTaskTypeFromId(customType.id);
                               return DropdownMenuItem(
-                                value: type,
-                                child: Text(type.label, style: const TextStyle(fontSize: 14)),
+                                value: enumType,
+                                child: Row(
+                                  children: [
+                                    Text(customType.emoji, style: const TextStyle(fontSize: 14)),
+                                    const SizedBox(width: 8),
+                                    Text(customType.label, style: const TextStyle(fontSize: 14)),
+                                  ],
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -682,10 +689,10 @@ class _TaskItem extends ConsumerWidget {
                             ),
                           ),
                           Switch(
-                            value: isPermanent,
+                            value: isRecurring,
                             onChanged: (value) {
                               setModalState(() {
-                                isPermanent = value;
+                                isRecurring = value;
                               });
                             },
                           ),
@@ -748,7 +755,7 @@ class _TaskItem extends ConsumerWidget {
                                   notes: notesController.text.trim().isEmpty
                                       ? null
                                       : notesController.text.trim(),
-                                  isPermanent: isPermanent,
+                                  isRecurring: isRecurring,
                                 ));
                                 
                                 Navigator.pop(context);
@@ -778,5 +785,29 @@ class _TaskItem extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  // Helper method to convert CustomTaskType ID to TaskType enum
+  TaskType _getTaskTypeFromId(String id) {
+    switch (id) {
+      case 'task':
+        return TaskType.task;
+      case 'bug':
+        return TaskType.bug;
+      case 'feature':
+        return TaskType.feature;
+      case 'story':
+        return TaskType.story;
+      case 'epic':
+        return TaskType.epic;
+      case 'improvement':
+        return TaskType.improvement;
+      case 'subtask':
+        return TaskType.subtask;
+      case 'research':
+        return TaskType.research;
+      default:
+        return TaskType.task; // fallback for custom types
+    }
   }
 }

@@ -22,7 +22,7 @@ class SettingsRepository {
     try {
       await _dataSource.updateSettings(settings);
     } catch (e) {
-      print('Error updating settings: $e');
+      // Error updating settings
     }
   }
   
@@ -32,7 +32,7 @@ class SettingsRepository {
       final current = _dataSource.getSettings();
       await _dataSource.updateSettings(current.copyWith(dailyTimeLimitMinutes: limitMinutes));
     } catch (e) {
-      print('Error updating daily time limit: $e');
+      // Error updating daily time limit
     }
   }
   
@@ -50,7 +50,7 @@ class SettingsRepository {
         notificationMinute: minute,
       ));
     } catch (e) {
-      print('Error updating notification settings: $e');
+      // Error updating notification settings
     }
   }
   
@@ -60,7 +60,7 @@ class SettingsRepository {
       final current = _dataSource.getSettings();
       await _dataSource.updateSettings(current.copyWith(isDarkMode: !current.isDarkMode));
     } catch (e) {
-      print('Error toggling dark mode: $e');
+      // Error toggling dark mode
     }
   }
   
@@ -72,7 +72,7 @@ class SettingsRepository {
         showCarryOverAlerts: !current.showCarryOverAlerts,
       ));
     } catch (e) {
-      print('Error toggling carry over alerts: $e');
+      // Error toggling carry over alerts
     }
   }
   
@@ -81,7 +81,7 @@ class SettingsRepository {
     try {
       await _dataSource.resetSettings();
     } catch (e) {
-      print('Error resetting settings: $e');
+      // Error resetting settings
     }
   }
   

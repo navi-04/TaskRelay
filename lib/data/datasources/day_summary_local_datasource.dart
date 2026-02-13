@@ -13,8 +13,6 @@ class DaySummaryLocalDataSource {
       _box = await Hive.openBox<DaySummaryEntity>(_boxName);
     } catch (e) {
       // If box fails to open (likely due to schema changes), delete and recreate
-      print('Error opening day summary box: $e');
-      print('Deleting corrupted box and creating new one...');
       await Hive.deleteBoxFromDisk(_boxName);
       _box = await Hive.openBox<DaySummaryEntity>(_boxName);
     }
