@@ -116,6 +116,12 @@ class TaskEntity extends Equatable {
   @HiveField(22)
   final String? priorityId;
 
+  /// Dates where the alarm is muted for this recurring task (yyyy-MM-dd list).
+  /// When a user dismisses an alarm for "today only" on a recurring task,
+  /// the date is added here so the alarm won't re-fire that day.
+  @HiveField(23)
+  final List<String> mutedAlarmDates;
+
   /// Alias: use isRecurring everywhere in the app
   bool get isRecurring => isPermanent;
 
@@ -152,6 +158,7 @@ class TaskEntity extends Equatable {
     this.deletedDates = const [],
     this.taskTypeId,
     this.priorityId,
+    this.mutedAlarmDates = const [],
   });
   
   /// Create a new task
@@ -173,6 +180,7 @@ class TaskEntity extends Equatable {
     String? recurringEndDate,
     String? taskTypeId,
     String? priorityId,
+    List<String>? mutedAlarmDates,
   }) {
     return TaskEntity(
       id: id,
@@ -197,6 +205,7 @@ class TaskEntity extends Equatable {
       deletedDates: const [],
       taskTypeId: taskTypeId,
       priorityId: priorityId,
+      mutedAlarmDates: mutedAlarmDates ?? const [],
     );
   }
   
@@ -228,6 +237,7 @@ class TaskEntity extends Equatable {
     List<String>? deletedDates,
     Object? taskTypeId = _unset,
     Object? priorityId = _unset,
+    List<String>? mutedAlarmDates,
   }) {
     final effectivePermanent = isRecurring ?? isPermanent ?? this.isPermanent;
     return TaskEntity(
@@ -254,6 +264,7 @@ class TaskEntity extends Equatable {
       deletedDates: deletedDates ?? this.deletedDates,
       taskTypeId: taskTypeId is _Unset ? this.taskTypeId : taskTypeId as String?,
       priorityId: priorityId is _Unset ? this.priorityId : priorityId as String?,
+      mutedAlarmDates: mutedAlarmDates ?? this.mutedAlarmDates,
     );
   }
   
@@ -306,6 +317,7 @@ class TaskEntity extends Equatable {
         deletedDates,
         taskTypeId,
         priorityId,
+        mutedAlarmDates,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")

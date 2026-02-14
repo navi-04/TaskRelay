@@ -534,7 +534,33 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       if (_alarmTime != null)
                         IconButton(
                           icon: const Icon(Icons.clear, size: 20),
-                          onPressed: () => setState(() => _alarmTime = null),
+                          onPressed: () async {
+                            // Check if this is a recurring task being edited
+                            final taskState = ref.read(taskStateProvider);
+                            final task = taskState.tasks.firstWhere(
+                              (t) => t.id == widget.taskId,
+                              orElse: () => throw StateError('Task not found'),
+                            );
+                            
+                            if (task.isRecurring) {
+                              final choice = await _showRecurringAlarmDialog(context);
+                              if (choice == null) return; // cancelled
+                              
+                              final notifier = ref.read(taskStateProvider.notifier);
+                              if (choice == 'today') {
+                                // Mute for today — keep alarmTime on entity for future days
+                                notifier.muteAlarmForToday(task.id);
+                                // Exit edit mode since we already applied the change
+                                setState(() => _isEditing = false);
+                                _controllersInitialized = false;
+                              } else {
+                                // Clear for all days
+                                setState(() => _alarmTime = null);
+                              }
+                            } else {
+                              setState(() => _alarmTime = null);
+                            }
+                          },
                         ),
                       IconButton(
                         icon: const Icon(Icons.access_time),
@@ -894,6 +920,41 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           Text(label, style: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600], fontSize: 13)),
           const Spacer(),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  /// Show dialog asking whether to delete alarm for today only or all upcoming days
+  Future<String?> _showRecurringAlarmDialog(BuildContext context) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.alarm_off, color: Colors.orange),
+            SizedBox(width: 10),
+            Expanded(child: Text('Remove Alarm', style: TextStyle(fontSize: 18))),
+          ],
+        ),
+        content: const Text(
+          'This is a recurring task. Would you like to remove the alarm for today only, or for all upcoming days?',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('today'),
+            child: const Text('Today Only'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop('all'),
+            child: const Text('All Days'),
+          ),
         ],
       ),
     );

@@ -1770,10 +1770,27 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                               if (alarmTime != null)
                                 IconButton(
                                   icon: const Icon(Icons.clear, size: 20),
-                                  onPressed: () {
-                                    setModalState(() {
-                                      alarmTime = null;
-                                    });
+                                  onPressed: () async {
+                                    if (isEditing && task.isRecurring) {
+                                      final choice = await _showRecurringAlarmDialog(context);
+                                      if (choice == null) return; // cancelled
+                                      
+                                      final notifier = ref.read(taskStateProvider.notifier);
+                                      if (choice == 'today') {
+                                        // Mute for today — keep alarmTime for future days
+                                        notifier.muteAlarmForToday(task.id);
+                                        Navigator.pop(context); // Close sheet, change already applied
+                                      } else {
+                                        // Clear for all days — user continues editing with no alarm
+                                        setModalState(() {
+                                          alarmTime = null;
+                                        });
+                                      }
+                                    } else {
+                                      setModalState(() {
+                                        alarmTime = null;
+                                      });
+                                    }
                                   },
                                 ),
                               IconButton(
@@ -2050,6 +2067,41 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Show dialog asking whether to delete alarm for today only or all upcoming days
+  Future<String?> _showRecurringAlarmDialog(BuildContext context) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.alarm_off, color: Colors.orange),
+            SizedBox(width: 10),
+            Expanded(child: Text('Remove Alarm', style: TextStyle(fontSize: 18))),
+          ],
+        ),
+        content: const Text(
+          'This is a recurring task. Would you like to remove the alarm for today only, or for all upcoming days?',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('today'),
+            child: const Text('Today Only'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop('all'),
+            child: const Text('All Days'),
+          ),
+        ],
       ),
     );
   }

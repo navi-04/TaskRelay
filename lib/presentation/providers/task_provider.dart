@@ -144,6 +144,37 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       // Combine both lists
       final allTasks = [...dateTasks, ...updatedRecurringTasks];
       
+      // Re-schedule alarms for recurring tasks on this date
+      // (only if alarm isn't muted for today and task isn't completed)
+      for (final task in updatedRecurringTasks) {
+        if (task.alarmTime != null &&
+            !task.isCompleted &&
+            !task.mutedAlarmDates.contains(state.selectedDate)) {
+          try {
+            final taskDate = DateHelper.parseDate(state.selectedDate);
+            if (task.reminderType == ReminderType.fullAlarm) {
+              await _notificationService.scheduleTaskAlarm(
+                taskId: task.id,
+                taskTitle: task.title,
+                alarmTime: task.alarmTime!,
+                isPermanent: task.isPermanent,
+                taskDate: taskDate,
+              );
+            } else {
+              await _notificationService.scheduleTaskNotification(
+                taskId: task.id,
+                taskTitle: task.title,
+                alarmTime: task.alarmTime!,
+                isPermanent: task.isPermanent,
+                taskDate: taskDate,
+              );
+            }
+          } catch (_) {
+            // Alarm scheduling failed — continue
+          }
+        }
+      }
+      
       state = state.copyWith(
         tasks: allTasks,
         isLoading: false,
@@ -374,6 +405,46 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
     }
   }
   
+  /// Mute alarm for a recurring task for today only.
+  /// Cancels the scheduled alarm and adds today to mutedAlarmDates,
+  /// but keeps alarmTime so it rings again on future days.
+  Future<void> muteAlarmForToday(String id) async {
+    try {
+      final task = state.tasks.firstWhere((t) => t.id == id);
+      await _notificationService.cancelTaskAlarm(id);
+      
+      final mutedDates = [...task.mutedAlarmDates];
+      if (!mutedDates.contains(state.selectedDate)) {
+        mutedDates.add(state.selectedDate);
+      }
+      await _taskRepository.updateTask(task.copyWith(
+        mutedAlarmDates: mutedDates,
+      ));
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
+    }
+  }
+  
+  /// Clear alarm for a task permanently (all days).
+  /// Cancels the scheduled alarm and removes alarmTime from the entity.
+  Future<void> clearAlarmForAll(String id) async {
+    try {
+      final task = state.tasks.firstWhere((t) => t.id == id);
+      await _notificationService.cancelTaskAlarm(id);
+      
+      await _taskRepository.updateTask(task.copyWith(
+        alarmTime: null,
+        mutedAlarmDates: const [],
+      ));
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    } finally {
+      loadTasksForSelectedDate();
+    }
+  }
+  
   /// Toggle task completion
   Future<void> toggleTaskCompletion(String id) async {
     try {
@@ -385,8 +456,30 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       // Handle alarm for completion toggle
       try {
         if (!task.isCompleted && task.alarmTime != null) {
+          // Marking as DONE → cancel the alarm
           await _notificationService.cancelTaskAlarm(id);
+          
+          if (task.isRecurring) {
+            // For recurring tasks: mute alarm for today only (keeps alarmTime for future days)
+            final mutedDates = [...task.mutedAlarmDates];
+            if (!mutedDates.contains(state.selectedDate)) {
+              mutedDates.add(state.selectedDate);
+            }
+            await _taskRepository.updateTask(task.copyWith(
+              isCompleted: true,
+              completedAt: DateTime.now(),
+              mutedAlarmDates: mutedDates,
+            ));
+          } else {
+            // For non-recurring tasks: clear alarmTime entirely (alarm won't come back)
+            await _taskRepository.updateTask(task.copyWith(
+              isCompleted: true,
+              completedAt: DateTime.now(),
+              alarmTime: null,
+            ));
+          }
         } else if (task.isCompleted && task.alarmTime != null) {
+          // Marking as INCOMPLETE → re-schedule alarm
           final hasPermissions = await _notificationService.areNotificationsEnabled();
           if (!hasPermissions) {
             await _notificationService.requestPermissions();
@@ -408,6 +501,18 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               isPermanent: task.isPermanent,
               taskDate: taskDate,
             );
+          }
+          
+          // If recurring, remove today from muted dates so alarm is active again
+          if (task.isRecurring) {
+            final mutedDates = task.mutedAlarmDates
+                .where((d) => d != state.selectedDate)
+                .toList();
+            await _taskRepository.updateTask(task.copyWith(
+              isCompleted: false,
+              completedAt: null,
+              mutedAlarmDates: mutedDates,
+            ));
           }
         }
       } catch (_) {

@@ -40,13 +40,14 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       deletedDates: (fields[20] as List?)?.cast<String>() ?? [],
       taskTypeId: fields[21] as String?,
       priorityId: fields[22] as String?,
+      mutedAlarmDates: (fields[23] as List?)?.cast<String>() ?? [],
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskEntity obj) {
     writer
-      ..writeByte(23)
+      ..writeByte(24)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -92,7 +93,9 @@ class TaskEntityAdapter extends TypeAdapter<TaskEntity> {
       ..writeByte(21)
       ..write(obj.taskTypeId)
       ..writeByte(22)
-      ..write(obj.priorityId);
+      ..write(obj.priorityId)
+      ..writeByte(23)
+      ..write(obj.mutedAlarmDates);
   }
 
   @override
