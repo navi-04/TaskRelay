@@ -485,7 +485,6 @@ class _TaskItem extends ConsumerWidget {
                       controller: titleController,
                       decoration: const InputDecoration(
                         labelText: 'Task Title *',
-                        prefixIcon: Icon(Icons.title),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {

@@ -214,7 +214,6 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   controller: _titleController,
                   decoration: const InputDecoration(
                     labelText: 'Task Title *',
-                    prefixIcon: Icon(Icons.title),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {

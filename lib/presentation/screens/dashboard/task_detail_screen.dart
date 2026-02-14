@@ -299,7 +299,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               controller: _titleController,
               decoration: const InputDecoration(
                 labelText: 'Task Title *',
-                prefixIcon: Icon(Icons.title),
               ),
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required' : null,
             ),

@@ -1423,7 +1423,6 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       controller: titleController,
                       decoration: const InputDecoration(
                         labelText: 'Task Title *',
-                        prefixIcon: Icon(Icons.title),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
