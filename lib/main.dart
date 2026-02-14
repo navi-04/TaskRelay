@@ -75,11 +75,23 @@ class _MyAppState extends ConsumerState<MyApp> {
         ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
       };
 
+      // Wire up "Dismiss" callback from native alarm UI / notification tap
+      ref.read(notificationServiceProvider).onTaskDismissedFromAlarm = (taskId) {
+        ref.read(taskStateProvider.notifier).handleAlarmDismissal(taskId);
+      };
+
       // Process any pending completions from alarm UI (persisted via SharedPreferences
       // when the user tapped "Mark as Complete" while the app was not running)
       final pendingCompletions = await ref.read(notificationServiceProvider).getPendingCompletions();
       for (final taskId in pendingCompletions) {
         await ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
+      }
+
+      // Process any pending dismissals from alarm UI (persisted via SharedPreferences
+      // when the user tapped "Dismiss" while the app was not running)
+      final pendingDismissals = await ref.read(notificationServiceProvider).getPendingDismissals();
+      for (final taskId in pendingDismissals) {
+        await ref.read(taskStateProvider.notifier).handleAlarmDismissal(taskId);
       }
       
       // Process any pending carry-overs (this will also refresh task state)

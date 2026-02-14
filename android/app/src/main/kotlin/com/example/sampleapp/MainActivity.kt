@@ -89,6 +89,16 @@ class MainActivity : FlutterActivity() {
                     Log.d(TAG, "📋 getPendingCompletions: ${pending.size} pending → $pending")
                     result.success(pending)
                 }
+                "getPendingDismissals" -> {
+                    // Read and clear pending task dismissals from SharedPreferences.
+                    // These were persisted by AlarmService when user tapped "Dismiss"
+                    // while the app process was not alive.
+                    val prefs = context.getSharedPreferences("alarm_dismissals", Context.MODE_PRIVATE)
+                    val pending = prefs.getStringSet("dismissed_task_ids", emptySet())?.toList() ?: emptyList()
+                    prefs.edit().remove("dismissed_task_ids").apply()
+                    Log.d(TAG, "📋 getPendingDismissals: ${pending.size} pending → $pending")
+                    result.success(pending)
+                }
                 "checkExactAlarmPermission" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager

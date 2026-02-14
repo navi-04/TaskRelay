@@ -162,7 +162,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   if (task.completedAt != null) ...[
                     const Spacer(),
                     Text(
-                      '${task.completedAt!.hour.toString().padLeft(2, '0')}:${task.completedAt!.minute.toString().padLeft(2, '0')}',
+                      DateHelper.formatDateTime12h(task.completedAt!),
                       style: TextStyle(
                         color: AppTheme.success.withOpacity(0.7),
                         fontSize: 13,
@@ -208,8 +208,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               icon: task.reminderType == ReminderType.fullAlarm ? Icons.alarm : Icons.notifications_outlined,
               iconColor: Colors.orange,
               title: task.reminderType == ReminderType.fullAlarm ? 'Alarm' : 'Notification',
-              value:
-                  '${task.alarmTime!.hour.toString().padLeft(2, '0')}:${task.alarmTime!.minute.toString().padLeft(2, '0')}',
+              value: DateHelper.formatDateTime12h(task.alarmTime!),
               isDark: isDark,
             ),
             const SizedBox(height: 16),
@@ -522,7 +521,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             const SizedBox(height: 2),
                             Text(
                               _alarmTime != null
-                                  ? 'Set for ${_alarmTime!.hour.toString().padLeft(2, '0')}:${_alarmTime!.minute.toString().padLeft(2, '0')}'
+                                  ? 'Set for ${DateHelper.formatDateTime12h(_alarmTime!)}'
                                   : 'No reminder set',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: isDark ? Colors.grey[400] : Colors.grey[600],

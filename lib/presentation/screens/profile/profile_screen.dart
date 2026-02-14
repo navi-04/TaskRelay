@@ -482,7 +482,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildSettingsTile(
               context,
               'Reminder Time',
-              '${settings.notificationHour.toString().padLeft(2, '0')}:${settings.notificationMinute.toString().padLeft(2, '0')}',
+              DateHelper.formatTime12h(settings.notificationHour, settings.notificationMinute),
               Icons.access_time,
               onTap: _selectNotificationTime,
               trailing: const Icon(Icons.chevron_right),
@@ -1914,7 +1914,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Reminder time set to ${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}',
+              'Reminder time set to ${DateHelper.formatTime12h(picked.hour, picked.minute)}',
             ),
             backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,

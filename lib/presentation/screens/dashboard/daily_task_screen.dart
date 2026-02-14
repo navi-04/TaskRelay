@@ -1756,7 +1756,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     const SizedBox(height: 2),
                                     Text(
                                       alarmTime != null
-                                          ? 'Set for ${alarmTime!.hour.toString().padLeft(2, '0')}:${alarmTime!.minute.toString().padLeft(2, '0')}'
+                                          ? 'Set for ${DateHelper.formatDateTime12h(alarmTime!)}'
                                           : 'No reminder set',
                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: Theme.of(context).brightness == Brightness.dark 

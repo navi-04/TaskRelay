@@ -444,6 +444,41 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       loadTasksForSelectedDate();
     }
   }
+
+  /// Handle alarm dismissal — clears alarmTime for non-recurring tasks
+  /// and mutes for today for recurring tasks.
+  /// Called when the user taps "Dismiss" on the alarm UI.
+  Future<void> handleAlarmDismissal(String id) async {
+    try {
+      // Look up the task from the repository (might not be in current state
+      // if the selected date differs from the task's date)
+      final task = _taskRepository.getTaskById(id);
+      if (task == null) return;
+
+      await _notificationService.cancelTaskAlarm(id);
+
+      if (task.isRecurring) {
+        // For recurring tasks: mute alarm for today so it won't re-schedule
+        final today = DateHelper.formatDate(DateHelper.getToday());
+        final mutedDates = [...task.mutedAlarmDates];
+        if (!mutedDates.contains(today)) {
+          mutedDates.add(today);
+        }
+        await _taskRepository.updateTask(task.copyWith(
+          mutedAlarmDates: mutedDates,
+        ));
+      } else {
+        // For non-recurring tasks: clear alarmTime entirely
+        await _taskRepository.updateTask(task.copyWith(
+          alarmTime: null,
+        ));
+      }
+    } catch (_) {
+      // Task not found or update failed — ignore
+    } finally {
+      loadTasksForSelectedDate();
+    }
+  }
   
   /// Toggle task completion
   Future<void> toggleTaskCompletion(String id) async {

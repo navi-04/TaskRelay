@@ -152,7 +152,18 @@ class AlarmActivity : Activity() {
 
     private fun markAsComplete() {
         Log.d(TAG, "✅ Mark as Complete pressed — taskId: $taskId")
-        AlarmService.stopAlarm(this)
+
+        // Use the COMPLETE action so the service does NOT persist a dismissal
+        try {
+            val intent = Intent(this, AlarmService::class.java).apply {
+                action = AlarmService.ACTION_COMPLETE_FROM_NOTIFICATION
+            }
+            startService(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to send complete action: ${e.message}", e)
+            // Fallback: at least stop the alarm
+            AlarmService.stopAlarm(this)
+        }
 
         if (taskId.isNotEmpty()) {
             // ── PERSIST to SharedPreferences (survives app/process death) ──
@@ -194,6 +205,22 @@ class AlarmActivity : Activity() {
             pending.add(taskId)
             prefs.edit().putStringSet(KEY_PENDING, pending).apply()
             Log.d("AlarmActivity", "💾 Persisted pending completion: $taskId (total: ${pending.size})")
+        }
+
+        private const val DISMISSAL_PREFS_NAME = "alarm_dismissals"
+        private const val KEY_DISMISSED = "dismissed_task_ids"
+
+        /**
+         * Persist a task dismissal to SharedPreferences so Flutter can clear
+         * the alarm / mute recurring tasks on next launch.
+         */
+        @JvmStatic
+        fun persistPendingDismissal(context: Context, taskId: String) {
+            val prefs = context.getSharedPreferences(DISMISSAL_PREFS_NAME, Context.MODE_PRIVATE)
+            val pending = prefs.getStringSet(KEY_DISMISSED, mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+            pending.add(taskId)
+            prefs.edit().putStringSet(KEY_DISMISSED, pending).apply()
+            Log.d("AlarmActivity", "💾 Persisted pending dismissal: $taskId (total: ${pending.size})")
         }
     }
 

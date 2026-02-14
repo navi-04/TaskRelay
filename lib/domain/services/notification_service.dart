@@ -40,6 +40,19 @@ class NotificationService {
       return [];
     }
   }
+
+  /// Retrieve task IDs that were dismissed from the native alarm UI
+  /// while the Flutter engine was not running. The native side persists these
+  /// to SharedPreferences so Flutter can clear alarmTime / mute recurring alarms.
+  Future<List<String>> getPendingDismissals() async {
+    try {
+      final result = await platform.invokeMethod<List<dynamic>>('getPendingDismissals');
+      final ids = result?.cast<String>() ?? [];
+      return ids;
+    } catch (e) {
+      return [];
+    }
+  }
   
   /// Initialize notification service
   Future<void> initialize() async {
@@ -173,10 +186,17 @@ class NotificationService {
     await androidPlugin.createNotificationChannel(taskReminderChannel);
   }
   
+  /// Callback invoked when user taps "Dismiss" from the alarm UI.
+  /// Set this from your provider/controller to handle alarm cleanup.
+  void Function(String taskId)? onTaskDismissedFromAlarm;
+
   /// Handle notification tap
   void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap - can navigate to specific screen
-    // This can be extended with navigation logic
+    // Extract taskId from the notification payload and trigger dismissal cleanup
+    final payload = response.payload;
+    if (payload != null && payload.isNotEmpty) {
+      onTaskDismissedFromAlarm?.call(payload);
+    }
   }
   
   /// Request basic notification & exact alarm permissions (silent — no dialog).
@@ -657,6 +677,7 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: isPermanent ? DateTimeComponents.time : null,
+      payload: taskId,
     );
   }
 }

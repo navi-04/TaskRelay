@@ -246,11 +246,21 @@ class AlarmService : Service() {
             sendBroadcast(completeIntent)
             Log.d(TAG, "📤 Complete broadcast sent for taskId: $currentTaskId")
         }
-        handleStopAlarm()
+        // Stop alarm without persisting a dismissal (completion already handles cleanup)
+        handleStopAlarm(persistDismissal = false)
     }
 
-    private fun handleStopAlarm() {
+    private fun handleStopAlarm(persistDismissal: Boolean = true) {
         Log.d(TAG, "🛑 Stopping alarm")
+
+        // Persist dismissal to SharedPreferences so Flutter can clear
+        // the alarmTime / mute recurring alarms on next launch.
+        // Skip when the stop is triggered by a completion (already handled separately).
+        if (persistDismissal && currentTaskId.isNotEmpty()) {
+            AlarmActivity.persistPendingDismissal(this, currentTaskId)
+            Log.d(TAG, "💾 Persisted pending dismissal for taskId: $currentTaskId")
+        }
+
         removeOverlay()
         releaseResources()
         releaseWakeLock()
@@ -521,7 +531,7 @@ class AlarmService : Service() {
                     sendBroadcast(completeIntent)
                     Log.d(TAG, "📤 Complete broadcast sent for taskId: $currentTaskId")
                 }
-                handleStopAlarm()
+                handleStopAlarm(persistDismissal = false)
             }
         }
         card.addView(completeBtn, LinearLayout.LayoutParams(

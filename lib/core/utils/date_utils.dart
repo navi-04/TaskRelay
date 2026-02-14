@@ -82,4 +82,16 @@ class DateHelper {
   static String getShortDayName(DateTime date) {
     return DateFormat('EEE').format(date);
   }
+
+  /// Formats hour and minute to 12-hour format (e.g., "2:30 PM")
+  static String formatTime12h(int hour, int minute) {
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return '$displayHour:${minute.toString().padLeft(2, '0')} $period';
+  }
+
+  /// Formats a DateTime's time to 12-hour format (e.g., "2:30 PM")
+  static String formatDateTime12h(DateTime dateTime) {
+    return formatTime12h(dateTime.hour, dateTime.minute);
+  }
 }
