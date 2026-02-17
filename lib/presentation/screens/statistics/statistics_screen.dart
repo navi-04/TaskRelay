@@ -70,8 +70,8 @@ class StatisticsScreen extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
           ),
           child: Icon(
             icon,
@@ -144,9 +144,7 @@ class StatisticsScreen extends ConsumerWidget {
                 Text(
                   'Keep up the great work! 💪',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.grey[400] 
-                        : Colors.grey[600],
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -174,8 +172,8 @@ class StatisticsScreen extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
           ),
           child: Text(
             value,
@@ -255,10 +253,8 @@ class StatisticsScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: isToday 
                           ? AppTheme.primaryColor 
-                          : (Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[600] 
-                              : Colors.grey[400]),
-                      borderRadius: BorderRadius.circular(4),
+                          : AppTheme.getSecondaryTextColor(context),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -268,9 +264,7 @@ class StatisticsScreen extends ConsumerWidget {
                       fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                       color: isToday 
                           ? AppTheme.primaryColor 
-                          : (Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[400] 
-                              : Colors.grey[600]),
+                          : AppTheme.getSecondaryTextColor(context),
                     ),
                   ),
                 ],
@@ -326,9 +320,7 @@ class StatisticsScreen extends ConsumerWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).brightness == Brightness.dark 
-                ? Colors.grey[400] 
-                : Colors.grey[600],
+            color: AppTheme.getSecondaryTextColor(context),
           ),
         ),
       ],
@@ -432,10 +424,10 @@ class StatisticsScreen extends ConsumerWidget {
         const SizedBox(height: 6),
         LinearProgressIndicator(
           value: percentage / 100,
-          backgroundColor: color.withOpacity(0.2),
+          backgroundColor: color.withValues(alpha: 0.2),
           valueColor: AlwaysStoppedAnimation<Color>(color),
           minHeight: 6,
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(AppTheme.radiusXS),
         ),
       ],
     );
