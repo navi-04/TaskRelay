@@ -24,7 +24,19 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
   @override
   Widget build(BuildContext context) {
     final taskRepository = ref.watch(taskRepositoryProvider);
-    final allTasks = taskRepository.getAllTasks();
+    final rawTasks = taskRepository.getAllTasks();
+    final today = DateHelper.formatDate(DateHelper.getToday());
+
+    // For recurring tasks, derive isCompleted from completedDates for today
+    // (the raw Hive field is never set to true for recurring tasks)
+    final allTasks = rawTasks.map((task) {
+      if (task.isRecurring) {
+        return task.copyWith(
+          isCompleted: task.completedDates.contains(today),
+        );
+      }
+      return task;
+    }).toList();
 
     // Apply search filter
     var filteredTasks = allTasks.where((task) {

@@ -158,6 +158,10 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         isLoading: false,
         error: null,
       );
+
+      // Always refresh the DaySummary for the viewed date so that
+      // calendar / dashboard / statistics see accurate status.
+      await _updateSummaryForDate(state.selectedDate);
     } catch (e) {
       // If box not initialized yet, keep empty state
       state = state.copyWith(

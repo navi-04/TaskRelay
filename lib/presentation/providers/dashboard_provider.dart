@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/day_summary_entity.dart';
+import '../../data/models/task_entity.dart';
 import '../../data/models/estimation_mode.dart';
 import '../../core/utils/date_utils.dart';
 import 'providers.dart';
@@ -134,10 +135,14 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
     
     final today = DateHelper.formatDate(DateHelper.getToday());
     
+    final taskRepo = ref.watch(taskRepositoryProvider);
+
     // Re-read from repository to get fresh data
     final todaySummary = summaryRepo.getSummaryForDate(today);
     final streak = summaryRepo.calculateStreak();
-    final weeklyStats = summaryRepo.getWeeklyStats();
+
+    // Compute weekly stats on-the-fly so recurring tasks are included
+    final weeklyStats = _computeWeeklyStats(taskRepo, summaryRepo);
     
     // Use task state for today's minutes if viewing today
     final usedMinutes = taskState.selectedDate == today 
@@ -183,21 +188,129 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
   }
 });
 
-/// Calendar Data Provider - Watches task state for dynamic updates
+/// Build a [DaySummaryEntity] for [dateStr] by combining non-recurring tasks
+/// with recurring tasks that are active on that date.
+DaySummaryEntity _buildSummaryForDate(
+  String dateStr,
+  List<TaskEntity> dateSpecificTasks,
+  List<TaskEntity> recurringTasks,
+) {
+  // Non-recurring tasks for this date
+  final dateTasks = dateSpecificTasks.where((t) => !t.isRecurring).toList();
+
+  // Recurring tasks active on this date
+  final recurringForDate = <TaskEntity>[];
+  for (final task in recurringTasks) {
+    final startDate = task.recurringStartDate ?? task.createdDate;
+    final endDate = task.recurringEndDate;
+    if (dateStr.compareTo(startDate) < 0) continue;
+    if (endDate != null && dateStr.compareTo(endDate) > 0) continue;
+    if (task.deletedDates.contains(dateStr)) continue;
+
+    final isCompletedForDate = task.completedDates.contains(dateStr);
+    recurringForDate.add(task.copyWith(isCompleted: isCompletedForDate));
+  }
+
+  final allTasks = [...dateTasks, ...recurringForDate];
+
+  if (allTasks.isEmpty) {
+    return DaySummaryEntity.empty(dateStr);
+  }
+
+  final totalTasks = allTasks.length;
+  final completedTasks = allTasks.where((t) => t.isCompleted).length;
+  final totalMinutes = allTasks.fold(0, (sum, t) => sum + t.durationMinutes);
+  final completedMinutes =
+      allTasks.where((t) => t.isCompleted).fold(0, (sum, t) => sum + t.durationMinutes);
+  final carriedOverTasks = allTasks.where((t) => t.isCarriedOver).length;
+
+  return DaySummaryEntity(
+    date: dateStr,
+    totalTasks: totalTasks,
+    completedTasks: completedTasks,
+    totalMinutes: totalMinutes,
+    completedMinutes: completedMinutes,
+    carriedOverTasks: carriedOverTasks,
+    isFullyCompleted: completedTasks == totalTasks,
+    hasTasks: true,
+    lastUpdated: DateTime.now(),
+  );
+}
+
+/// Compute weekly stats on-the-fly so that recurring tasks are always included.
+Map<String, dynamic> _computeWeeklyStats(
+  dynamic taskRepo,
+  dynamic summaryRepo,
+) {
+  final todayDt = DateHelper.getToday();
+  final weekAgo = todayDt.subtract(const Duration(days: 7));
+  final recurringTasks = taskRepo.getRecurringTasks() as List<TaskEntity>;
+
+  int totalDays = 0;
+  int completedDays = 0;
+  int totalTasks = 0;
+  int completedTasks = 0;
+
+  for (var d = weekAgo.add(const Duration(days: 1));
+      !d.isAfter(todayDt);
+      d = d.add(const Duration(days: 1))) {
+    final dateStr = DateHelper.formatDate(d);
+    final dateSpecific =
+        (taskRepo.getTasksForDate(dateStr) as List<TaskEntity>);
+    final summary =
+        _buildSummaryForDate(dateStr, dateSpecific, recurringTasks);
+    if (summary.hasTasks) {
+      totalDays++;
+      if (summary.isFullyCompleted) completedDays++;
+      totalTasks += summary.totalTasks;
+      completedTasks += summary.completedTasks;
+    }
+  }
+
+  final missedTasks = totalTasks - completedTasks;
+  final completionPercentage =
+      totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0.0;
+  final averageDailyLoad = totalDays > 0 ? totalTasks / totalDays : 0.0;
+
+  return {
+    'totalDays': totalDays,
+    'completedDays': completedDays,
+    'totalTasks': totalTasks,
+    'completedTasks': completedTasks,
+    'missedTasks': missedTasks,
+    'completionPercentage': completionPercentage,
+    'averageDailyLoad': averageDailyLoad,
+  };
+}
+
+/// Calendar Data Provider - Computes summaries on-the-fly so recurring tasks
+/// are always reflected correctly (completed / partial / missed).
 final calendarDataProvider = Provider.family.autoDispose<Map<String, DaySummaryEntity>, DateTime>((ref, date) {
   try {
-    final summaryRepo = ref.watch(daySummaryRepositoryProvider);
-    
+    final taskRepo = ref.watch(taskRepositoryProvider);
+
     // Watch task state to trigger rebuilds when tasks change
     ref.watch(taskStateProvider);
-    
+
     final startOfMonth = DateHelper.getStartOfMonth(date);
     final endOfMonth = DateHelper.getEndOfMonth(date);
-    
-    final startDate = DateHelper.formatDate(startOfMonth);
-    final endDate = DateHelper.formatDate(endOfMonth);
-    
-    return summaryRepo.getSummariesInRange(startDate, endDate);
+
+    final recurringTasks = taskRepo.getRecurringTasks();
+    final result = <String, DaySummaryEntity>{};
+
+    for (var day = startOfMonth;
+        !day.isAfter(endOfMonth);
+        day = day.add(const Duration(days: 1))) {
+      final dateStr = DateHelper.formatDate(day);
+      final dateSpecific = taskRepo.getTasksForDate(dateStr);
+      final summary =
+          _buildSummaryForDate(dateStr, dateSpecific, recurringTasks);
+      if (summary.hasTasks) {
+        result[dateStr] = summary;
+      }
+    }
+
+    return result;
   } catch (e) {
     // Return empty map if box not initialized yet
     return {};

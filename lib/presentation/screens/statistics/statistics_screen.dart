@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/providers.dart';
+import '../../../data/models/task_entity.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
@@ -192,19 +193,36 @@ class StatisticsScreen extends ConsumerWidget {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final today = DateTime.now().weekday - 1;
 
-    // Compute per-day completion rates from real data
+    // Compute per-day completion rates from real data (including recurring tasks)
     final now = DateTime.now();
     // Find the Monday of this week
     final monday = now.subtract(Duration(days: now.weekday - 1));
     final List<double> dailyRates = [];
     try {
-      final summaryRepo = ref.read(daySummaryRepositoryProvider);
+      final taskRepo = ref.read(taskRepositoryProvider);
+      final recurringTasks = taskRepo.getRecurringTasks();
       for (int i = 0; i < 7; i++) {
         final day = monday.add(Duration(days: i));
         final dateStr = DateHelper.formatDate(day);
-        final summary = summaryRepo.getSummaryForDate(dateStr);
-        if (summary != null && summary.totalTasks > 0) {
-          dailyRates.add(summary.completedTasks / summary.totalTasks);
+        // Non-recurring tasks for this date
+        final dateTasks = taskRepo.getTasksForDate(dateStr)
+            .where((t) => !t.isPermanent)
+            .toList();
+        // Recurring tasks active on this date
+        final recurringForDate = <TaskEntity>[];
+        for (final rtask in recurringTasks) {
+          final startDate = rtask.recurringStartDate ?? rtask.createdDate;
+          final endDate = rtask.recurringEndDate;
+          if (dateStr.compareTo(startDate) < 0) continue;
+          if (endDate != null && dateStr.compareTo(endDate) > 0) continue;
+          if (rtask.deletedDates.contains(dateStr)) continue;
+          final isCompletedForDate = rtask.completedDates.contains(dateStr);
+          recurringForDate.add(rtask.copyWith(isCompleted: isCompletedForDate));
+        }
+        final allTasks = [...dateTasks, ...recurringForDate];
+        if (allTasks.isNotEmpty) {
+          final completed = allTasks.where((t) => t.isCompleted).length;
+          dailyRates.add(completed / allTasks.length);
         } else {
           dailyRates.add(0.0);
         }
