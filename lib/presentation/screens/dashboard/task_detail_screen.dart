@@ -542,6 +542,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             
                             if (task.isRecurring) {
                               final choice = await _showRecurringAlarmDialog(context);
+                              if (!mounted) return;
                               if (choice == null) return; // cancelled
                               
                               final notifier = ref.read(taskStateProvider.notifier);
@@ -727,8 +728,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     var effectiveAlarmTime = _alarmTime;
     if (_alarmTime != null && _reminderTypeIndex == 0) {
       final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
+      if (!mounted) return;
       if (!hasOverlay) {
         await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
+        if (!mounted) return;
         final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
         if (!nowHasOverlay) {
           effectiveAlarmTime = null;
@@ -736,6 +739,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       }
     }
 
+    if (!mounted) return;
     final customTypes = ref.read(customTypesProvider);
     ref.read(taskStateProvider.notifier).updateTask(task.copyWith(
       title: _titleController.text.trim(),

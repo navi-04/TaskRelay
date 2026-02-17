@@ -190,25 +190,33 @@ final dashboardProvider = Provider<DashboardStats>((ref) {
 
 /// Build a [DaySummaryEntity] for [dateStr] by combining non-recurring tasks
 /// with recurring tasks that are active on that date.
+/// Future dates are excluded from recurring-task counting so they never
+/// appear as "missed" before the day has actually arrived.
 DaySummaryEntity _buildSummaryForDate(
   String dateStr,
   List<TaskEntity> dateSpecificTasks,
   List<TaskEntity> recurringTasks,
 ) {
+  // Never include recurring tasks for future dates
+  final todayStr = DateHelper.formatDate(DateHelper.getToday());
+  final isFutureDate = dateStr.compareTo(todayStr) > 0;
+
   // Non-recurring tasks for this date
   final dateTasks = dateSpecificTasks.where((t) => !t.isRecurring).toList();
 
-  // Recurring tasks active on this date
+  // Recurring tasks active on this date (skip for future dates)
   final recurringForDate = <TaskEntity>[];
-  for (final task in recurringTasks) {
-    final startDate = task.recurringStartDate ?? task.createdDate;
-    final endDate = task.recurringEndDate;
-    if (dateStr.compareTo(startDate) < 0) continue;
-    if (endDate != null && dateStr.compareTo(endDate) > 0) continue;
-    if (task.deletedDates.contains(dateStr)) continue;
+  if (!isFutureDate) {
+    for (final task in recurringTasks) {
+      final startDate = task.recurringStartDate ?? task.createdDate;
+      final endDate = task.recurringEndDate;
+      if (dateStr.compareTo(startDate) < 0) continue;
+      if (endDate != null && dateStr.compareTo(endDate) > 0) continue;
+      if (task.deletedDates.contains(dateStr)) continue;
 
-    final isCompletedForDate = task.completedDates.contains(dateStr);
-    recurringForDate.add(task.copyWith(isCompleted: isCompletedForDate));
+      final isCompletedForDate = task.completedDates.contains(dateStr);
+      recurringForDate.add(task.copyWith(isCompleted: isCompletedForDate));
+    }
   }
 
   final allTasks = [...dateTasks, ...recurringForDate];
@@ -294,12 +302,15 @@ final calendarDataProvider = Provider.family.autoDispose<Map<String, DaySummaryE
 
     final startOfMonth = DateHelper.getStartOfMonth(date);
     final endOfMonth = DateHelper.getEndOfMonth(date);
+    // Never compute summaries for future dates — they haven't happened yet
+    final today = DateHelper.getToday();
+    final lastDay = endOfMonth.isAfter(today) ? today : endOfMonth;
 
     final recurringTasks = taskRepo.getRecurringTasks();
     final result = <String, DaySummaryEntity>{};
 
     for (var day = startOfMonth;
-        !day.isAfter(endOfMonth);
+        !day.isAfter(lastDay);
         day = day.add(const Duration(days: 1))) {
       final dateStr = DateHelper.formatDate(day);
       final dateSpecific = taskRepo.getTasksForDate(dateStr);

@@ -139,8 +139,8 @@ class TaskCarryOverService {
       final carriedTasks = await _taskRepository.carryOverTasksToDate(nextDateString);
       
       if (carriedTasks.isNotEmpty) {
-        totalCarriedCount = carriedTasks.length;
-        totalMinutes = carriedTasks.fold(0, (sum, task) => sum + task.durationMinutes);
+        totalCarriedCount += carriedTasks.length;
+        totalMinutes += carriedTasks.fold(0, (sum, task) => sum + task.durationMinutes);
         processedDates.add(nextDateString);
         
         // Update summary for this date

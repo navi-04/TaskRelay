@@ -80,9 +80,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             const SizedBox(width: 12),
             Text(
               displayDate,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.normal,
               ),
             ),
@@ -165,9 +165,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               // Tab bar
               TabBar(
                 controller: _tabController,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                indicatorColor: Colors.white,
+                labelColor: Theme.of(context).colorScheme.onSurface,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                indicatorColor: Theme.of(context).colorScheme.primary,
                 tabs: [
                   Tab(text: 'All (${taskState.tasks.length})'),
                   Tab(text: 'Active (${taskState.tasks.length - taskState.completedTasks.length})'),
@@ -1344,7 +1344,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     _showTaskFormBottomSheet(context, null);
   }
   
-  void _showTaskFormBottomSheet(BuildContext context, TaskEntity? task) {
+  Future<void> _showTaskFormBottomSheet(BuildContext context, TaskEntity? task) async {
     final isEditing = task != null;
     final titleController = TextEditingController(text: task?.title ?? '');
     final descriptionController = TextEditingController(text: task?.description ?? '');
@@ -1371,7 +1371,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     DateTime? alarmTime = task?.alarmTime;
     int reminderTypeIndex = task?.reminderTypeIndex ?? 0;
     
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1772,6 +1772,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   onPressed: () async {
                                     if (isEditing && task.isRecurring) {
                                       final choice = await _showRecurringAlarmDialog(context);
+                                      if (!context.mounted) return;
                                       if (choice == null) return; // cancelled
                                       
                                       final notifier = ref.read(taskStateProvider.notifier);
@@ -1972,8 +1973,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                 var effectiveAlarmTime = alarmTime;
                                 if (alarmTime != null && reminderTypeIndex == 0) {
                                   final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
+                                  if (!context.mounted) return;
                                   if (!hasOverlay) {
                                     await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
+                                    if (!context.mounted) return;
                                     final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
                                     if (!nowHasOverlay) {
                                       effectiveAlarmTime = null;
@@ -1981,6 +1984,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   }
                                 }
                                 
+                                if (!context.mounted) return;
                                 final customTypes = ref.read(customTypesProvider);
                                 if (isEditing) {
                                   notifier.updateTask(task.copyWith(
@@ -2068,6 +2072,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         ),
       ),
     );
+    titleController.dispose();
+    descriptionController.dispose();
+    notesController.dispose();
   }
 
   /// Show dialog asking whether to delete alarm for today only or all upcoming days

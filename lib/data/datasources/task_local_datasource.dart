@@ -39,10 +39,11 @@ class TaskLocalDataSource {
   
   /// Get task by ID
   TaskEntity? getTaskById(String id) {
-    return _taskBox.values.firstWhere(
-      (task) => task.id == id,
-      orElse: () => throw Exception('Task not found'),
-    );
+    try {
+      return _taskBox.values.firstWhere((task) => task.id == id);
+    } catch (_) {
+      return null;
+    }
   }
   
   /// Get tasks in date range
@@ -55,10 +56,12 @@ class TaskLocalDataSource {
   }
   
   /// Get all incomplete tasks before a date
+  /// Excludes recurring tasks — they are date-independent and should never be carried over.
   List<TaskEntity> getIncompleteTasksBeforeDate(String date) {
     return _taskBox.values
         .where((task) => 
             !task.isCompleted && 
+            !task.isPermanent &&
             task.currentDate.compareTo(date) < 0)
         .toList();
   }

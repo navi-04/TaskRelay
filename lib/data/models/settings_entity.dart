@@ -6,6 +6,12 @@ import 'estimation_mode.dart';
 
 part 'settings_entity.g.dart';
 
+/// Sentinel used to distinguish "not provided" from an explicit `null`.
+class _Unset {
+  const _Unset();
+}
+const _unset = _Unset();
+
 /// Settings Entity - Stores user preferences
 /// 
 /// This entity manages:
@@ -143,7 +149,7 @@ class SettingsEntity extends Equatable {
     TaskType? defaultTaskType,
     TaskPriority? defaultPriority,
     String? username,
-    String? profilePhoto,
+    Object? profilePhoto = _unset,
     int? estimationModeIndex,
     int? dailyWeightLimit,
     int? dailyCountLimit,
@@ -159,7 +165,7 @@ class SettingsEntity extends Equatable {
       defaultTaskType: defaultTaskType ?? this.defaultTaskType,
       defaultPriority: defaultPriority ?? this.defaultPriority,
       username: username ?? this.username,
-      profilePhoto: profilePhoto ?? this.profilePhoto,
+      profilePhoto: profilePhoto is _Unset ? this.profilePhoto : profilePhoto as String?,
       estimationModeIndex: estimationModeIndex ?? this.estimationModeIndex,
       dailyWeightLimit: dailyWeightLimit ?? this.dailyWeightLimit,
       dailyCountLimit: dailyCountLimit ?? this.dailyCountLimit,

@@ -60,13 +60,29 @@ class NotificationService {
     
     // Initialize timezone
     tz_data.initializeTimeZones();
-    // Detect the device's local timezone instead of hardcoding
+    // Detect the device's local timezone.
+    // DateTime.now().timeZoneName returns abbreviations (e.g. "IST") which the
+    // timezone package usually does not recognize. Instead, find a location
+    // whose current UTC offset matches the device offset.
     try {
       final local = tz.getLocation(DateTime.now().timeZoneName);
       tz.setLocalLocation(local);
     } catch (_) {
-      // If device timezone name isn't found in the database, use UTC as fallback
-      tz.setLocalLocation(tz.UTC);
+      // Abbreviation look-up failed — fall back to offset-based matching.
+      try {
+        final deviceOffset = DateTime.now().timeZoneOffset;
+        final locations = tz.timeZoneDatabase.locations;
+        tz.Location? match;
+        for (final loc in locations.values) {
+          if (loc.currentTimeZone.offset == deviceOffset.inMilliseconds) {
+            match = loc;
+            break;
+          }
+        }
+        tz.setLocalLocation(match ?? tz.UTC);
+      } catch (_) {
+        tz.setLocalLocation(tz.UTC);
+      }
     }
     
     // Android initialization settings
@@ -561,7 +577,7 @@ class NotificationService {
     await cancelTaskAlarm(taskId);
     
     // Use task ID hash as notification ID (offset by 1000 to avoid conflicts with system notifications)
-    final notificationId = 1000 + taskId.hashCode.abs() % 100000;
+    final notificationId = _notificationIdForTask(taskId);
     
     final now = DateTime.now();
     
@@ -577,11 +593,15 @@ class NotificationService {
       0,
     );
     
-    // If time has already passed, schedule for tomorrow
-    // Otherwise, schedule for today
-    if (scheduledDate.isBefore(now)) {
+    // Only push to the next day when the task is for today and the
+    // alarm time has already passed. For future-dated tasks the scheduled
+    // time is always correct even if the hour is earlier than "now".
+    if (scheduledDate.isBefore(now) && _isSameDay(baseDate, now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
+
+    // If the computed time is still in the past (stale task), bail out.
+    if (scheduledDate.isBefore(now)) return;
 
     try {
       // Use native Android alarm with full-screen intent
@@ -601,7 +621,7 @@ class NotificationService {
   /// 
   /// Cancels the scheduled full-screen alarm for a specific task
   Future<void> cancelTaskAlarm(String taskId) async {
-    final notificationId = 1000 + taskId.hashCode.abs() % 100000;
+    final notificationId = _notificationIdForTask(taskId);
     
     try {
       await platform.invokeMethod('cancelFullScreenAlarm', {
@@ -626,7 +646,7 @@ class NotificationService {
     // Cancel existing notification/alarm for this task first
     await cancelTaskAlarm(taskId);
 
-    final notificationId = 1000 + taskId.hashCode.abs() % 100000;
+    final notificationId = _notificationIdForTask(taskId);
 
     final now = DateTime.now();
     // Use the task's date if provided, otherwise fall back to today
@@ -640,9 +660,15 @@ class NotificationService {
       0,
       0,
     );
-    if (scheduledDate.isBefore(now)) {
+    // Only push to the next day when the task is for today and the
+    // alarm time has already passed. For future-dated tasks the scheduled
+    // time is always correct.
+    if (scheduledDate.isBefore(now) && _isSameDay(baseDate, now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
+
+    // If the computed time is still in the past (stale task), bail out.
+    if (scheduledDate.isBefore(now)) return;
 
     final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
 
@@ -679,5 +705,19 @@ class NotificationService {
       matchDateTimeComponents: isPermanent ? DateTimeComponents.time : null,
       payload: taskId,
     );
+  }
+
+  /// Helper: returns true when [a] and [b] fall on the same calendar day.
+  static bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// Deterministic notification ID derived from a task ID string.
+  /// Offset by 1000 to avoid conflicts with system notification IDs (0-3).
+  /// Uses a wider modulus (1 000 000) to reduce hash collisions.
+  static int _notificationIdForTask(String taskId) {
+    final hash = taskId.hashCode;
+    // Guard against int.minValue whose .abs() is still negative in some runtimes.
+    final positive = hash == -2147483648 ? 2147483647 : hash.abs();
+    return 1000 + positive % 1000000;
   }
 }

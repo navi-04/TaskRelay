@@ -772,9 +772,11 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
       var effectiveAlarmTime = alarmTime;
       if (alarmTime != null && reminderTypeIndex == 0) {
         final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
+        if (!mounted) return;
         if (!hasOverlay) {
           // Show dialog explaining why permission is needed
           await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
+          if (!mounted) return;
           // Re-check after user returns from settings
           final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
           if (!nowHasOverlay) {
@@ -806,6 +808,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         reminderTypeIndex: reminderTypeIndex,
       );
       
+      if (!mounted) return;
       Navigator.pop(context);
       // Warn the user if alarm was removed due to missing permission
       if (alarmTime != null && effectiveAlarmTime == null) {

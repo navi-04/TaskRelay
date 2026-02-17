@@ -427,11 +427,11 @@ class _TaskItem extends ConsumerWidget {
     );
   }
 
-  void _showEditTaskBottomSheet(
+  Future<void> _showEditTaskBottomSheet(
     BuildContext context,
     WidgetRef ref,
     TaskEntity task,
-  ) {
+  ) async {
     final titleController = TextEditingController(text: task.title);
     final descriptionController = TextEditingController(
       text: task.description ?? '',
@@ -461,7 +461,7 @@ class _TaskItem extends ConsumerWidget {
     bool isRecurring = task.isRecurring;
     final estimationMode = ref.read(settingsProvider).estimationMode;
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -873,5 +873,8 @@ class _TaskItem extends ConsumerWidget {
         ),
       ),
     );
+    titleController.dispose();
+    descriptionController.dispose();
+    notesController.dispose();
   }
 }

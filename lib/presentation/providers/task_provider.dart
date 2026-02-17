@@ -99,7 +99,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         ));
   
   /// Load tasks for currently selected date
-  void loadTasksForSelectedDate({bool showLoading = false}) async {
+  Future<void> loadTasksForSelectedDate({bool showLoading = false}) async {
     if (showLoading) {
       state = state.copyWith(isLoading: true);
     }
@@ -159,9 +159,13 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         error: null,
       );
 
-      // Always refresh the DaySummary for the viewed date so that
-      // calendar / dashboard / statistics see accurate status.
-      await _updateSummaryForDate(state.selectedDate);
+      // Refresh the DaySummary only for today or past dates.
+      // Future dates haven't happened yet — don't persist a summary
+      // that would make them show as "missed" on the calendar.
+      final todayDate = DateHelper.formatDate(DateHelper.getToday());
+      if (state.selectedDate.compareTo(todayDate) <= 0) {
+        await _updateSummaryForDate(state.selectedDate);
+      }
     } catch (e) {
       // If box not initialized yet, keep empty state
       state = state.copyWith(
@@ -644,45 +648,27 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           } catch (_) {}
         }
       } else {
-        // --- Non-recurring task: use isCompleted as before ---
-        await _taskRepository.toggleTaskCompletion(id);
-
-        try {
-          if (!currentlyCompleted && task.alarmTime != null) {
-            // Marking DONE → cancel alarm and clear alarmTime
-            await _notificationService.cancelTaskAlarm(id);
-            await _taskRepository.updateTask(task.copyWith(
-              isCompleted: true,
-              completedAt: DateTime.now(),
-              alarmTime: null,
-            ));
-          } else if (currentlyCompleted && task.alarmTime != null) {
-            // Marking INCOMPLETE → re-schedule alarm
-            final hasPermissions = await _notificationService.areNotificationsEnabled();
-            if (!hasPermissions) {
-              await _notificationService.requestPermissions();
+        // --- Non-recurring task: single write to avoid double-write race ---
+        if (!currentlyCompleted) {
+          // Marking DONE → cancel alarm, clear alarmTime, set completed
+          try {
+            if (task.alarmTime != null) {
+              await _notificationService.cancelTaskAlarm(id);
             }
-            final taskDate = DateHelper.parseDate(task.currentDate);
-            if (task.reminderType == ReminderType.fullAlarm) {
-              await _notificationService.scheduleTaskAlarm(
-                taskId: task.id,
-                taskTitle: task.title,
-                alarmTime: task.alarmTime!,
-                isPermanent: task.isPermanent,
-                taskDate: taskDate,
-              );
-            } else {
-              await _notificationService.scheduleTaskNotification(
-                taskId: task.id,
-                taskTitle: task.title,
-                alarmTime: task.alarmTime!,
-                isPermanent: task.isPermanent,
-                taskDate: taskDate,
-              );
-            }
-          }
-        } catch (_) {
-          // Alarm update failed — continue
+          } catch (_) {}
+          await _taskRepository.updateTask(task.copyWith(
+            isCompleted: true,
+            completedAt: DateTime.now(),
+            alarmTime: null,
+          ));
+        } else {
+          // Marking INCOMPLETE → restore task, reschedule alarm if it had one
+          // Note: alarmTime was cleared when marked complete, so we cannot
+          // restore it. We only flip isCompleted back.
+          await _taskRepository.updateTask(task.copyWith(
+            isCompleted: false,
+            completedAt: null,
+          ));
         }
       }
       

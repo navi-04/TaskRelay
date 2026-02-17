@@ -22,6 +22,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int? _selectedHours;
   int? _selectedMinutes;
   bool _initialized = false;
+  TextEditingController? _dailyLimitController;
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   void dispose() {
+    _dailyLimitController?.dispose();
     super.dispose();
   }
 
@@ -394,7 +396,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required int max,
     required void Function(int) onSave,
   }) {
-    final controller = TextEditingController(text: value.toString());
+    _dailyLimitController ??= TextEditingController(text: value.toString());
+    final controller = _dailyLimitController!;
     return Row(
       children: [
         Expanded(
@@ -891,6 +894,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               final deleted = await ref.read(customTypesProvider.notifier).deleteTaskType(type.id);
+              if (!context.mounted) return;
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -959,7 +963,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: color,
                         shape: BoxShape.circle,
                         border: isSelected
-                          ? Border.all(color: Colors.black, width: 3)
+                          ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3)
                           : null,
                       ),
                       child: isSelected
@@ -1050,7 +1054,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: color,
                         shape: BoxShape.circle,
                         border: isSelected
-                          ? Border.all(color: Colors.black, width: 3)
+                          ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3)
                           : null,
                       ),
                       child: isSelected
@@ -1108,6 +1112,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               final deleted = await ref.read(customTypesProvider.notifier).deletePriority(priority.id);
+              if (!context.mounted) return;
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -1615,6 +1620,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               
               ref.invalidate(dashboardProvider);
               
+              if (!dialogContext.mounted) return;
               Navigator.pop(dialogContext);
               
               scaffoldMessenger.showSnackBar(
@@ -1688,6 +1694,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               await ref.read(taskStateProvider.notifier).clearAllTasks();
               ref.invalidate(dashboardProvider);
               
+              if (!dialogContext.mounted) return;
               Navigator.pop(dialogContext);
               
               scaffoldMessenger.showSnackBar(
@@ -1817,6 +1824,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ref.invalidate(customTypesProvider);
               ref.invalidate(settingsProvider);
               
+              if (!dialogContext.mounted) return;
               Navigator.pop(dialogContext);
               
               scaffoldMessenger.showSnackBar(
