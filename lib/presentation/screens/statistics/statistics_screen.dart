@@ -268,7 +268,7 @@ class StatisticsScreen extends ConsumerWidget {
               _buildWeeklyStatItem(
                 context,
                 'Completed',
-                '${stats['totalCompleted'] ?? 0}',
+                '${stats['completedTasks'] ?? 0}',
                 AppTheme.success,
               ),
               _buildWeeklyStatItem(

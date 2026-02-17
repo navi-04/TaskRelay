@@ -31,7 +31,8 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
         final matchesTitle = task.title.toLowerCase().contains(query);
-        final matchesDescription = task.description?.toLowerCase().contains(query) ?? false;
+        final matchesDescription =
+            task.description?.toLowerCase().contains(query) ?? false;
         return matchesTitle || matchesDescription;
       }
       return true;
@@ -50,7 +51,11 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
 
     // Sort types that have tasks
     final sortedTypes = tasksByType.keys.toList()
-      ..sort((a, b) => customTypes.taskTypeLabelById(a).compareTo(customTypes.taskTypeLabelById(b)));
+      ..sort(
+        (a, b) => customTypes
+            .taskTypeLabelById(a)
+            .compareTo(customTypes.taskTypeLabelById(b)),
+      );
 
     // Initialize expanded state for new types
     for (final typeId in sortedTypes) {
@@ -158,7 +163,8 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
                         isExpanded: _expandedSections[typeId] ?? true,
                         onToggleExpand: () {
                           setState(() {
-                            _expandedSections[typeId] = !(_expandedSections[typeId] ?? true);
+                            _expandedSections[typeId] =
+                                !(_expandedSections[typeId] ?? true);
                           });
                         },
                       );
@@ -210,12 +216,15 @@ class _TaskTypeSection extends ConsumerWidget {
                     child: Text(
                       customTypes.taskTypeLabelById(taskTypeId),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -260,10 +269,7 @@ class _TaskItem extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 0.5,
-          ),
+          bottom: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
         ),
       ),
       child: ListTile(
@@ -290,10 +296,7 @@ class _TaskItem extends ConsumerWidget {
                   task.description!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ),
             Padding(
@@ -311,22 +314,26 @@ class _TaskItem extends ConsumerWidget {
                         color: Colors.grey[600],
                       ),
                       const SizedBox(width: 4),
-                      Builder(builder: (context) {
-                        final mode = ref.watch(settingsProvider).estimationMode;
-                        String label;
-                        if (mode == EstimationMode.timeBased) {
-                          label = '${task.durationMinutes} min';
-                        } else {
-                          label = '1 task';
-                        }
-                        return Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        );
-                      }),
+                      Builder(
+                        builder: (context) {
+                          final mode = ref
+                              .watch(settingsProvider)
+                              .estimationMode;
+                          String label;
+                          if (mode == EstimationMode.timeBased) {
+                            label = '${task.durationMinutes} min';
+                          } else {
+                            label = '1 task';
+                          }
+                          return Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   Row(
@@ -340,16 +347,16 @@ class _TaskItem extends ConsumerWidget {
                       const SizedBox(width: 4),
                       Text(
                         displayDate,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                   if (task.isCarriedOver)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(4),
@@ -370,69 +377,78 @@ class _TaskItem extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.create,
-                    size: 14,
-                    color: Colors.grey[600],
-                  ),
+                  Icon(Icons.create, size: 14, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
                     'Created on $displayCreatedDate',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ),
             ),
           ],
         ),
-        trailing: Builder(builder: (context) {
-          final customTypes = ref.watch(customTypesProvider);
-          final pColor = customTypes.priorityColorById(task.effectivePriorityId);
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: pColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              customTypes.priorityLabelById(task.effectivePriorityId),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: pColor,
+        trailing: Builder(
+          builder: (context) {
+            final customTypes = ref.watch(customTypesProvider);
+            final pColor = customTypes.priorityColorById(
+              task.effectivePriorityId,
+            );
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: pColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
               ),
-            ),
-          );
-        }),
+              child: Text(
+                customTypes.priorityLabelById(task.effectivePriorityId),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: pColor,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  void _showEditTaskBottomSheet(BuildContext context, WidgetRef ref, TaskEntity task) {
+  void _showEditTaskBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    TaskEntity task,
+  ) {
     final titleController = TextEditingController(text: task.title);
-    final descriptionController = TextEditingController(text: task.description ?? '');
+    final descriptionController = TextEditingController(
+      text: task.description ?? '',
+    );
     final notesController = TextEditingController(text: task.notes ?? '');
     final formKey = GlobalKey<FormState>();
-    
+
     // Initialize hours and minutes from existing task duration
     int selectedHours = task.durationMinutes ~/ 60;
     int selectedMinutes = task.durationMinutes % 60;
-    
+
     final customTypes = ref.read(customTypesProvider);
-    final defaultTypeId = customTypes.taskTypes.isNotEmpty ? customTypes.taskTypes.first.id : 'task';
-    final defaultPriorityId = customTypes.priorities.isNotEmpty ? customTypes.priorities.first.id : 'medium';
-    String selectedTypeId = customTypes.findTaskType(task.effectiveTypeId) != null
+    final defaultTypeId = customTypes.taskTypes.isNotEmpty
+        ? customTypes.taskTypes.first.id
+        : 'task';
+    final defaultPriorityId = customTypes.priorities.isNotEmpty
+        ? customTypes.priorities.first.id
+        : 'medium';
+    String selectedTypeId =
+        customTypes.findTaskType(task.effectiveTypeId) != null
         ? task.effectiveTypeId
         : defaultTypeId;
-    String selectedPriorityId = customTypes.findPriority(task.effectivePriorityId) != null
+    String selectedPriorityId =
+        customTypes.findPriority(task.effectivePriorityId) != null
         ? task.effectivePriorityId
         : defaultPriorityId;
     bool isRecurring = task.isRecurring;
     final estimationMode = ref.read(settingsProvider).estimationMode;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -462,15 +478,15 @@ class _TaskItem extends ConsumerWidget {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[600] 
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[600]
                               : Colors.grey[300],
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Title
                     Text(
                       'Edit Task',
@@ -479,7 +495,7 @@ class _TaskItem extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Task title
                     TextFormField(
                       controller: titleController,
@@ -495,7 +511,7 @@ class _TaskItem extends ConsumerWidget {
                       autofocus: true,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Description
                     TextFormField(
                       controller: descriptionController,
@@ -506,7 +522,7 @@ class _TaskItem extends ConsumerWidget {
                       maxLines: 2,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Task Type and Priority row
                     Row(
                       children: [
@@ -515,12 +531,20 @@ class _TaskItem extends ConsumerWidget {
                             value: selectedTypeId,
                             decoration: const InputDecoration(
                               labelText: 'Type',
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
-                            items: ref.read(customTypesProvider).taskTypes.map((ct) {
+                            items: ref.read(customTypesProvider).taskTypes.map((
+                              ct,
+                            ) {
                               return DropdownMenuItem(
                                 value: ct.id,
-                                child: Text(ct.label, style: const TextStyle(fontSize: 14)),
+                                child: Text(
+                                  ct.label,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -536,14 +560,22 @@ class _TaskItem extends ConsumerWidget {
                             value: selectedPriorityId,
                             decoration: const InputDecoration(
                               labelText: 'Priority',
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
-                            items: ref.read(customTypesProvider).priorities.map((cp) {
-                              return DropdownMenuItem(
-                                value: cp.id,
-                                child: Text(cp.label, style: const TextStyle(fontSize: 14)),
-                              );
-                            }).toList(),
+                            items: ref.read(customTypesProvider).priorities.map(
+                              (cp) {
+                                return DropdownMenuItem(
+                                  value: cp.id,
+                                  child: Text(
+                                    cp.label,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              },
+                            ).toList(),
                             onChanged: (value) {
                               setModalState(() {
                                 selectedPriorityId = value!;
@@ -554,7 +586,7 @@ class _TaskItem extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Estimation fields (mode-aware)
                     if (estimationMode == EstimationMode.timeBased) ...[
                       Text(
@@ -562,8 +594,8 @@ class _TaskItem extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[300] 
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[300]
                               : Colors.grey[700],
                         ),
                       ),
@@ -576,12 +608,20 @@ class _TaskItem extends ConsumerWidget {
                               decoration: const InputDecoration(
                                 labelText: 'Hours',
                                 prefixIcon: Icon(Icons.schedule),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
-                              items: List.generate(25, (index) => index).map((hour) {
+                              items: List.generate(25, (index) => index).map((
+                                hour,
+                              ) {
                                 return DropdownMenuItem(
                                   value: hour,
-                                  child: Text('$hour h', style: const TextStyle(fontSize: 14)),
+                                  child: Text(
+                                    '$hour h',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -598,21 +638,42 @@ class _TaskItem extends ConsumerWidget {
                               decoration: const InputDecoration(
                                 labelText: 'Minutes',
                                 prefixIcon: Icon(Icons.timer),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
-                              items: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) {
-                                return DropdownMenuItem(
-                                  value: minute,
-                                  child: Text('$minute m', style: const TextStyle(fontSize: 14)),
-                                );
-                              }).toList(),
+                              items:
+                                  [
+                                    0,
+                                    5,
+                                    10,
+                                    15,
+                                    20,
+                                    25,
+                                    30,
+                                    35,
+                                    40,
+                                    45,
+                                    50,
+                                    55,
+                                  ].map((minute) {
+                                    return DropdownMenuItem(
+                                      value: minute,
+                                      child: Text(
+                                        '$minute m',
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    );
+                                  }).toList(),
                               onChanged: (value) {
                                 setModalState(() {
                                   selectedMinutes = value!;
                                 });
                               },
                               validator: (value) {
-                                if (selectedHours == 0 && (value == null || value == 0)) {
+                                if (selectedHours == 0 &&
+                                    (value == null || value == 0)) {
                                   return 'Duration required';
                                 }
                                 return null;
@@ -623,7 +684,7 @@ class _TaskItem extends ConsumerWidget {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    
+
                     // Notes
                     TextFormField(
                       controller: notesController,
@@ -634,18 +695,18 @@ class _TaskItem extends ConsumerWidget {
                       maxLines: 2,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Permanent task toggle
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.blue.withOpacity(0.1) 
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.blue.withOpacity(0.1)
                             : Colors.blue.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.blue.withOpacity(0.3) 
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.blue.withOpacity(0.3)
                               : Colors.blue.withOpacity(0.2),
                         ),
                       ),
@@ -663,18 +724,20 @@ class _TaskItem extends ConsumerWidget {
                               children: [
                                 Text(
                                   'Permanent Task',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   'Shows up every day until deleted',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                        ? Colors.grey[400] 
-                                        : Colors.grey[600],
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600],
+                                      ),
                                 ),
                               ],
                             ),
@@ -691,7 +754,7 @@ class _TaskItem extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Action buttons
                     Row(
                       children: [
@@ -708,13 +771,17 @@ class _TaskItem extends ConsumerWidget {
                             onPressed: () {
                               if (formKey.currentState!.validate()) {
                                 int durationMinutes;
-                                
-                                if (estimationMode == EstimationMode.timeBased) {
-                                  durationMinutes = (selectedHours * 60) + selectedMinutes;
+
+                                if (estimationMode ==
+                                    EstimationMode.timeBased) {
+                                  durationMinutes =
+                                      (selectedHours * 60) + selectedMinutes;
                                   if (durationMinutes < 5) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Duration must be at least 5 minutes'),
+                                        content: Text(
+                                          'Duration must be at least 5 minutes',
+                                        ),
                                         backgroundColor: AppTheme.warning,
                                       ),
                                     );
@@ -723,34 +790,50 @@ class _TaskItem extends ConsumerWidget {
                                   if (durationMinutes > 24 * 60) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Duration cannot exceed 24 hours'),
+                                        content: Text(
+                                          'Duration cannot exceed 24 hours',
+                                        ),
                                         backgroundColor: AppTheme.warning,
                                       ),
                                     );
                                     return;
                                   }
                                 } else {
-                                  durationMinutes = task.durationMinutes; // keep existing
+                                  durationMinutes =
+                                      task.durationMinutes; // keep existing
                                 }
-                                
-                                final customTypes = ref.read(customTypesProvider);
-                                final notifier = ref.read(taskStateProvider.notifier);
-                                notifier.updateTask(task.copyWith(
-                                  title: titleController.text.trim(),
-                                  description: descriptionController.text.trim().isEmpty 
-                                      ? null 
-                                      : descriptionController.text.trim(),
-                                  durationMinutes: durationMinutes,
-                                  taskType: customTypes.resolveTaskTypeEnum(selectedTypeId),
-                                  priority: customTypes.resolvePriorityEnum(selectedPriorityId),
-                                  taskTypeId: selectedTypeId,
-                                  priorityId: selectedPriorityId,
-                                  notes: notesController.text.trim().isEmpty
-                                      ? null
-                                      : notesController.text.trim(),
-                                  isRecurring: isRecurring,
-                                ));
-                                
+
+                                final customTypes = ref.read(
+                                  customTypesProvider,
+                                );
+                                final notifier = ref.read(
+                                  taskStateProvider.notifier,
+                                );
+                                notifier.updateTask(
+                                  task.copyWith(
+                                    title: titleController.text.trim(),
+                                    description:
+                                        descriptionController.text
+                                            .trim()
+                                            .isEmpty
+                                        ? null
+                                        : descriptionController.text.trim(),
+                                    durationMinutes: durationMinutes,
+                                    taskType: customTypes.resolveTaskTypeEnum(
+                                      selectedTypeId,
+                                    ),
+                                    priority: customTypes.resolvePriorityEnum(
+                                      selectedPriorityId,
+                                    ),
+                                    taskTypeId: selectedTypeId,
+                                    priorityId: selectedPriorityId,
+                                    notes: notesController.text.trim().isEmpty
+                                        ? null
+                                        : notesController.text.trim(),
+                                    isRecurring: isRecurring,
+                                  ),
+                                );
+
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -778,5 +861,5 @@ class _TaskItem extends ConsumerWidget {
         ),
       ),
     );
-  }     
+  }
 }

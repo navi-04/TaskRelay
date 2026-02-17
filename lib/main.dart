@@ -93,6 +93,12 @@ class _MyAppState extends ConsumerState<MyApp> {
       for (final taskId in pendingDismissals) {
         await ref.read(taskStateProvider.notifier).handleAlarmDismissal(taskId);
       }
+
+      // Ensure all recurring task alarms are properly scheduled.
+      // Reads alarm data stored in Hive and schedules the next valid alarm
+      // for each recurring task. This recovers alarms after reboots, app
+      // updates, or any missed rescheduling.
+      await ref.read(taskStateProvider.notifier).ensureRecurringAlarmsScheduled();
       
       // Process any pending carry-overs (this will also refresh task state)
       final carryOverResult = await ref.read(taskStateProvider.notifier).processCarryOverAndRefresh();

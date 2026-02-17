@@ -167,10 +167,33 @@ class TaskCarryOverService {
     );
   }
   
-  /// Update day summary after tasks change
+  /// Update day summary after tasks change.
+  /// Includes recurring tasks with correct per-date completion state.
   Future<void> _updateSummaryForDate(String date) async {
-    final tasks = _taskRepository.getTasksForDate(date);
-    await _summaryRepository.calculateAndSaveSummary(date, tasks);
+    // Non-recurring tasks for this date
+    final dateTasks = _taskRepository.getTasksForDate(date)
+        .where((t) => !t.isRecurring)
+        .toList();
+
+    // Recurring tasks that should appear on this date
+    final recurringTasks = _taskRepository.getRecurringTasks();
+    final recurringForDate = <TaskEntity>[];
+    for (final task in recurringTasks) {
+      final startDate = task.recurringStartDate ?? task.createdDate;
+      final endDate = task.recurringEndDate;
+      if (date.compareTo(startDate) < 0) continue;
+      if (endDate != null && date.compareTo(endDate) > 0) continue;
+      if (task.deletedDates.contains(date)) continue;
+
+      // Derive correct completion state for this date
+      final isCompletedForDate = task.completedDates.contains(date);
+      recurringForDate.add(task.copyWith(
+        isCompleted: isCompletedForDate,
+      ));
+    }
+
+    final allTasks = [...dateTasks, ...recurringForDate];
+    await _summaryRepository.calculateAndSaveSummary(date, allTasks);
   }
 
   /// Reschedule alarms/notifications for carried-over tasks to the target date

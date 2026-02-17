@@ -122,8 +122,20 @@ class TaskEntity extends Equatable {
   @HiveField(23)
   final List<String> mutedAlarmDates;
 
+  /// Dates where this recurring task has been completed (yyyy-MM-dd list).
+  /// Tracks per-date completion so navigating to other dates doesn't lose
+  /// completion state.
+  @HiveField(24)
+  final List<String> completedDates;
+
   /// Alias: use isRecurring everywhere in the app
   bool get isRecurring => isPermanent;
+
+  /// Whether this recurring task is completed for a given date.
+  bool isCompletedForDate(String date) {
+    if (!isRecurring) return isCompleted;
+    return completedDates.contains(date);
+  }
 
   /// The effective type ID: custom ID if set, otherwise the enum name.
   String get effectiveTypeId => taskTypeId ?? taskType.name;
@@ -159,6 +171,7 @@ class TaskEntity extends Equatable {
     this.taskTypeId,
     this.priorityId,
     this.mutedAlarmDates = const [],
+    this.completedDates = const [],
   });
   
   /// Create a new task
@@ -206,6 +219,7 @@ class TaskEntity extends Equatable {
       taskTypeId: taskTypeId,
       priorityId: priorityId,
       mutedAlarmDates: mutedAlarmDates ?? const [],
+      completedDates: const [],
     );
   }
   
@@ -238,6 +252,7 @@ class TaskEntity extends Equatable {
     Object? taskTypeId = _unset,
     Object? priorityId = _unset,
     List<String>? mutedAlarmDates,
+    List<String>? completedDates,
   }) {
     final effectivePermanent = isRecurring ?? isPermanent ?? this.isPermanent;
     return TaskEntity(
@@ -265,6 +280,7 @@ class TaskEntity extends Equatable {
       taskTypeId: taskTypeId is _Unset ? this.taskTypeId : taskTypeId as String?,
       priorityId: priorityId is _Unset ? this.priorityId : priorityId as String?,
       mutedAlarmDates: mutedAlarmDates ?? this.mutedAlarmDates,
+      completedDates: completedDates ?? this.completedDates,
     );
   }
   
@@ -318,6 +334,7 @@ class TaskEntity extends Equatable {
         taskTypeId,
         priorityId,
         mutedAlarmDates,
+        completedDates,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")
