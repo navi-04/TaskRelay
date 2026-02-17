@@ -81,9 +81,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -191,10 +191,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.grey[600] 
-                          : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
+                      color: AppTheme.getCardBorderColor(context),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     ),
                   ),
                 ),
@@ -304,13 +302,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.blue.withOpacity(0.1) 
-                        : Colors.blue.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
+                        ? AppTheme.primaryColor.withValues(alpha: 0.12) 
+                        : AppTheme.primaryColor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                     border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.blue.withOpacity(0.3) 
-                          : Colors.blue.withOpacity(0.2),
+                          ? AppTheme.primaryColor.withValues(alpha: 0.25) 
+                          : AppTheme.primaryColor.withValues(alpha: 0.15),
                     ),
                   ),
                   child: Column(
@@ -379,8 +377,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                   ),
                                   child: Row(
                                     children: [
@@ -417,8 +415,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                   ),
                                   child: Row(
                                     children: [
@@ -448,13 +446,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark 
-                        ? const Color(0xFFFF6B35).withOpacity(0.1) 
-                        : const Color(0xFFFF6B35).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
+                        ? const Color(0xFFFF6B35).withValues(alpha: 0.10) 
+                        : const Color(0xFFFF6B35).withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                     border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark 
-                          ? const Color(0xFFFF6B35).withOpacity(0.3) 
-                          : const Color(0xFFFF6B35).withOpacity(0.2),
+                          ? const Color(0xFFFF6B35).withValues(alpha: 0.25) 
+                          : const Color(0xFFFF6B35).withValues(alpha: 0.15),
                     ),
                   ),
                   child: Column(

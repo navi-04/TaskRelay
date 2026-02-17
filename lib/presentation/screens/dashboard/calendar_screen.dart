@@ -47,7 +47,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             // Calendar styling
             calendarStyle: CalendarStyle(
               todayDecoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
                 shape: BoxShape.circle,
               ),
               selectedDecoration: BoxDecoration(
@@ -60,7 +60,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
               outsideDaysVisible: false,
               weekendTextStyle: TextStyle(
-                color: Theme.of(context).colorScheme.error.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.6),
               ),
             ),
             
@@ -150,9 +150,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           _buildLegendItem(context, 'Partial', AppTheme.warning),
           _buildLegendItem(context, 'Missed', AppTheme.error),
           _buildLegendItem(context, 'No Tasks', 
-              Theme.of(context).brightness == Brightness.dark 
-                  ? Colors.grey[600]! 
-                  : Colors.grey[300]!),
+              AppTheme.getCardBorderColor(context)),
         ],
       ),
     );
@@ -195,13 +193,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     if (summary != null && summary.hasTasks) {
       switch (summary.dayStatus) {
         case DayStatus.completed:
-          backgroundColor = AppTheme.success.withOpacity(0.8);
+          backgroundColor = AppTheme.success.withValues(alpha: 0.75);
           break;
         case DayStatus.partial:
-          backgroundColor = AppTheme.warning.withOpacity(0.8);
+          backgroundColor = AppTheme.warning.withValues(alpha: 0.75);
           break;
         case DayStatus.missed:
-          backgroundColor = AppTheme.error.withOpacity(0.8);
+          backgroundColor = AppTheme.error.withValues(alpha: 0.75);
           break;
         case DayStatus.noTasks:
           backgroundColor = null;
@@ -213,7 +211,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     if (isSelected) {
       borderColor = Theme.of(context).colorScheme.primary;
     } else if (isToday) {
-      borderColor = Theme.of(context).colorScheme.primary.withOpacity(0.5);
+      borderColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.4);
     }
     
     return Container(
@@ -265,8 +263,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         child: GradientCard(
           gradient: LinearGradient(
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+              Theme.of(context).colorScheme.secondary.withValues(alpha: 0.06),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -331,8 +329,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -359,7 +357,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                       ),
                       child: Text(
                         '${completionRate.toStringAsFixed(0)}%',
@@ -390,9 +388,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

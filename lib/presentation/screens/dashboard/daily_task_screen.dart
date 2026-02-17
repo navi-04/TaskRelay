@@ -240,13 +240,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: AppTheme.subtleShadow(context),
       ),
       child: Row(
         children: [
@@ -268,8 +262,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -291,13 +285,11 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 ),
                 const SizedBox(height: 8),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusXS),
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 6,
-                    backgroundColor: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.grey[700] 
-                        : Colors.grey[200],
+                    backgroundColor: AppTheme.getProgressBackgroundColor(context),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       isOverLimit ? AppTheme.error : AppTheme.primaryColor,
                     ),
@@ -409,9 +401,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   Expanded(
                     child: Container(
                       height: 1,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.grey[700]
-                          : Colors.grey[300],
+                      color: AppTheme.getCardBorderColor(context),
                     ),
                   ),
                 ],
@@ -438,9 +428,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 Icon(
                   Icons.task_alt,
                   size: 18,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[400]
-                      : Colors.grey[600],
+                  color: AppTheme.getSecondaryTextColor(context),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -448,9 +436,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[400]
-                        : Colors.grey[600],
+                    color: AppTheme.getSecondaryTextColor(context),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -458,9 +444,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 Expanded(
                   child: Container(
                     height: 1,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[700]
-                        : Colors.grey[300],
+                    color: AppTheme.getCardBorderColor(context),
                   ),
                 ),
               ],
@@ -549,8 +533,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Theme.of(context).primaryColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                         ),
                         child: Text(
                           '${typeTasks.length}',
@@ -702,8 +686,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: pColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: pColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                         ),
                         child: Text(
                           '${priorityTasks.length}',
@@ -857,10 +841,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             children: [
               if (showType)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.purple.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                   ),
                   child: Text(
                     customTypes.taskTypeLabelById(task.effectiveTypeId),
@@ -873,10 +857,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 ),
               if (showType) const SizedBox(width: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: pColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
+                  color: pColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                 ),
                 child: Text(
                   customTypes.priorityLabelById(task.effectivePriorityId),
@@ -918,7 +902,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: AppTheme.error,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         ),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
@@ -934,24 +918,18 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 builder: (_) => TaskDetailScreen(taskId: task.id),
               ),
             ),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
             child: Ink(
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                 border: task.isCompleted
                     ? null
                     : Border.all(
-                        color: ref.watch(customTypesProvider).priorityColorById(task.effectivePriorityId).withOpacity(0.3),
+                        color: ref.watch(customTypesProvider).priorityColorById(task.effectivePriorityId).withValues(alpha: 0.2),
                         width: 1,
                       ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: AppTheme.subtleShadow(context),
               ),
               child: Column(
                 children: [
@@ -1001,9 +979,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         child: Text(
                           task.description!,
                           style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark 
-                                ? Colors.grey[400] 
-                                : Colors.grey[600],
+                            color: AppTheme.getSecondaryTextColor(context),
                             fontSize: 13,
                           ),
                           maxLines: 2,
@@ -1102,10 +1078,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   
   Widget _buildChip(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1294,10 +1270,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? Colors.grey[600] 
-                    : Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+                color: AppTheme.getCardBorderColor(context),
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
               ),
             ),
             const SizedBox(height: 16),
@@ -1654,8 +1628,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                       decoration: BoxDecoration(
-                                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                       ),
                                       child: Row(
                                         children: [
@@ -1692,8 +1666,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                       decoration: BoxDecoration(
-                                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                       ),
                                       child: Row(
                                         children: [
