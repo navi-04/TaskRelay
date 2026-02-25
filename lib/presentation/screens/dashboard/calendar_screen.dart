@@ -91,7 +91,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
               weekendStyle: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.error.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
               ),
             ),
             

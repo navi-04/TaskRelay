@@ -93,9 +93,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: Text(
                     'Skip',
                     style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.grey[400] 
-                          : Colors.grey[600],
+                      color: AppTheme.getSecondaryTextColor(context),
                       fontSize: 16,
                     ),
                   ),
@@ -133,10 +131,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     decoration: BoxDecoration(
                       color: _currentPage == index
                           ? AppTheme.primaryColor
-                          : (Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[600] 
-                              : Colors.grey[300]),
-                      borderRadius: BorderRadius.circular(4),
+                          : Theme.of(context).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXS),
                     ),
                   ),
                 ),
@@ -155,7 +151,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                     ),
                   ),
                   child: Text(
@@ -189,7 +185,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (page.gradient.colors.first).withOpacity(0.3),
+                  color: (page.gradient.colors.first).withValues(alpha: 0.3),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -217,9 +213,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Text(
             page.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).brightness == Brightness.dark 
-                  ? Colors.grey[400] 
-                  : Colors.grey[600],
+              color: AppTheme.getSecondaryTextColor(context),
               height: 1.5,
             ),
             textAlign: TextAlign.center,

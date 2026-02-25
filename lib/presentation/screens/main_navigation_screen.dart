@@ -335,9 +335,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                 Text(
                                   'Repeats within a date range',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                        ? Colors.grey[400] 
-                                        : Colors.grey[600],
+                                    color: AppTheme.getSecondaryTextColor(context),
                                   ),
                                 ),
                               ],
@@ -481,9 +479,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                       ? 'Set for ${DateHelper.formatDateTime12h(alarmTime!)}'
                                       : 'No reminder set',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                        ? Colors.grey[400] 
-                                        : Colors.grey[600],
+                                    color: AppTheme.getSecondaryTextColor(context),
                                   ),
                                 ),
                               ],
@@ -540,26 +536,26 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
                                     color: reminderTypeIndex == 0
-                                        ? const Color(0xFFFF6B35).withOpacity(0.2)
+                                        ? const Color(0xFFFF6B35).withValues(alpha: 0.2)
                                         : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                     border: Border.all(
                                       color: reminderTypeIndex == 0
                                           ? const Color(0xFFFF6B35)
-                                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                          : Theme.of(context).colorScheme.outlineVariant,
                                     ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.alarm, size: 16,
-                                          color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                          color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : AppTheme.getSecondaryTextColor(context)),
                                       const SizedBox(width: 6),
                                       Text('Alarm',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: reminderTypeIndex == 0 ? FontWeight.w600 : FontWeight.w400,
-                                            color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                            color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : AppTheme.getSecondaryTextColor(context),
                                           )),
                                     ],
                                   ),
@@ -574,26 +570,26 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
                                     color: reminderTypeIndex == 1
-                                        ? Colors.blue.withOpacity(0.2)
+                                        ? Colors.blue.withValues(alpha: 0.2)
                                         : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                     border: Border.all(
                                       color: reminderTypeIndex == 1
                                           ? Colors.blue
-                                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                          : Theme.of(context).colorScheme.outlineVariant,
                                     ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.notifications_outlined, size: 16,
-                                          color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                          color: reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context)),
                                       const SizedBox(width: 6),
                                       Text('Notification',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: reminderTypeIndex == 1 ? FontWeight.w600 : FontWeight.w400,
-                                            color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                            color: reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context),
                                           )),
                                     ],
                                   ),
@@ -646,9 +642,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[300]
-                : Colors.grey[700],
+            color: AppTheme.getSecondaryTextColor(context),
           ),
         ),
         const SizedBox(height: 8),
@@ -706,7 +700,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             backgroundColor: AppTheme.warning,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
           ),
         );
@@ -819,7 +813,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             duration: const Duration(seconds: 4),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
           ),
         );
@@ -829,7 +823,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             content: const Text('Task added!'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
           ),
         );

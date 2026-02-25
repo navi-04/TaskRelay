@@ -121,7 +121,7 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
                 filled: true,
                 fillColor: Theme.of(context).cardColor,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -144,7 +144,7 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
                         Icon(
                           Icons.search_off,
                           size: 64,
-                          color: Colors.grey[400],
+                          color: AppTheme.getSecondaryTextColor(context),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -153,7 +153,7 @@ class _TasksByTypeScreenState extends ConsumerState<TasksByTypeScreen> {
                               : 'No tasks found',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                       ],
@@ -214,7 +214,7 @@ class _TaskTypeSection extends ConsumerWidget {
           // Type header (clickable)
           InkWell(
             onTap: onToggleExpand,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -238,8 +238,8 @@ class _TaskTypeSection extends ConsumerWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                     ),
                     child: Text(
                       '${tasks.length}',
@@ -308,7 +308,7 @@ class _TaskItem extends ConsumerWidget {
                   task.description!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
                 ),
               ),
             Padding(
@@ -323,7 +323,7 @@ class _TaskItem extends ConsumerWidget {
                       Icon(
                         Icons.access_time,
                         size: 14,
-                        color: Colors.grey[600],
+                        color: AppTheme.getSecondaryTextColor(context),
                       ),
                       const SizedBox(width: 4),
                       Builder(
@@ -341,7 +341,7 @@ class _TaskItem extends ConsumerWidget {
                             label,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: AppTheme.getSecondaryTextColor(context),
                             ),
                           );
                         },
@@ -354,12 +354,12 @@ class _TaskItem extends ConsumerWidget {
                       Icon(
                         Icons.calendar_today,
                         size: 14,
-                        color: Colors.grey[600],
+                        color: AppTheme.getSecondaryTextColor(context),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         displayDate,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
                       ),
                     ],
                   ),
@@ -370,8 +370,8 @@ class _TaskItem extends ConsumerWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
+                        color: Colors.orange.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusXS),
                       ),
                       child: const Text(
                         'Carried',
@@ -389,11 +389,11 @@ class _TaskItem extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Row(
                 children: [
-                  Icon(Icons.create, size: 14, color: Colors.grey[600]),
+                  Icon(Icons.create, size: 14, color: AppTheme.getSecondaryTextColor(context)),
                   const SizedBox(width: 4),
                   Text(
                     'Created on $displayCreatedDate',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
                   ),
                 ],
               ),
@@ -409,8 +409,8 @@ class _TaskItem extends ConsumerWidget {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: pColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(4),
+                color: pColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppTheme.radiusXS),
               ),
               child: Text(
                 customTypes.priorityLabelById(task.effectivePriorityId),
@@ -493,7 +493,7 @@ class _TaskItem extends ConsumerWidget {
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Colors.grey[600]
                               : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusXS),
                         ),
                       ),
                     ),
@@ -606,9 +606,7 @@ class _TaskItem extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[300]
-                              : Colors.grey[700],
+                          color: AppTheme.getSecondaryTextColor(context),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -713,13 +711,13 @@ class _TaskItem extends ConsumerWidget {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.blue.withOpacity(0.1)
-                            : Colors.blue.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
+                            ? Colors.blue.withValues(alpha: 0.1)
+                            : Colors.blue.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                         border: Border.all(
                           color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.blue.withOpacity(0.3)
-                              : Colors.blue.withOpacity(0.2),
+                              ? Colors.blue.withValues(alpha: 0.3)
+                              : Colors.blue.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Row(
@@ -744,11 +742,7 @@ class _TaskItem extends ConsumerWidget {
                                   'Shows up every day until deleted',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color:
-                                            Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? Colors.grey[400]
-                                            : Colors.grey[600],
+                                        color: AppTheme.getSecondaryTextColor(context),
                                       ),
                                 ),
                               ],
@@ -852,7 +846,7 @@ class _TaskItem extends ConsumerWidget {
                                     content: const Text('Task updated!'),
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                     ),
                                   ),
                                 );

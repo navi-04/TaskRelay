@@ -834,7 +834,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               )
             : null,
         trailing: Builder(builder: (_) {
-          final customTypes = ref.watch(customTypesProvider);
+          final customTypes = ref.read(customTypesProvider);
           final pColor = customTypes.priorityColorById(task.effectivePriorityId);
           return Row(
             mainAxisSize: MainAxisSize.min,
@@ -926,7 +926,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                 border: task.isCompleted
                     ? null
                     : Border.all(
-                        color: ref.watch(customTypesProvider).priorityColorById(task.effectivePriorityId).withValues(alpha: 0.2),
+                        color: ref.read(customTypesProvider).priorityColorById(task.effectivePriorityId).withValues(alpha: 0.2),
                         width: 1,
                       ),
                 boxShadow: AppTheme.subtleShadow(context),
@@ -1003,7 +1003,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         GestureDetector(
                           onTap: () => _showChangeTypeDialog(context, task),
                           child: Builder(builder: (_) {
-                            final customTypes = ref.watch(customTypesProvider);
+                            final customTypes = ref.read(customTypesProvider);
                             return _buildChip(
                               customTypes.taskTypeLabelById(task.effectiveTypeId),
                               Colors.purple,
@@ -1015,7 +1015,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         GestureDetector(
                           onTap: () => _showChangePriorityDialog(context, task),
                           child: Builder(builder: (_) {
-                            final customTypes = ref.watch(customTypesProvider);
+                            final customTypes = ref.read(customTypesProvider);
                             return _buildChip(
                               customTypes.priorityLabelById(task.effectivePriorityId),
                               customTypes.priorityColorById(task.effectivePriorityId),
@@ -1024,7 +1024,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         ),
                         const SizedBox(width: 6),
                         // Duration (mode-dependent)
-                        if (ref.watch(settingsProvider).estimationMode == EstimationMode.timeBased)
+                        if (ref.read(settingsProvider).estimationMode == EstimationMode.timeBased)
                           _buildChip(
                             task.formattedDuration,
                             AppTheme.info,
@@ -1553,13 +1553,13 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.blue.withOpacity(0.1) 
-                            : Colors.blue.withOpacity(0.05),
+                            ? Colors.blue.withValues(alpha: 0.1) 
+                            : Colors.blue.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.blue.withOpacity(0.3) 
-                              : Colors.blue.withOpacity(0.2),
+                              ? Colors.blue.withValues(alpha: 0.3) 
+                              : Colors.blue.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Column(
@@ -1697,13 +1697,13 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.orange.withOpacity(0.1) 
-                            : Colors.orange.withOpacity(0.05),
+                            ? Colors.orange.withValues(alpha: 0.1) 
+                            : Colors.orange.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.orange.withOpacity(0.3) 
-                              : Colors.orange.withOpacity(0.2),
+                              ? Colors.orange.withValues(alpha: 0.3) 
+                              : Colors.orange.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Column(
@@ -1807,26 +1807,26 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                       padding: const EdgeInsets.symmetric(vertical: 8),
                                       decoration: BoxDecoration(
                                         color: reminderTypeIndex == 0
-                                            ? Colors.orange.withOpacity(0.2)
+                                            ? Colors.orange.withValues(alpha: 0.2)
                                             : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                         border: Border.all(
                                           color: reminderTypeIndex == 0
                                               ? Colors.orange
-                                              : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                              : Theme.of(context).colorScheme.outlineVariant,
                                         ),
                                       ),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Icon(Icons.alarm, size: 16,
-                                              color: reminderTypeIndex == 0 ? Colors.orange : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                              color: reminderTypeIndex == 0 ? Colors.orange : AppTheme.getSecondaryTextColor(context)),
                                           const SizedBox(width: 6),
                                           Text('Alarm',
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: reminderTypeIndex == 0 ? FontWeight.w600 : FontWeight.w400,
-                                                color: reminderTypeIndex == 0 ? Colors.orange : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                                color: reminderTypeIndex == 0 ? Colors.orange : AppTheme.getSecondaryTextColor(context),
                                               )),
                                         ],
                                       ),
@@ -1841,26 +1841,26 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                       padding: const EdgeInsets.symmetric(vertical: 8),
                                       decoration: BoxDecoration(
                                         color: reminderTypeIndex == 1
-                                            ? Colors.blue.withOpacity(0.2)
+                                            ? Colors.blue.withValues(alpha: 0.2)
                                             : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                         border: Border.all(
                                           color: reminderTypeIndex == 1
                                               ? Colors.blue
-                                              : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                              : Theme.of(context).colorScheme.outlineVariant,
                                         ),
                                       ),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Icon(Icons.notifications_outlined, size: 16,
-                                              color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                              color: reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context)),
                                           const SizedBox(width: 6),
                                           Text('Notification',
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: reminderTypeIndex == 1 ? FontWeight.w600 : FontWeight.w400,
-                                                color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                                color: reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context),
                                               )),
                                         ],
                                       ),
