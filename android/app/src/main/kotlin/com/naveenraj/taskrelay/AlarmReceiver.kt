@@ -1,4 +1,4 @@
-package com.example.sampleapp
+package com.naveenraj.taskrelay
 
 import android.app.AlarmManager
 import android.app.PendingIntent

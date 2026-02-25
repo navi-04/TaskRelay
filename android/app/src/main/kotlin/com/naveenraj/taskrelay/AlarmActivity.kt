@@ -1,4 +1,4 @@
-package com.example.sampleapp
+package com.naveenraj.taskrelay
 
 import android.app.Activity
 import android.app.KeyguardManager
@@ -171,7 +171,7 @@ class AlarmActivity : Activity() {
             persistPendingCompletion(this, taskId)
 
             // ── ALSO send broadcast (works if MainActivity is alive) ──
-            val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
+            val completeIntent = Intent("com.naveenraj.taskrelay.ACTION_COMPLETE_TASK").apply {
                 setPackage(packageName)
                 putExtra("taskId", taskId)
                 putExtra("taskTitle", taskTitle)

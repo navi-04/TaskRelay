@@ -20,7 +20,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   
   // Method channel for full-screen alarms
-  static const platform = MethodChannel('com.example.sampleapp/alarm');
+  static const platform = MethodChannel('com.naveenraj.taskrelay/alarm');
   
   bool _initialized = false;
 
