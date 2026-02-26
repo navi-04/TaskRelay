@@ -81,9 +81,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -191,10 +191,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.grey[600] 
-                          : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
+                      color: AppTheme.getCardBorderColor(context),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     ),
                   ),
                 ),
@@ -304,13 +302,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.blue.withOpacity(0.1) 
-                        : Colors.blue.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
+                        ? AppTheme.primaryColor.withValues(alpha: 0.12) 
+                        : AppTheme.primaryColor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                     border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.blue.withOpacity(0.3) 
-                          : Colors.blue.withOpacity(0.2),
+                          ? AppTheme.primaryColor.withValues(alpha: 0.25) 
+                          : AppTheme.primaryColor.withValues(alpha: 0.15),
                     ),
                   ),
                   child: Column(
@@ -337,9 +335,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                 Text(
                                   'Repeats within a date range',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                        ? Colors.grey[400] 
-                                        : Colors.grey[600],
+                                    color: AppTheme.getSecondaryTextColor(context),
                                   ),
                                 ),
                               ],
@@ -379,8 +375,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                   ),
                                   child: Row(
                                     children: [
@@ -417,8 +413,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                   ),
                                   child: Row(
                                     children: [
@@ -448,13 +444,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark 
-                        ? const Color(0xFFFF6B35).withOpacity(0.1) 
-                        : const Color(0xFFFF6B35).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
+                        ? const Color(0xFFFF6B35).withValues(alpha: 0.10) 
+                        : const Color(0xFFFF6B35).withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                     border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark 
-                          ? const Color(0xFFFF6B35).withOpacity(0.3) 
-                          : const Color(0xFFFF6B35).withOpacity(0.2),
+                          ? const Color(0xFFFF6B35).withValues(alpha: 0.25) 
+                          : const Color(0xFFFF6B35).withValues(alpha: 0.15),
                     ),
                   ),
                   child: Column(
@@ -483,9 +479,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                       ? 'Set for ${DateHelper.formatDateTime12h(alarmTime!)}'
                                       : 'No reminder set',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                        ? Colors.grey[400] 
-                                        : Colors.grey[600],
+                                    color: AppTheme.getSecondaryTextColor(context),
                                   ),
                                 ),
                               ],
@@ -542,26 +536,26 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
                                     color: reminderTypeIndex == 0
-                                        ? const Color(0xFFFF6B35).withOpacity(0.2)
+                                        ? const Color(0xFFFF6B35).withValues(alpha: 0.2)
                                         : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                     border: Border.all(
                                       color: reminderTypeIndex == 0
                                           ? const Color(0xFFFF6B35)
-                                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                          : Theme.of(context).colorScheme.outlineVariant,
                                     ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.alarm, size: 16,
-                                          color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                          color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : AppTheme.getSecondaryTextColor(context)),
                                       const SizedBox(width: 6),
                                       Text('Alarm',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: reminderTypeIndex == 0 ? FontWeight.w600 : FontWeight.w400,
-                                            color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                            color: reminderTypeIndex == 0 ? const Color(0xFFFF6B35) : AppTheme.getSecondaryTextColor(context),
                                           )),
                                     ],
                                   ),
@@ -576,26 +570,26 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
                                     color: reminderTypeIndex == 1
-                                        ? Colors.blue.withOpacity(0.2)
+                                        ? Colors.blue.withValues(alpha: 0.2)
                                         : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                     border: Border.all(
                                       color: reminderTypeIndex == 1
                                           ? Colors.blue
-                                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[300]!),
+                                          : Theme.of(context).colorScheme.outlineVariant,
                                     ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.notifications_outlined, size: 16,
-                                          color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
+                                          color: reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context)),
                                       const SizedBox(width: 6),
                                       Text('Notification',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: reminderTypeIndex == 1 ? FontWeight.w600 : FontWeight.w400,
-                                            color: reminderTypeIndex == 1 ? Colors.blue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
+                                            color: reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context),
                                           )),
                                     ],
                                   ),
@@ -648,9 +642,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[300]
-                : Colors.grey[700],
+            color: AppTheme.getSecondaryTextColor(context),
           ),
         ),
         const SizedBox(height: 8),
@@ -708,7 +700,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             backgroundColor: AppTheme.warning,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
           ),
         );
@@ -768,21 +760,16 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         }
       }
 
-      // If alarm is set, check overlay permission — strip alarm if denied (only for full alarm type)
-      var effectiveAlarmTime = alarmTime;
+      // If alarm is set and reminder type is full alarm, request overlay
+      // permission (needed for fallback alarm UI). But ALWAYS schedule the
+      // alarm — the primary mechanism (notification + fullScreenIntent + sound)
+      // works without overlay permission.
       if (alarmTime != null && reminderTypeIndex == 0) {
         final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
         if (!mounted) return;
         if (!hasOverlay) {
-          // Show dialog explaining why permission is needed
           await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
           if (!mounted) return;
-          // Re-check after user returns from settings
-          final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
-          if (!nowHasOverlay) {
-            // Permission still not granted — remove alarm, create task without it
-            effectiveAlarmTime = null;
-          }
         }
       }
       
@@ -804,38 +791,21 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         isRecurring: isRecurring,
         recurringStartDate: isRecurring ? recurringStartDate : null,
         recurringEndDate: isRecurring ? recurringEndDate : null,
-        alarmTime: effectiveAlarmTime,
+        alarmTime: alarmTime,
         reminderTypeIndex: reminderTypeIndex,
       );
       
       if (!mounted) return;
       Navigator.pop(context);
-      // Warn the user if alarm was removed due to missing permission
-      if (alarmTime != null && effectiveAlarmTime == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Task created without alarm — "Display over other apps" permission is required for alarms.',
-            ),
-            backgroundColor: AppTheme.warning,
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Task added!'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
           ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Task added!'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
+        ),
+      );
     }
   }
 }

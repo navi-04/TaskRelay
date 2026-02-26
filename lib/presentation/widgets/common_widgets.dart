@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_theme.dart';
 
-/// Reusable card widget
+/// Reusable card widget — clean rounded design
 class GradientCard extends StatelessWidget {
   final Widget child;
   final Gradient? gradient;
@@ -15,7 +16,7 @@ class GradientCard extends StatelessWidget {
     required this.child,
     this.gradient,
     this.backgroundColor,
-    this.borderRadius = 8,
+    this.borderRadius = 16,
     this.padding = const EdgeInsets.all(16),
     this.onTap,
     this.boxShadow,
@@ -23,24 +24,29 @@ class GradientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade200;
-    
+    final borderColor = AppTheme.getCardBorderColor(context);
+
     final card = Container(
       padding: padding,
       decoration: BoxDecoration(
         gradient: gradient,
         color: gradient == null ? (backgroundColor ?? Theme.of(context).cardColor) : null,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: borderColor),
+        border: gradient == null ? Border.all(color: borderColor, width: 1) : null,
+        boxShadow: boxShadow ?? AppTheme.subtleShadow(context),
       ),
       child: child,
     );
 
     if (onTap != null) {
-      return GestureDetector(
-        onTap: onTap,
-        child: card,
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: card,
+        ),
       );
     }
 
@@ -70,15 +76,22 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GradientCard(
-      backgroundColor: backgroundColor ?? color.withOpacity(0.05),
-      borderRadius: 6,
+      backgroundColor: backgroundColor ?? color.withValues(alpha: 0.06),
+      borderRadius: AppTheme.radiusMD,
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -91,13 +104,11 @@ class StatCard extends StatelessWidget {
               maxLines: 1,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).brightness == Brightness.dark 
-                  ? Colors.grey[400] 
-                  : Colors.grey[600],
+              color: AppTheme.getSecondaryTextColor(context),
               fontSize: 11,
             ),
             maxLines: 1,
@@ -142,8 +153,9 @@ class CircularProgressCard extends StatelessWidget {
                 height: size,
                 child: CircularProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
-                  strokeWidth: 8,
-                  backgroundColor: progressColor.withOpacity(0.2),
+                  strokeWidth: 6,
+                  strokeCap: StrokeCap.round,
+                  backgroundColor: progressColor.withValues(alpha: 0.15),
                   valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                 ),
               ),
@@ -160,9 +172,7 @@ class CircularProgressCard extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).brightness == Brightness.dark 
-                ? Colors.grey[400] 
-                : Colors.grey[600],
+            color: AppTheme.getSecondaryTextColor(context),
           ),
           textAlign: TextAlign.center,
         ),
@@ -197,13 +207,13 @@ class EmptyStateWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 64,
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.45),
               ),
             ),
             const SizedBox(height: 24),
@@ -218,9 +228,7 @@ class EmptyStateWidget extends StatelessWidget {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? Colors.grey[400] 
-                    : Colors.grey[600],
+                color: AppTheme.getSecondaryTextColor(context),
               ),
               textAlign: TextAlign.center,
             ),
@@ -331,13 +339,13 @@ class AchievementBadge extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isUnlocked 
-            ? color.withOpacity(0.05) 
-            : (isDark ? Colors.grey[800] : Colors.grey[100]),
-        borderRadius: BorderRadius.circular(6),
+            ? color.withValues(alpha: 0.06) 
+            : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         border: Border.all(
           color: isUnlocked 
-              ? color.withOpacity(0.3) 
-              : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
+              ? color.withValues(alpha: 0.2) 
+              : AppTheme.getCardBorderColor(context),
           width: 1,
         ),
       ),
@@ -362,13 +370,7 @@ class AchievementBadge extends StatelessWidget {
           Text(
             description,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: isUnlocked 
-                  ? (Theme.of(context).brightness == Brightness.dark 
-                      ? Colors.grey[400] 
-                      : Colors.grey[600]) 
-                  : (Theme.of(context).brightness == Brightness.dark 
-                      ? Colors.grey[500] 
-                      : Colors.grey[400]),
+              color: AppTheme.getSecondaryTextColor(context),
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -390,18 +392,17 @@ class ShimmerLoading extends StatelessWidget {
     super.key,
     this.width = double.infinity,
     this.height = 20,
-    this.borderRadius = 4,
+    this.borderRadius = 8,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
-        color: isDark ? Colors.grey[800] : Colors.grey[200],
+        color: AppTheme.getShimmerColor(context),
       ),
     );
   }

@@ -143,9 +143,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: AppTheme.success.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+                color: AppTheme.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -164,7 +164,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     Text(
                       DateHelper.formatDateTime12h(task.completedAt!),
                       style: TextStyle(
-                        color: AppTheme.success.withOpacity(0.7),
+                        color: AppTheme.success.withValues(alpha: 0.7),
                         fontSize: 13,
                       ),
                     ),
@@ -231,7 +231,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey[850] : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
               ),
               child: Text(task.notes!, style: const TextStyle(fontSize: 14, height: 1.5)),
             ),
@@ -260,7 +260,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   label: Text(task.isCompleted ? 'Mark Incomplete' : 'Mark Complete'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
                   ),
                 ),
               ),
@@ -272,7 +272,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   label: const Text('Edit'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
                   ),
                 ),
               ),
@@ -374,10 +374,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.blue.withOpacity(0.1) : Colors.blue.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
+                color: isDark ? Colors.blue.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                 border: Border.all(
-                  color: isDark ? Colors.blue.withOpacity(0.3) : Colors.blue.withOpacity(0.2),
+                  color: isDark ? Colors.blue.withValues(alpha: 0.3) : Colors.blue.withValues(alpha: 0.2),
                 ),
               ),
               child: Column(
@@ -395,7 +395,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             const SizedBox(height: 2),
                             Text('Repeats within a date range',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  color: AppTheme.getSecondaryTextColor(context),
                                 )),
                           ],
                         ),
@@ -431,8 +431,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                               ),
                               child: Row(
                                 children: [
@@ -469,8 +469,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                               ),
                               child: Row(
                                 children: [
@@ -499,10 +499,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.orange.withOpacity(0.1) : Colors.orange.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
+                color: isDark ? Colors.orange.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                 border: Border.all(
-                  color: isDark ? Colors.orange.withOpacity(0.3) : Colors.orange.withOpacity(0.2),
+                  color: isDark ? Colors.orange.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.2),
                 ),
               ),
               child: Column(
@@ -523,7 +523,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                   ? 'Set for ${DateHelper.formatDateTime12h(_alarmTime!)}'
                                   : 'No reminder set',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                color: AppTheme.getSecondaryTextColor(context),
                               ),
                             ),
                           ],
@@ -590,26 +590,26 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               decoration: BoxDecoration(
                                 color: _reminderTypeIndex == 0
-                                    ? Colors.orange.withOpacity(0.2)
+                                    ? Colors.orange.withValues(alpha: 0.2)
                                     : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                 border: Border.all(
                                   color: _reminderTypeIndex == 0
                                       ? Colors.orange
-                                      : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                      : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                                 ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.alarm, size: 16,
-                                      color: _reminderTypeIndex == 0 ? Colors.orange : (isDark ? Colors.grey[400] : Colors.grey[600])),
+                                      color: _reminderTypeIndex == 0 ? Colors.orange : AppTheme.getSecondaryTextColor(context)),
                                   const SizedBox(width: 6),
                                   Text('Alarm',
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: _reminderTypeIndex == 0 ? FontWeight.w600 : FontWeight.w400,
-                                        color: _reminderTypeIndex == 0 ? Colors.orange : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                                        color: _reminderTypeIndex == 0 ? Colors.orange : AppTheme.getSecondaryTextColor(context),
                                       )),
                                 ],
                               ),
@@ -624,26 +624,26 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               decoration: BoxDecoration(
                                 color: _reminderTypeIndex == 1
-                                    ? Colors.blue.withOpacity(0.2)
+                                    ? Colors.blue.withValues(alpha: 0.2)
                                     : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                 border: Border.all(
                                   color: _reminderTypeIndex == 1
                                       ? Colors.blue
-                                      : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                      : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                                 ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.notifications_outlined, size: 16,
-                                      color: _reminderTypeIndex == 1 ? Colors.blue : (isDark ? Colors.grey[400] : Colors.grey[600])),
+                                      color: _reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context)),
                                   const SizedBox(width: 6),
                                   Text('Notification',
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: _reminderTypeIndex == 1 ? FontWeight.w600 : FontWeight.w400,
-                                        color: _reminderTypeIndex == 1 ? Colors.blue : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                                        color: _reminderTypeIndex == 1 ? Colors.blue : AppTheme.getSecondaryTextColor(context),
                                       )),
                                 ],
                               ),
@@ -671,7 +671,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -685,7 +685,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     label: const Text('Update'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
                     ),
                   ),
                 ),
@@ -724,18 +724,14 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       durationMinutes = task.durationMinutes; // keep existing
     }
 
-    // Check overlay permission if alarm set AND reminder type is full alarm
-    var effectiveAlarmTime = _alarmTime;
+    // Request overlay permission if alarm set AND reminder type is full alarm.
+    // Overlay is a fallback — always schedule alarm regardless.
     if (_alarmTime != null && _reminderTypeIndex == 0) {
       final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
       if (!mounted) return;
       if (!hasOverlay) {
         await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
         if (!mounted) return;
-        final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
-        if (!nowHasOverlay) {
-          effectiveAlarmTime = null;
-        }
       }
     }
 
@@ -753,32 +749,20 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       isRecurring: _isRecurring,
       recurringStartDate: _isRecurring ? _recurringStartDate : null,
       recurringEndDate: _isRecurring ? _recurringEndDate : null,
-      alarmTime: effectiveAlarmTime,
+      alarmTime: _alarmTime,
       reminderTypeIndex: _reminderTypeIndex,
     ));
 
     setState(() => _isEditing = false);
     _controllersInitialized = false; // Reload from updated task on next build
 
-    if (_alarmTime != null && effectiveAlarmTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Task updated without alarm — "Display over other apps" permission required.'),
-          backgroundColor: AppTheme.warning,
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Task updated!'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Task updated!'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   // ─── ESTIMATION FIELDS ──────────────────────────────────────────────
@@ -870,9 +854,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
     );
@@ -883,7 +867,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       title,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.bold,
-        color: isDark ? Colors.grey[400] : Colors.grey[600],
+        color: AppTheme.getSecondaryTextColor(context),
       ),
     );
   }
@@ -898,9 +882,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(isDark ? 0.1 : 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: iconColor.withOpacity(0.2)),
+        color: iconColor.withValues(alpha: isDark ? 0.1 : 0.05),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(color: iconColor.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -919,7 +903,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(label, style: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600], fontSize: 13)),
+          Text(label, style: TextStyle(color: AppTheme.getSecondaryTextColor(context), fontSize: 13)),
           const Spacer(),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
         ],

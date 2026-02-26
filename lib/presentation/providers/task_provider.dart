@@ -269,8 +269,8 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskDate: taskDate,
             );
           }
-        } catch (_) {
-          // Alarm scheduling failed — continue, task is already saved
+        } catch (e) {
+          print('\u274c Alarm scheduling failed: $e');
         }
       }
       
@@ -321,8 +321,8 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         } else if (oldTask.alarmTime != null && task.alarmTime == null) {
           await _notificationService.cancelTaskAlarm(task.id);
         }
-      } catch (_) {
-        // Alarm update failed — continue, task data is already saved
+      } catch (e) {
+        print('\u274c Alarm update failed: $e');
       }
       
       await _updateSummary();
@@ -506,7 +506,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskDate: checkDate,
             );
           }
-        } catch (_) {}
+        } catch (e) { print('Alarm scheduling error: $e'); }
         return;
       }
 
@@ -527,7 +527,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           await _scheduleRecurringAlarmForNextValidDate(task);
         }
       }
-    } catch (_) {}
+    } catch (e) { print('ensureRecurringAlarms error: $e'); }
   }
 
   /// Handle alarm dismissal — clears alarmTime for non-recurring tasks
@@ -563,8 +563,8 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           alarmTime: null,
         ));
       }
-    } catch (_) {
-      // Task not found or update failed — ignore
+    } catch (e) {
+      print('Alarm dismissal error: $e');
     } finally {
       loadTasksForSelectedDate();
     }
@@ -609,7 +609,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
                 startFromTomorrow: true,
               );
             }
-          } catch (_) {}
+          } catch (e) { print('Alarm cancel/reschedule error: $e'); }
         } else {
           // Mark INCOMPLETE for this date
           completedDates.remove(selectedDate);
@@ -645,7 +645,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
                 );
               }
             }
-          } catch (_) {}
+          } catch (e) { print('Alarm reschedule error: $e'); }
         }
       } else {
         // --- Non-recurring task: single write to avoid double-write race ---
@@ -655,7 +655,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
             if (task.alarmTime != null) {
               await _notificationService.cancelTaskAlarm(id);
             }
-          } catch (_) {}
+          } catch (e) { print('Alarm cancel error: $e'); }
           await _taskRepository.updateTask(task.copyWith(
             isCompleted: true,
             completedAt: DateTime.now(),

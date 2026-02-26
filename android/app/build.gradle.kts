@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
 
-    namespace = "com.example.sampleapp"
+    namespace = "com.naveenraj.taskrelay"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -33,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.sampleapp"
+        applicationId = "com.naveenraj.taskrelay"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

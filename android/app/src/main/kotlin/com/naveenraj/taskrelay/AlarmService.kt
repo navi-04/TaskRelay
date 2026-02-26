@@ -1,4 +1,4 @@
-package com.example.sampleapp
+package com.naveenraj.taskrelay
 
 import android.app.KeyguardManager
 import android.app.Notification
@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -55,9 +56,9 @@ class AlarmService : Service() {
     companion object {
         private const val TAG = "AlarmService"
 
-        const val ACTION_START_ALARM = "com.example.sampleapp.ACTION_START_ALARM"
-        const val ACTION_STOP_ALARM  = "com.example.sampleapp.ACTION_STOP_ALARM"
-        const val ACTION_COMPLETE_FROM_NOTIFICATION = "com.example.sampleapp.ACTION_COMPLETE_FROM_NOTIFICATION"
+        const val ACTION_START_ALARM = "com.naveenraj.taskrelay.ACTION_START_ALARM"
+        const val ACTION_STOP_ALARM  = "com.naveenraj.taskrelay.ACTION_STOP_ALARM"
+        const val ACTION_COMPLETE_FROM_NOTIFICATION = "com.naveenraj.taskrelay.ACTION_COMPLETE_FROM_NOTIFICATION"
 
         private const val ALARM_NOTIFICATION_ID = 888
 
@@ -145,7 +146,11 @@ class AlarmService : Service() {
         // show a heads-up notification instead of launching AlarmActivity.
         try {
             val notification = buildNotification(currentTaskTitle, currentNotificationId)
-            startForeground(ALARM_NOTIFICATION_ID, notification)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(ALARM_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            } else {
+                startForeground(ALARM_NOTIFICATION_ID, notification)
+            }
             Log.d(TAG, "✅ Foreground started with FSI — system will launch AlarmActivity if screen is off")
         } catch (e: Exception) {
             Log.e(TAG, "❌ startForeground failed: ${e.message}", e)
@@ -238,7 +243,7 @@ class AlarmService : Service() {
             // Persist to SharedPreferences (survives process death)
             AlarmActivity.persistPendingCompletion(this, currentTaskId)
             // Also send broadcast (works if MainActivity is alive)
-            val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
+            val completeIntent = Intent("com.naveenraj.taskrelay.ACTION_COMPLETE_TASK").apply {
                 setPackage(packageName)
                 putExtra("taskId", currentTaskId)
                 putExtra("taskTitle", currentTaskTitle)
@@ -523,7 +528,7 @@ class AlarmService : Service() {
                 }
                 // Also send broadcast (works if MainActivity is alive)
                 if (currentTaskId.isNotEmpty()) {
-                    val completeIntent = Intent("com.example.sampleapp.ACTION_COMPLETE_TASK").apply {
+                    val completeIntent = Intent("com.naveenraj.taskrelay.ACTION_COMPLETE_TASK").apply {
                         setPackage(packageName)
                         putExtra("taskId", currentTaskId)
                         putExtra("taskTitle", currentTaskTitle)

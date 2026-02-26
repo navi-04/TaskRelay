@@ -116,8 +116,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
           ),
           child: Icon(icon, color: AppTheme.primaryColor, size: 20),
         ),
@@ -184,9 +184,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
@@ -219,9 +219,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).brightness == Brightness.dark 
-                  ? Colors.grey[400] 
-                  : Colors.grey[600],
+              color: AppTheme.getSecondaryTextColor(context),
             ),
           ),
         ],
@@ -242,9 +240,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[300]
-                : Colors.grey[700],
+            color: AppTheme.getSecondaryTextColor(context),
           ),
         ),
         const SizedBox(height: 8),
@@ -313,8 +309,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.deepPurple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.deepPurple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: const Icon(Icons.bar_chart, color: Colors.deepPurple),
               ),
@@ -332,9 +328,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(
                       currentMode.description,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.grey[400]
-                            : Colors.grey[600],
+                        color: AppTheme.getSecondaryTextColor(context),
                       ),
                     ),
                   ],
@@ -421,7 +415,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 SnackBar(
                   content: Text('$label updated to $v $suffix'),
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
                 ),
               );
             } else {
@@ -449,8 +443,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.warning.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppTheme.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: const Icon(Icons.notifications, color: AppTheme.warning),
               ),
@@ -519,8 +513,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.purple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: const Icon(Icons.palette, color: Colors.purple),
               ),
@@ -561,14 +555,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Theme.of(context).brightness == Brightness.dark 
-                ? Colors.grey[400] 
-                : Colors.grey[600]),
+            Icon(icon, size: 20, color: AppTheme.getSecondaryTextColor(context)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -583,9 +575,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.grey[400] 
-                          : Colors.grey[600],
+                      color: AppTheme.getSecondaryTextColor(context),
                     ),
                   ),
                 ],
@@ -610,8 +600,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppTheme.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: const Icon(Icons.category, color: AppTheme.success),
               ),
@@ -636,9 +626,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 'Task Types',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).brightness == Brightness.dark 
-                      ? Colors.grey[400] 
-                      : Colors.grey[600],
+                  color: AppTheme.getSecondaryTextColor(context),
                 ),
               ),
               TextButton.icon(
@@ -674,9 +662,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 'Priorities',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).brightness == Brightness.dark 
-                      ? Colors.grey[400] 
-                      : Colors.grey[600],
+                  color: AppTheme.getSecondaryTextColor(context),
                 ),
               ),
               TextButton.icon(
@@ -728,7 +714,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isDark ? Colors.grey[800] : Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
           border: Border.all(color: isDark ? Colors.grey[600]! : Colors.grey[300]!),
         ),
         child: Row(
@@ -756,9 +742,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -774,7 +760,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(width: 6),
             GestureDetector(
               onTap: () => _showDeletePriorityDialog(context, priority),
-              child: Icon(Icons.close, size: 14, color: color.withOpacity(0.6)),
+              child: Icon(Icons.close, size: 14, color: color.withValues(alpha: 0.6)),
             ),
           ],
         ),
@@ -1174,8 +1160,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: const Icon(Icons.info, color: AppTheme.primaryColor),
               ),
@@ -1208,9 +1194,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).brightness == Brightness.dark 
-                  ? Colors.grey[400] 
-                  : Colors.grey[600],
+              color: AppTheme.getSecondaryTextColor(context),
             ),
           ),
           Text(
@@ -1227,9 +1211,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildDangerZoneCard(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.error.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+        color: AppTheme.error.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1240,8 +1224,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppTheme.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: const Icon(Icons.delete_forever, color: AppTheme.error),
               ),
@@ -1260,9 +1244,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(
                       'Permanently delete tasks within a date range',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.grey[400] 
-                            : Colors.grey[600],
+                        color: AppTheme.getSecondaryTextColor(context),
                       ),
                     ),
                   ],
@@ -1318,25 +1300,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isDestructive 
-            ? AppTheme.error.withOpacity(0.1) 
+            ? AppTheme.error.withValues(alpha: 0.1) 
             : (isDark ? Colors.grey[800] : Colors.white),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
           border: Border.all(
             color: isDestructive 
-              ? AppTheme.error.withOpacity(0.5) 
-              : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
+              ? AppTheme.error.withValues(alpha: 0.5) 
+              : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
         child: Row(
           children: [
             Icon(
               icon, 
-              color: isDestructive ? AppTheme.error : (isDark ? Colors.grey[400] : Colors.grey[700]),
+              color: isDestructive ? AppTheme.error : AppTheme.getSecondaryTextColor(context),
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -1354,7 +1336,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      color: AppTheme.getSecondaryTextColor(context),
                     ),
                   ),
                 ],
@@ -1469,8 +1451,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                       ),
                       child: Row(
                         children: [
@@ -1503,9 +1485,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: taskCount > 0 
-                        ? AppTheme.error.withOpacity(0.1) 
+                        ? AppTheme.error.withValues(alpha: 0.1) 
                         : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                     ),
                     child: Row(
                       children: [
@@ -1586,8 +1568,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.error.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: AppTheme.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
               ),
               child: const Row(
                 children: [
@@ -1661,8 +1643,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.error.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: AppTheme.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
               ),
               child: const Column(
                 children: [
@@ -1736,9 +1718,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+                  color: AppTheme.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
                 ),
                 child: const Column(
                   children: [
@@ -1778,7 +1760,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.red[900],
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 ),
                 child: const Row(
                   children: [

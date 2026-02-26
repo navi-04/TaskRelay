@@ -1,4 +1,4 @@
-package com.example.sampleapp
+package com.naveenraj.taskrelay
 
 import android.annotation.SuppressLint
 import android.app.AlarmManager
@@ -17,7 +17,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.sampleapp/alarm"
+    private val CHANNEL = "com.naveenraj.taskrelay/alarm"
     private val TAG = "MainActivity"
     private var methodChannel: MethodChannel? = null
     private var completeTaskReceiver: BroadcastReceiver? = null
@@ -227,7 +227,7 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
-        val filter = IntentFilter("com.example.sampleapp.ACTION_COMPLETE_TASK")
+        val filter = IntentFilter("com.naveenraj.taskrelay.ACTION_COMPLETE_TASK")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(completeTaskReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
