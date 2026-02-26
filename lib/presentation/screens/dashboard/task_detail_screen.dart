@@ -724,18 +724,14 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       durationMinutes = task.durationMinutes; // keep existing
     }
 
-    // Check overlay permission if alarm set AND reminder type is full alarm
-    var effectiveAlarmTime = _alarmTime;
+    // Request overlay permission if alarm set AND reminder type is full alarm.
+    // Overlay is a fallback — always schedule alarm regardless.
     if (_alarmTime != null && _reminderTypeIndex == 0) {
       final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
       if (!mounted) return;
       if (!hasOverlay) {
         await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
         if (!mounted) return;
-        final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
-        if (!nowHasOverlay) {
-          effectiveAlarmTime = null;
-        }
       }
     }
 
@@ -753,32 +749,20 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       isRecurring: _isRecurring,
       recurringStartDate: _isRecurring ? _recurringStartDate : null,
       recurringEndDate: _isRecurring ? _recurringEndDate : null,
-      alarmTime: effectiveAlarmTime,
+      alarmTime: _alarmTime,
       reminderTypeIndex: _reminderTypeIndex,
     ));
 
     setState(() => _isEditing = false);
     _controllersInitialized = false; // Reload from updated task on next build
 
-    if (_alarmTime != null && effectiveAlarmTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Task updated without alarm — "Display over other apps" permission required.'),
-          backgroundColor: AppTheme.warning,
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Task updated!'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Task updated!'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   // ─── ESTIMATION FIELDS ──────────────────────────────────────────────

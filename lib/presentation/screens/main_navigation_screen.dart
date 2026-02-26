@@ -760,21 +760,16 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         }
       }
 
-      // If alarm is set, check overlay permission — strip alarm if denied (only for full alarm type)
-      var effectiveAlarmTime = alarmTime;
+      // If alarm is set and reminder type is full alarm, request overlay
+      // permission (needed for fallback alarm UI). But ALWAYS schedule the
+      // alarm — the primary mechanism (notification + fullScreenIntent + sound)
+      // works without overlay permission.
       if (alarmTime != null && reminderTypeIndex == 0) {
         final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
         if (!mounted) return;
         if (!hasOverlay) {
-          // Show dialog explaining why permission is needed
           await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
           if (!mounted) return;
-          // Re-check after user returns from settings
-          final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
-          if (!nowHasOverlay) {
-            // Permission still not granted — remove alarm, create task without it
-            effectiveAlarmTime = null;
-          }
         }
       }
       
@@ -796,38 +791,21 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         isRecurring: isRecurring,
         recurringStartDate: isRecurring ? recurringStartDate : null,
         recurringEndDate: isRecurring ? recurringEndDate : null,
-        alarmTime: effectiveAlarmTime,
+        alarmTime: alarmTime,
         reminderTypeIndex: reminderTypeIndex,
       );
       
       if (!mounted) return;
       Navigator.pop(context);
-      // Warn the user if alarm was removed due to missing permission
-      if (alarmTime != null && effectiveAlarmTime == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Task created without alarm — "Display over other apps" permission is required for alarms.',
-            ),
-            backgroundColor: AppTheme.warning,
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-            ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Task added!'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
           ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Task added!'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-            ),
-          ),
-        );
-      }
+        ),
+      );
     }
   }
 }

@@ -1943,18 +1943,14 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   }
                                 }
 
-                                // If alarm is set, check overlay permission — strip alarm if denied (only for full alarm type)
-                                var effectiveAlarmTime = alarmTime;
+                                // Request overlay permission if alarm set and full alarm type.
+                                // Overlay is a fallback — always schedule alarm regardless.
                                 if (alarmTime != null && reminderTypeIndex == 0) {
                                   final hasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
                                   if (!context.mounted) return;
                                   if (!hasOverlay) {
                                     await ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
                                     if (!context.mounted) return;
-                                    final nowHasOverlay = await ref.read(notificationServiceProvider).hasOverlayPermission();
-                                    if (!nowHasOverlay) {
-                                      effectiveAlarmTime = null;
-                                    }
                                   }
                                 }
                                 
@@ -1977,7 +1973,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     isRecurring: isRecurring,
                                     recurringStartDate: isRecurring ? recurringStartDate : null,
                                     recurringEndDate: isRecurring ? recurringEndDate : null,
-                                    alarmTime: effectiveAlarmTime,
+                                    alarmTime: alarmTime,
                                     reminderTypeIndex: reminderTypeIndex,
                                   ));
                                 } else {
@@ -1998,37 +1994,21 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                     isRecurring: isRecurring,
                                     recurringStartDate: isRecurring ? recurringStartDate : null,
                                     recurringEndDate: isRecurring ? recurringEndDate : null,
-                                    alarmTime: effectiveAlarmTime,
+                                    alarmTime: alarmTime,
                                     reminderTypeIndex: reminderTypeIndex,
                                   );
                                 }
                                 
                                 Navigator.pop(context);
-                                if (alarmTime != null && effectiveAlarmTime == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${isEditing ? 'Task updated' : 'Task created'} without alarm — "Display over other apps" permission is required for alarms.',
-                                      ),
-                                      backgroundColor: AppTheme.warning,
-                                      duration: const Duration(seconds: 4),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(isEditing ? 'Task updated!' : 'Task added!'),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(isEditing ? 'Task updated!' : 'Task added!'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  );
-                                }
+                                  ),
+                                );
                               }
                             },
                             icon: Icon(isEditing ? Icons.save : Icons.add),

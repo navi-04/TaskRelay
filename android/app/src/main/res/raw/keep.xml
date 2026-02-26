@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Prevent Android resource shrinking from removing resources that are
+  referenced only from Dart code (which compiles to a native .so library
+  that the resource shrinker cannot analyze).
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/alarm_sound" />
