@@ -31,13 +31,16 @@ class SettingsEntityAdapter extends TypeAdapter<SettingsEntity> {
       estimationModeIndex: fields[11] as int,
       dailyWeightLimit: fields[12] as int,
       dailyCountLimit: fields[13] as int,
+      endOfDayNotificationEnabled: fields[14] as bool? ?? false,
+      endOfDayHour: fields[15] as int? ?? 21,
+      endOfDayMinute: fields[16] as int? ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsEntity obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(17)
       ..writeByte(9)
       ..write(obj.username)
       ..writeByte(10)
@@ -65,7 +68,13 @@ class SettingsEntityAdapter extends TypeAdapter<SettingsEntity> {
       ..writeByte(7)
       ..write(obj.defaultTaskType)
       ..writeByte(8)
-      ..write(obj.defaultPriority);
+      ..write(obj.defaultPriority)
+      ..writeByte(14)
+      ..write(obj.endOfDayNotificationEnabled)
+      ..writeByte(15)
+      ..write(obj.endOfDayHour)
+      ..writeByte(16)
+      ..write(obj.endOfDayMinute);
   }
 
   @override

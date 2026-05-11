@@ -488,6 +488,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const Divider(),
           _buildSettingsTile(
             context,
+            'End-of-Day Summary',
+            'Daily wrap-up notification with completion stats',
+            Icons.nightlight_round,
+            trailing: Switch(
+              value: settings.endOfDayNotificationEnabled,
+              onChanged: (value) {
+                ref.read(settingsProvider.notifier).updateEndOfDayNotification(
+                  enabled: value,
+                );
+              },
+            ),
+          ),
+          if (settings.endOfDayNotificationEnabled) ...[
+            const Divider(),
+            _buildSettingsTile(
+              context,
+              'End-of-Day Time',
+              DateHelper.formatTime12h(settings.endOfDayHour, settings.endOfDayMinute),
+              Icons.access_time_filled,
+              onTap: _selectEndOfDayTime,
+              trailing: const Icon(Icons.chevron_right),
+            ),
+          ],
+          const Divider(),
+          _buildSettingsTile(
+            context,
             'Carry-Over Alerts',
             'Alert when tasks are carried over',
             Icons.arrow_forward,
@@ -1881,6 +1907,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  Future<void> _selectEndOfDayTime() async {
+    final settings = ref.read(settingsProvider);
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: settings.endOfDayHour,
+        minute: settings.endOfDayMinute,
+      ),
+    );
+    if (picked != null) {
+      ref.read(settingsProvider.notifier).updateEndOfDayNotification(
+        hour: picked.hour,
+        minute: picked.minute,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'End-of-day time set to ${DateHelper.formatTime12h(picked.hour, picked.minute)}',
+            ),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _selectNotificationTime() async {

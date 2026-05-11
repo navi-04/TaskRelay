@@ -45,34 +45,58 @@ class MainActivity : FlutterActivity() {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "scheduleFullScreenAlarm" -> {
-                    val notificationId = call.argument<Int>("notificationId") ?: 0
-                    val taskTitle = call.argument<String>("taskTitle") ?: "Task Reminder"
-                    val taskId = call.argument<String>("taskId") ?: ""
-                    val triggerTimeMillis = call.argument<Long>("triggerTimeMillis") ?: 0L
-                    val isPermanent = call.argument<Boolean>("isPermanent") ?: false
-                    
-                    Log.d(TAG, "🔔 Scheduling alarm from Flutter")
-                    Log.d(TAG, "  - Task: $taskTitle")
-                    Log.d(TAG, "  - TaskID: $taskId")
-                    Log.d(TAG, "  - ID: $notificationId")
-                    Log.d(TAG, "  - Time: $triggerTimeMillis")
-                    Log.d(TAG, "  - Delta: ${(triggerTimeMillis - System.currentTimeMillis()) / 1000}s")
-                    
-                    // Log battery optimization status (informational only)
-                    isBatteryOptimizationDisabled()
-                    
-                    // Schedule using setAlarmClock — fully immune to Doze & OEM restrictions
-                    AlarmReceiver.scheduleAlarm(
-                        context,
-                        notificationId,
-                        taskTitle,
-                        triggerTimeMillis,
-                        isPermanent,
-                        taskId
-                    )
-                    
-                    Log.d(TAG, "✅ Alarm scheduled successfully")
-                    result.success(true)
+                    try {
+                        val notificationId = call.argument<Int>("notificationId") ?: 0
+                        val taskTitle = call.argument<String>("taskTitle") ?: "Task Reminder"
+                        val taskId = call.argument<String>("taskId") ?: ""
+                        // Handle both Int and Long from Dart's method channel codec
+                        val triggerTimeMillis: Long = when (val raw = call.argument<Any>("triggerTimeMillis")) {
+                            is Long -> raw
+                            is Int -> raw.toLong()
+                            is Number -> raw.toLong()
+                            else -> 0L
+                        }
+                        val isPermanent = call.argument<Boolean>("isPermanent") ?: false
+                        
+                        Log.d(TAG, "🔔 Scheduling alarm from Flutter")
+                        Log.d(TAG, "  - Task: $taskTitle")
+                        Log.d(TAG, "  - TaskID: $taskId")
+                        Log.d(TAG, "  - ID: $notificationId")
+                        Log.d(TAG, "  - Time: $triggerTimeMillis (${java.util.Date(triggerTimeMillis)})")
+                        Log.d(TAG, "  - Delta: ${(triggerTimeMillis - System.currentTimeMillis()) / 1000}s")
+                        
+                        if (triggerTimeMillis <= 0L) {
+                            result.error("INVALID_TIME", "triggerTimeMillis is $triggerTimeMillis — invalid", null)
+                            return@setMethodCallHandler
+                        }
+                        
+                        // Verify exact alarm permission
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                            if (!am.canScheduleExactAlarms()) {
+                                Log.w(TAG, "⚠️ canScheduleExactAlarms() = false — requesting permission")
+                            }
+                        }
+                        
+                        // Log battery optimization status (informational only)
+                        isBatteryOptimizationDisabled()
+                        
+                        // Schedule using setAlarmClock — fully immune to Doze & OEM restrictions
+                        AlarmReceiver.scheduleAlarm(
+                            context,
+                            notificationId,
+                            taskTitle,
+                            triggerTimeMillis,
+                            isPermanent,
+                            taskId
+                        )
+                        
+                        Log.d(TAG, "✅ Alarm scheduled successfully")
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ scheduleFullScreenAlarm FAILED: ${e.message}", e)
+                        result.error("SCHEDULE_FAILED", e.message ?: "Unknown error", e.stackTraceToString())
+                    }
                 }
                 "cancelFullScreenAlarm" -> {
                     val notificationId = call.argument<Int>("notificationId") ?: 0
@@ -164,6 +188,13 @@ class MainActivity : FlutterActivity() {
                         }
                     } else {
                         result.success(true)
+                    }
+                }
+                "getTimeZone" -> {
+                    try {
+                        result.success(java.util.TimeZone.getDefault().id)
+                    } catch (e: Exception) {
+                        result.success(null)
                     }
                 }
                 else -> {

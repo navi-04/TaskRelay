@@ -39,10 +39,13 @@ class TaskState {
     );
   }
   
-  List<TaskEntity> get pendingTasks => tasks.where((t) => !t.isCompleted).toList();
-  List<TaskEntity> get completedTasks => tasks.where((t) => t.isCompleted).toList();
+  bool _isTaskCompleted(TaskEntity t) =>
+      t.isRecurring ? t.isCompletedForDate(selectedDate) : t.isCompleted;
+
+  List<TaskEntity> get pendingTasks => tasks.where((t) => !_isTaskCompleted(t)).toList();
+  List<TaskEntity> get completedTasks => tasks.where((t) => _isTaskCompleted(t)).toList();
   List<TaskEntity> get carriedOverTasks => tasks.where((t) => t.isCarriedOver).toList();
-  
+
   int get totalMinutes => tasks.fold(0, (sum, t) => sum + t.durationMinutes);
   int get completedMinutes => completedTasks.fold(0, (sum, t) => sum + t.durationMinutes);
   int get pendingMinutes => pendingTasks.fold(0, (sum, t) => sum + t.durationMinutes);
@@ -140,31 +143,28 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
       
       // Combine both lists
       final allTasks = [...dateTasks, ...updatedRecurringTasks];
-      
-      // Re-schedule alarms for recurring tasks — ONLY when viewing today.
-      // Scheduling alarms when browsing other dates would cancel today's
-      // alarms (since each task has only one alarm slot keyed by task ID).
-      final todayStr = DateHelper.formatDate(DateHelper.getToday());
-      if (state.selectedDate == todayStr) {
-        for (final task in updatedRecurringTasks) {
-          if (task.alarmTime != null && !task.isCompleted) {
-            await _scheduleRecurringAlarmForNextValidDate(task);
-          }
-        }
-      }
-      
+
+      // Update state with tasks immediately — must happen before alarm scheduling
+      // so that a failed alarm cannot leave the UI showing an empty task list.
       state = state.copyWith(
         tasks: allTasks,
         isLoading: false,
         error: null,
       );
 
-      // Refresh the DaySummary only for today or past dates.
-      // Future dates haven't happened yet — don't persist a summary
-      // that would make them show as "missed" on the calendar.
-      final todayDate = DateHelper.formatDate(DateHelper.getToday());
-      if (state.selectedDate.compareTo(todayDate) <= 0) {
-        await _updateSummaryForDate(state.selectedDate);
+      // Re-schedule alarms for recurring tasks — ONLY when viewing today.
+      // Scheduling alarms when browsing other dates would cancel today's
+      // alarms (since each task has only one alarm slot keyed by task ID).
+      // Each call is wrapped individually so a single failure cannot wipe the list.
+      final todayStr = DateHelper.formatDate(DateHelper.getToday());
+      if (state.selectedDate == todayStr) {
+        for (final task in updatedRecurringTasks) {
+          if (task.alarmTime != null && !task.isCompleted) {
+            try {
+              await _scheduleRecurringAlarmForNextValidDate(task);
+            } catch (_) {}
+          }
+        }
       }
     } catch (e) {
       // If box not initialized yet, keep empty state
@@ -173,7 +173,19 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         isLoading: false,
         error: null,
       );
+      return; // Don't proceed to summary update if task loading itself failed
     }
+
+    // Refresh the DaySummary only for today or past dates.
+    // Future dates haven't happened yet — don't persist a summary
+    // that would make them show as "missed" on the calendar.
+    // Wrapped separately so summary failures never reset the task list.
+    try {
+      final todayDate = DateHelper.formatDate(DateHelper.getToday());
+      if (state.selectedDate.compareTo(todayDate) <= 0) {
+        await _updateSummaryForDate(state.selectedDate);
+      }
+    } catch (_) {}
   }
   
   /// Load tasks for today (resets selected date to today)
@@ -269,8 +281,9 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskDate: taskDate,
             );
           }
-        } catch (e) {
-          print('\u274c Alarm scheduling failed: $e');
+        } catch (e, stack) {
+          print('\u274c Alarm scheduling failed: $e\n$stack');
+          state = state.copyWith(error: 'Alarm scheduling failed: $e');
         }
       }
       
@@ -321,8 +334,9 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         } else if (oldTask.alarmTime != null && task.alarmTime == null) {
           await _notificationService.cancelTaskAlarm(task.id);
         }
-      } catch (e) {
-        print('\u274c Alarm update failed: $e');
+      } catch (e, stack) {
+        print('\u274c Alarm update failed: $e\n$stack');
+        state = state.copyWith(error: 'Alarm update failed: $e');
       }
       
       await _updateSummary();
@@ -571,7 +585,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   }
   
   /// Toggle task completion
-  Future<void> toggleTaskCompletion(String id) async {
+  Future<void> toggleTaskCompletion(String id, {String? completionNote}) async {
     try {
       // Find the task
       final task = state.tasks.firstWhere((t) => t.id == id);
@@ -598,6 +612,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           await _taskRepository.updateTask(task.copyWith(
             completedDates: completedDates,
             mutedAlarmDates: mutedDates,
+            completionNote: completionNote ?? task.completionNote,
           ));
 
           // Cancel alarm and schedule next valid day
@@ -660,6 +675,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
             isCompleted: true,
             completedAt: DateTime.now(),
             alarmTime: null,
+            completionNote: completionNote ?? task.completionNote,
           ));
         } else {
           // Marking INCOMPLETE → restore task, reschedule alarm if it had one
@@ -683,7 +699,9 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
   /// Update summary for current date.
   /// Includes both date-specific tasks AND recurring tasks visible on this date.
   Future<void> _updateSummary() async {
-    await _updateSummaryForDate(state.selectedDate);
+    try {
+      await _updateSummaryForDate(state.selectedDate);
+    } catch (_) {}
   }
 
   /// Build the full task list for a given date (including recurring tasks)

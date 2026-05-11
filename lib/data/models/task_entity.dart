@@ -128,6 +128,10 @@ class TaskEntity extends Equatable {
   @HiveField(24)
   final List<String> completedDates;
 
+  /// Optional note written when the task was marked complete.
+  @HiveField(25)
+  final String? completionNote;
+
   /// Alias: use isRecurring everywhere in the app
   bool get isRecurring => isPermanent;
 
@@ -172,6 +176,7 @@ class TaskEntity extends Equatable {
     this.priorityId,
     this.mutedAlarmDates = const [],
     this.completedDates = const [],
+    this.completionNote,
   });
   
   /// Create a new task
@@ -253,6 +258,7 @@ class TaskEntity extends Equatable {
     Object? priorityId = _unset,
     List<String>? mutedAlarmDates,
     List<String>? completedDates,
+    Object? completionNote = _unset,
   }) {
     final effectivePermanent = isRecurring ?? isPermanent ?? this.isPermanent;
     return TaskEntity(
@@ -281,9 +287,10 @@ class TaskEntity extends Equatable {
       priorityId: priorityId is _Unset ? this.priorityId : priorityId as String?,
       mutedAlarmDates: mutedAlarmDates ?? this.mutedAlarmDates,
       completedDates: completedDates ?? this.completedDates,
+      completionNote: completionNote is _Unset ? this.completionNote : completionNote as String?,
     );
   }
-  
+
   /// Mark task as completed
   TaskEntity markCompleted() {
     return copyWith(
@@ -335,6 +342,7 @@ class TaskEntity extends Equatable {
         priorityId,
         mutedAlarmDates,
         completedDates,
+        completionNote,
       ];
   
   /// Get formatted duration string (e.g., "1h 30m")

@@ -3,6 +3,7 @@ import '../../data/models/settings_entity.dart';
 import '../../data/models/task_type.dart';
 import '../../data/models/task_priority.dart';
 import '../../data/repositories/settings_repository.dart';
+import '../../domain/services/notification_service.dart';
 import '../../domain/services/task_carry_over_service.dart';
 import 'providers.dart';
 
@@ -23,10 +24,12 @@ class SettingsStateNotifier extends StateNotifier<SettingsEntity> {
     }
   final SettingsRepository _repository;
   final TaskCarryOverService _carryOverService;
-  
+  final NotificationService _notificationService;
+
   SettingsStateNotifier(
     this._repository,
     this._carryOverService,
+    this._notificationService,
   ) : super(SettingsEntity.defaults());
   // Don't auto-load on construction - wait for explicit init
   
@@ -114,12 +117,39 @@ class SettingsStateNotifier extends StateNotifier<SettingsEntity> {
     await _repository.updateSettings(newSettings);
     state = newSettings;
   }
+
+  /// Update end-of-day notification settings and reschedule (or cancel).
+  Future<void> updateEndOfDayNotification({
+    bool? enabled,
+    int? hour,
+    int? minute,
+  }) async {
+    final newSettings = state.copyWith(
+      endOfDayNotificationEnabled: enabled,
+      endOfDayHour: hour,
+      endOfDayMinute: minute,
+    );
+    await _repository.updateSettings(newSettings);
+    state = newSettings;
+
+    if (newSettings.endOfDayNotificationEnabled) {
+      await _notificationService.scheduleEndOfDayReminder(
+        hour: newSettings.endOfDayHour,
+        minute: newSettings.endOfDayMinute,
+        completedCount: 0,
+        totalCount: 0,
+      );
+    } else {
+      await _notificationService.cancelEndOfDayReminder();
+    }
+  }
 }
 
 /// Settings State Provider
 final settingsProvider = StateNotifierProvider<SettingsStateNotifier, SettingsEntity>((ref) {
   final repository = ref.watch(settingsRepositoryProvider);
   final carryOverService = ref.watch(taskCarryOverServiceProvider);
-  
-  return SettingsStateNotifier(repository, carryOverService);
+  final notificationService = ref.watch(notificationServiceProvider);
+
+  return SettingsStateNotifier(repository, carryOverService, notificationService);
 });

@@ -15,10 +15,19 @@
 
 -keep class com.naveenraj.taskrelay.MainActivity { *; }
 
+# ─── Gson (used by flutter_local_notifications for serialization) ─────────────
+# R8 strips generic type information from TypeToken subclasses, causing
+# "Missing type parameter" crash in getSuperclassTypeParameter().
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keepattributes Signature
+-keepattributes *Annotation*
+
 # ─── Flutter Local Notifications Plugin ───────────────────────────────────────
 # The plugin's receivers are declared in AndroidManifest.xml but R8 may still
 # strip internal helpers. Keep the whole package to be safe.
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
+-keepclassmembers class com.dexterous.flutterlocalnotifications.** { *; }
 
 # ─── Android & AndroidX components used by alarm infrastructure ──────────────
 -keep class androidx.core.app.NotificationCompat { *; }

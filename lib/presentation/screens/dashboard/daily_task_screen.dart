@@ -10,6 +10,7 @@ import '../../../core/utils/date_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../providers/providers.dart';
+import '../../providers/timer_provider.dart';
 import 'task_detail_screen.dart';
 
 /// View mode for displaying tasks
@@ -57,6 +58,30 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   
   @override
   Widget build(BuildContext context) {
+    // Listen for errors and show SnackBar (deferred to avoid framework assertion during keyboard dismiss)
+    ref.listen<TaskState>(taskStateProvider, (previous, next) {
+      if (next.error != null && next.error != previous?.error) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.error!),
+              backgroundColor: AppTheme.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Dismiss',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
+            ),
+          );
+        });
+      }
+    });
+
     final taskState = ref.watch(taskStateProvider);
     final settings = ref.watch(settingsProvider);
     
@@ -306,9 +331,14 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   Widget _buildTaskList(BuildContext context, TaskState taskState, bool? completedFilter) {
     List<TaskEntity> tasks = taskState.tasks;
     
-    // Apply completed filter
+    // Apply completed filter (recurring tasks use per-date completion)
     if (completedFilter != null) {
-      tasks = tasks.where((t) => t.isCompleted == completedFilter).toList();
+      tasks = tasks.where((t) {
+        final done = t.isRecurring
+            ? t.isCompletedForDate(taskState.selectedDate)
+            : t.isCompleted;
+        return done == completedFilter;
+      }).toList();
     }
     
     // Apply search filter
@@ -350,11 +380,15 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     // Sort: incomplete first, then by priority, then by duration
     final customTypes = ref.watch(customTypesProvider);
     
+    final selectedDate = ref.read(taskStateProvider).selectedDate;
+    bool isDone(TaskEntity t) =>
+        t.isRecurring ? t.isCompletedForDate(selectedDate) : t.isCompleted;
+
     void sortTasks(List<TaskEntity> taskList) {
       taskList.sort((a, b) {
-        if (a.isCompleted != b.isCompleted) {
-          return a.isCompleted ? 1 : -1;
-        }
+        final aDone = isDone(a);
+        final bDone = isDone(b);
+        if (aDone != bDone) return aDone ? 1 : -1;
         final aPriority = customTypes.findPriority(a.effectivePriorityId);
         final bPriority = customTypes.findPriority(b.effectivePriorityId);
         final priorityCompare = (aPriority?.sortOrder ?? 99).compareTo(bPriority?.sortOrder ?? 99);
@@ -767,6 +801,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   }
   
   Widget _buildCompactTaskItem(BuildContext context, TaskEntity task, {bool showType = true}) {
+    final selectedDate = ref.watch(taskStateProvider).selectedDate;
+    final isTaskDone = task.isRecurring
+        ? task.isCompletedForDate(selectedDate)
+        : task.isCompleted;
     return Container(
       decoration: BoxDecoration(
         border: Border(
@@ -794,20 +832,20 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: task.isCompleted 
-                  ? AppTheme.success 
+              color: isTaskDone
+                  ? AppTheme.success
                   : Colors.transparent,
               shape: BoxShape.circle,
               border: Border.all(
-                color: task.isCompleted 
-                    ? AppTheme.success 
-                    : (Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.grey[500]! 
+                color: isTaskDone
+                    ? AppTheme.success
+                    : (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[500]!
                         : Colors.grey[400]!),
                 width: 2,
               ),
             ),
-            child: task.isCompleted
+            child: isTaskDone
                 ? const Icon(Icons.check, color: Colors.white, size: 16)
                 : null,
           ),
@@ -815,8 +853,8 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
         title: Text(
           task.title,
           style: TextStyle(
-            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-            color: task.isCompleted ? Colors.grey : null,
+            decoration: isTaskDone ? TextDecoration.lineThrough : null,
+            color: isTaskDone ? Colors.grey : null,
           ),
         ),
         subtitle: task.description != null && task.description!.isNotEmpty
@@ -893,6 +931,11 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   }
   
   Widget _buildTaskCard(BuildContext context, TaskEntity task) {
+    final selectedDate = ref.watch(taskStateProvider).selectedDate;
+    final isTaskDone = task.isRecurring
+        ? task.isCompletedForDate(selectedDate)
+        : task.isCompleted;
+
     return Dismissible(
       key: Key(task.id),
       direction: DismissDirection.endToStart,
@@ -923,7 +966,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                border: task.isCompleted
+                border: isTaskDone
                     ? null
                     : Border.all(
                         color: ref.read(customTypesProvider).priorityColorById(task.effectivePriorityId).withValues(alpha: 0.2),
@@ -936,8 +979,16 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: GestureDetector(
-                  onTap: () {
-                    ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
+                  onTap: () async {
+                    if (!isTaskDone) {
+                      final note = await _showCompletionNoteDialog(context, task.title);
+                      if (!context.mounted) return;
+                      ref.read(taskStateProvider.notifier)
+                          .toggleTaskCompletion(task.id, completionNote: note?.trim().isEmpty == true ? null : note?.trim());
+                      ref.read(timerProvider.notifier).stopTimer(task.id);
+                    } else {
+                      ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
+                    }
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -945,20 +996,20 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: task.isCompleted 
-                          ? AppTheme.success 
+                      color: isTaskDone
+                          ? AppTheme.success
                           : Colors.transparent,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: task.isCompleted 
-                            ? AppTheme.success 
-                            : (Theme.of(context).brightness == Brightness.dark 
-                                ? Colors.grey[500]! 
+                        color: isTaskDone
+                            ? AppTheme.success
+                            : (Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[500]!
                                 : Colors.grey[400]!),
                         width: 2,
                       ),
                     ),
-                    child: task.isCompleted
+                    child: isTaskDone
                         ? const Icon(Icons.check, color: Colors.white, size: 16)
                         : null,
                   ),
@@ -967,14 +1018,18 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   task.title,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    decoration: task.isCompleted 
-                        ? TextDecoration.lineThrough 
+                    decoration: isTaskDone
+                        ? TextDecoration.lineThrough
                         : TextDecoration.none,
-                    color: task.isCompleted ? Colors.grey : null,
+                    color: isTaskDone ? Colors.grey : null,
                   ),
                 ),
-                subtitle: task.description != null && task.description!.isNotEmpty
-                    ? Padding(
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (task.description != null && task.description!.isNotEmpty)
+                      Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           task.description!,
@@ -985,11 +1040,55 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      )
-                    : null,
-                trailing: IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: () => _showTaskOptions(context, task),
+                      ),
+                    Consumer(
+                      builder: (_, ref, __) {
+                        final elapsed = ref.watch(timerProvider).taskElapsed[task.id] ?? 0;
+                        final isActive = ref.watch(timerProvider).activeTaskId == task.id;
+                        if (elapsed == 0) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            TimerNotifier.formatElapsed(elapsed),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isActive ? AppTheme.primaryColor : Colors.grey,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isTaskDone)
+                      Consumer(
+                        builder: (_, ref, __) {
+                          final timerState = ref.watch(timerProvider);
+                          final isActiveTimer = timerState.activeTaskId == task.id;
+                          return IconButton(
+                            icon: Icon(
+                              isActiveTimer ? Icons.pause_circle : Icons.play_circle_outline,
+                              color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
+                            ),
+                            onPressed: () {
+                              if (isActiveTimer) {
+                                ref.read(timerProvider.notifier).pauseTimer();
+                              } else {
+                                ref.read(timerProvider.notifier).startTimer(task.id);
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: () => _showTaskOptions(context, task),
+                    ),
+                  ],
                 ),
               ),
               Padding(
@@ -1254,6 +1353,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
   }
   
   void _showTaskOptions(BuildContext context, TaskEntity task) {
+    final selectedDate = ref.read(taskStateProvider).selectedDate;
+    final isTaskDone = task.isRecurring
+        ? task.isCompletedForDate(selectedDate)
+        : task.isCompleted;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1290,10 +1393,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
             ),
             ListTile(
               leading: Icon(
-                task.isCompleted ? Icons.undo : Icons.check_circle,
-                color: task.isCompleted ? null : AppTheme.success,
+                isTaskDone ? Icons.undo : Icons.check_circle,
+                color: isTaskDone ? null : AppTheme.success,
               ),
-              title: Text(task.isCompleted ? 'Mark as Incomplete' : 'Mark as Complete'),
+              title: Text(isTaskDone ? 'Mark as Incomplete' : 'Mark as Complete'),
               onTap: () {
                 ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
                 Navigator.pop(context);
@@ -1490,7 +1593,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                 prefixIcon: Icon(Icons.schedule),
                                 contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               ),
-                              items: List.generate(25, (index) => index).map((hour) {
+                              items: List.generate(24, (index) => index).map((hour) {
                                 return DropdownMenuItem(
                                   value: hour,
                                   child: Text('$hour h', style: const TextStyle(fontSize: 14)),
@@ -2029,6 +2132,47 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     titleController.dispose();
     descriptionController.dispose();
     notesController.dispose();
+  }
+
+  /// Prompt for an optional note when marking a task complete. Returns null if cancelled.
+  Future<String?> _showCompletionNoteDialog(BuildContext context, String taskTitle) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark Complete'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(taskTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'Add a completion note (optional)',
+                prefixIcon: Icon(Icons.note_alt_outlined),
+              ),
+              maxLines: 3,
+              autofocus: false,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Complete'),
+          ),
+        ],
+      ),
+    ).then((result) {
+      controller.dispose();
+      return result;
+    });
   }
 
   /// Show dialog asking whether to delete alarm for today only or all upcoming days

@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/custom_types_provider.dart';
+import '../../providers/timer_provider.dart';
 import '../../providers/providers.dart';
 
 /// Full-page Task Detail screen with view and edit modes.
@@ -87,6 +88,30 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for errors and show SnackBar (deferred to avoid framework assertion during keyboard dismiss)
+    ref.listen<TaskState>(taskStateProvider, (previous, next) {
+      if (next.error != null && next.error != previous?.error) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.error!),
+              backgroundColor: AppTheme.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Dismiss',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
+            ),
+          );
+        });
+      }
+    });
+
     final taskState = ref.watch(taskStateProvider);
     TaskEntity? task;
     try {
@@ -131,13 +156,21 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   // ─── VIEW MODE ─────────────────────────────────────────────────────
 
   Widget _buildViewMode(TaskEntity task, bool isDark) {
+    final selectedDate = ref.watch(taskStateProvider).selectedDate;
+    final isTaskDone = task.isRecurring
+        ? task.isCompletedForDate(selectedDate)
+        : task.isCompleted;
+    final timerState = ref.watch(timerProvider);
+    final isActiveTimer = timerState.activeTaskId == task.id;
+    final elapsed = timerState.taskElapsed[task.id] ?? 0;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status banner
-          if (task.isCompleted)
+          // Status / timer banner
+          if (isTaskDone)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -147,28 +180,97 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                 border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.check_circle, color: AppTheme.success, size: 20),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Completed',
-                    style: TextStyle(
-                      color: AppTheme.success,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: AppTheme.success, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Completed',
+                        style: TextStyle(
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (task.completedAt != null) ...[
+                        const Spacer(),
+                        Text(
+                          DateHelper.formatDateTime12h(task.completedAt!),
+                          style: TextStyle(
+                            color: AppTheme.success.withValues(alpha: 0.7),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  if (task.completedAt != null) ...[
-                    const Spacer(),
+                  if (task.completionNote != null && task.completionNote!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
                     Text(
-                      DateHelper.formatDateTime12h(task.completedAt!),
+                      task.completionNote!,
                       style: TextStyle(
-                        color: AppTheme.success.withValues(alpha: 0.7),
                         fontSize: 13,
+                        color: AppTheme.success.withValues(alpha: 0.85),
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
                   ],
+                ],
+              ),
+            )
+          else
+            // Timer card for incomplete tasks
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: (isActiveTimer ? AppTheme.primaryColor : Colors.grey).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(
+                  color: (isActiveTimer ? AppTheme.primaryColor : Colors.grey).withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.timer_outlined,
+                    color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    elapsed > 0 ? TimerNotifier.formatElapsed(elapsed) : '00:00',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(
+                      isActiveTimer ? Icons.pause_circle : Icons.play_circle_outline,
+                      color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
+                      size: 28,
+                    ),
+                    onPressed: () {
+                      if (isActiveTimer) {
+                        ref.read(timerProvider.notifier).pauseTimer();
+                      } else {
+                        ref.read(timerProvider.notifier).startTimer(task.id);
+                      }
+                    },
+                  ),
+                  if (elapsed > 0)
+                    IconButton(
+                      icon: const Icon(Icons.stop_circle_outlined, color: Colors.grey, size: 28),
+                      onPressed: () => ref.read(timerProvider.notifier).resetTimer(task.id),
+                    ),
                 ],
               ),
             ),
@@ -178,7 +280,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             task.title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+              decoration: isTaskDone ? TextDecoration.lineThrough : null,
             ),
           ),
           const SizedBox(height: 16),
@@ -253,11 +355,48 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
+                  onPressed: () async {
+                    if (!isTaskDone) {
+                      final ctrl = TextEditingController();
+                      final note = await showDialog<String>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Mark Complete'),
+                          content: TextField(
+                            controller: ctrl,
+                            decoration: const InputDecoration(
+                              hintText: 'Completion note (optional)',
+                              prefixIcon: Icon(Icons.note_alt_outlined),
+                            ),
+                            maxLines: 3,
+                            autofocus: false,
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(null),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+                              child: const Text('Complete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      ctrl.dispose();
+                      if (!context.mounted) return;
+                      if (note == null) return;
+                      ref.read(taskStateProvider.notifier).toggleTaskCompletion(
+                        task.id,
+                        completionNote: note.trim().isEmpty ? null : note.trim(),
+                      );
+                      ref.read(timerProvider.notifier).stopTimer(task.id);
+                    } else {
+                      ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
+                    }
                   },
-                  icon: Icon(task.isCompleted ? Icons.undo : Icons.check_circle_outline),
-                  label: Text(task.isCompleted ? 'Mark Incomplete' : 'Mark Complete'),
+                  icon: Icon(isTaskDone ? Icons.undo : Icons.check_circle_outline),
+                  label: Text(isTaskDone ? 'Mark Incomplete' : 'Mark Complete'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
@@ -791,7 +930,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   prefixIcon: Icon(Icons.schedule),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                items: List.generate(25, (i) => i)
+                items: List.generate(24, (i) => i)
                     .map((h) => DropdownMenuItem(value: h, child: Text('$h h', style: const TextStyle(fontSize: 14))))
                     .toList(),
                 onChanged: (v) => setState(() => _selectedHours = v!),

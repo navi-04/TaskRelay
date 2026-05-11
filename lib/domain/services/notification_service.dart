@@ -61,14 +61,30 @@ class NotificationService {
     // Initialize timezone
     tz_data.initializeTimeZones();
     // Detect the device's local timezone.
-    // DateTime.now().timeZoneName returns abbreviations (e.g. "IST") which the
-    // timezone package usually does not recognize. Instead, find a location
-    // whose current UTC offset matches the device offset.
+    // Try getting the IANA timezone name from the native side first,
+    // then fall back to abbreviation lookup, then offset-based matching.
+    String? nativeTimeZone;
     try {
-      final local = tz.getLocation(DateTime.now().timeZoneName);
-      tz.setLocalLocation(local);
-    } catch (_) {
-      // Abbreviation look-up failed — fall back to offset-based matching.
+      nativeTimeZone = await platform.invokeMethod<String>('getTimeZone');
+    } catch (_) {}
+
+    bool tzSet = false;
+    // 1) Try native IANA name (e.g. "Asia/Kolkata")
+    if (nativeTimeZone != null && nativeTimeZone.isNotEmpty) {
+      try {
+        tz.setLocalLocation(tz.getLocation(nativeTimeZone));
+        tzSet = true;
+      } catch (_) {}
+    }
+    // 2) Try Dart's timeZoneName (sometimes returns IANA names)
+    if (!tzSet) {
+      try {
+        tz.setLocalLocation(tz.getLocation(DateTime.now().timeZoneName));
+        tzSet = true;
+      } catch (_) {}
+    }
+    // 3) Fall back to offset-based matching
+    if (!tzSet) {
       try {
         final deviceOffset = DateTime.now().timeZoneOffset;
         final locations = tz.timeZoneDatabase.locations;
@@ -456,7 +472,62 @@ class NotificationService {
   Future<void> cancelDailyReminder() async {
     await _notifications.cancel(1);
   }
-  
+
+  /// Schedule end-of-day summary notification at a user-chosen time.
+  Future<void> scheduleEndOfDayReminder({
+    required int hour,
+    required int minute,
+    required int completedCount,
+    required int totalCount,
+  }) async {
+    await cancelEndOfDayReminder();
+
+    final now = DateTime.now();
+    var scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
+
+    final remaining = totalCount - completedCount;
+    final title = remaining == 0 ? 'All tasks done! 🎉' : 'End-of-day summary';
+    final body = remaining == 0
+        ? 'You completed all $totalCount tasks today. Great work!'
+        : '$completedCount/$totalCount tasks completed. $remaining still pending.';
+
+    const androidDetails = AndroidNotificationDetails(
+      'end_of_day',
+      'End-of-Day Summary',
+      channelDescription: 'Daily end-of-day summary notification',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    await _notifications.zonedSchedule(
+      4, // End-of-day reminder ID
+      title,
+      body,
+      tzScheduledDate,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// Cancel end-of-day reminder
+  Future<void> cancelEndOfDayReminder() async {
+    await _notifications.cancel(4);
+  }
+
   /// Show immediate carry-over alert
   /// 
   /// Shows when tasks are carried over (non-scheduled, immediate)

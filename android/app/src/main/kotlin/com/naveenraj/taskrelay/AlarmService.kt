@@ -39,17 +39,15 @@ import androidx.core.app.NotificationCompat
 /**
  * Foreground service that handles a triggered alarm.
  *
- * CRITICAL ORDER OF OPERATIONS for reliable lock-screen display:
- * 1. Post notification with fullScreenIntent via startForeground() FIRST
+ * ORDER OF OPERATIONS:
+ * 1. Start alarm sound + vibration (satisfies MEDIA_PLAYBACK fg type on API 34+)
+ * 2. Post notification with fullScreenIntent via startForeground()
  *    → Android triggers FSI immediately if screen is off/locked
- * 2. Start alarm sound + vibration
  * 3. After a delay (3s), check if AlarmActivity appeared
  *    → If not, show overlay window as fallback
  *
- * NEVER wake the screen or launch activities BEFORE posting the FSI
- * notification. Doing so makes Android treat the device as "in use"
- * and it will show a heads-up notification instead of the full-screen
- * intent.
+ * NOTE: Audio playback does NOT wake the screen, so starting it before
+ * the FSI notification won't interfere with lock-screen display.
  */
 class AlarmService : Service() {
 
@@ -134,35 +132,61 @@ class AlarmService : Service() {
 
         Log.d(TAG, "🔔 Starting alarm → $currentTaskTitle (ID: $currentNotificationId, TaskID: $currentTaskId)")
 
-        // ── STEP 1: Go foreground with FSI notification IMMEDIATELY ──
-        // This is the ONLY reliable way to show UI on the lock screen.
-        // Android triggers the fullScreenIntent when:
-        //   • The notification channel has IMPORTANCE_HIGH
-        //   • The screen is off OR the keyguard is showing
-        //   • The app has USE_FULL_SCREEN_INTENT permission
-        //
-        // ⚠️ Do NOT wake the screen or launch activities before this!
-        // That makes Android think the device is "in use" and it will
-        // show a heads-up notification instead of launching AlarmActivity.
-        try {
-            val notification = buildNotification(currentTaskTitle, currentNotificationId)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(ALARM_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-            } else {
-                startForeground(ALARM_NOTIFICATION_ID, notification)
-            }
-            Log.d(TAG, "✅ Foreground started with FSI — system will launch AlarmActivity if screen is off")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ startForeground failed: ${e.message}", e)
-        }
+        // ── STEP 1: Start sound + vibration FIRST ────────────────────
+        // On API 34+ (targetSdk 34+), FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        // requires active media playback at the time startForeground() is
+        // called. Starting audio BEFORE startForeground satisfies this
+        // requirement. Audio playback alone does NOT wake the screen, so
+        // it won't interfere with the full-screen intent mechanism.
+        startSound()
+        startVibration()
 
         // ── STEP 2: Acquire partial wake lock to keep CPU running ────
         // PARTIAL only — does NOT turn screen on (that would break FSI)
         acquirePartialWakeLock()
 
-        // ── STEP 3: Start sound + vibration immediately ──────────────
-        startSound()
-        startVibration()
+        // ── STEP 3: Go foreground with FSI notification ──────────────
+        // Android triggers the fullScreenIntent when:
+        //   • The notification channel has IMPORTANCE_HIGH
+        //   • The screen is off OR the keyguard is showing
+        //   • The app has USE_FULL_SCREEN_INTENT permission
+        //
+        // Uses a fallback chain: MEDIA_PLAYBACK → SHORT_SERVICE → legacy
+        val notification = buildNotification(currentTaskTitle, currentNotificationId)
+        var foregroundStarted = false
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // Try MEDIA_PLAYBACK first (audio is already playing)
+            try {
+                startForeground(ALARM_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+                foregroundStarted = true
+                Log.d(TAG, "✅ Foreground started with MEDIA_PLAYBACK type")
+            } catch (e: Exception) {
+                Log.e(TAG, "⚠️ MEDIA_PLAYBACK startForeground failed: ${e.message}", e)
+            }
+
+            // Fallback: SHORT_SERVICE (no prerequisites, works for up to 3 min)
+            if (!foregroundStarted) {
+                try {
+                    startForeground(ALARM_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE)
+                    foregroundStarted = true
+                    Log.d(TAG, "✅ Foreground started with SHORT_SERVICE type (fallback)")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ SHORT_SERVICE startForeground also failed: ${e.message}", e)
+                }
+            }
+        }
+
+        // Legacy path (API < 34) or last-resort fallback
+        if (!foregroundStarted) {
+            try {
+                startForeground(ALARM_NOTIFICATION_ID, notification)
+                foregroundStarted = true
+                Log.d(TAG, "✅ Foreground started (legacy / no type)")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ All startForeground attempts failed: ${e.message}", e)
+            }
+        }
 
         // ── STEP 4: Delayed fallback — only if FSI didn't launch Activity ──
         // Wait 3 seconds for the FSI to trigger and AlarmActivity to appear.

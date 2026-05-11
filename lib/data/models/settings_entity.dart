@@ -41,6 +41,18 @@ class SettingsEntity extends Equatable {
   @HiveField(13)
   final int dailyCountLimit;
 
+  /// Whether end-of-day summary notification is enabled
+  @HiveField(14)
+  final bool endOfDayNotificationEnabled;
+
+  /// Hour for end-of-day notification (0-23)
+  @HiveField(15)
+  final int endOfDayHour;
+
+  /// Minute for end-of-day notification (0-59)
+  @HiveField(16)
+  final int endOfDayMinute;
+
   /// Maximum total time allowed per day in minutes (max 1440 = 24 hours)
   @HiveField(0)
   final int dailyTimeLimitMinutes;
@@ -92,6 +104,9 @@ class SettingsEntity extends Equatable {
     this.estimationModeIndex = 0,
     this.dailyWeightLimit = 100,
     this.dailyCountLimit = 10,
+    this.endOfDayNotificationEnabled = false,
+    this.endOfDayHour = 21,
+    this.endOfDayMinute = 0,
   });
   
   /// Default settings (8 hours = 480 minutes)
@@ -111,6 +126,9 @@ class SettingsEntity extends Equatable {
       estimationModeIndex: 0,
       dailyWeightLimit: 100,
       dailyCountLimit: 10,
+      endOfDayNotificationEnabled: false,
+      endOfDayHour: 21,
+      endOfDayMinute: 0,
     );
   }
   
@@ -153,6 +171,9 @@ class SettingsEntity extends Equatable {
     int? estimationModeIndex,
     int? dailyWeightLimit,
     int? dailyCountLimit,
+    bool? endOfDayNotificationEnabled,
+    int? endOfDayHour,
+    int? endOfDayMinute,
   }) {
     return SettingsEntity(
       dailyTimeLimitMinutes: dailyTimeLimitMinutes ?? this.dailyTimeLimitMinutes,
@@ -169,6 +190,9 @@ class SettingsEntity extends Equatable {
       estimationModeIndex: estimationModeIndex ?? this.estimationModeIndex,
       dailyWeightLimit: dailyWeightLimit ?? this.dailyWeightLimit,
       dailyCountLimit: dailyCountLimit ?? this.dailyCountLimit,
+      endOfDayNotificationEnabled: endOfDayNotificationEnabled ?? this.endOfDayNotificationEnabled,
+      endOfDayHour: endOfDayHour ?? this.endOfDayHour,
+      endOfDayMinute: endOfDayMinute ?? this.endOfDayMinute,
     );
   }
   
@@ -201,5 +225,8 @@ class SettingsEntity extends Equatable {
         estimationModeIndex,
         dailyWeightLimit,
         dailyCountLimit,
+        endOfDayNotificationEnabled,
+        endOfDayHour,
+        endOfDayMinute,
       ];
 }
