@@ -321,6 +321,7 @@ class NotificationService {
     // 2. "Display over other apps" — show dialog first
     final overlayOk = await hasOverlayPermission();
     if (!overlayOk) {
+      if (!context.mounted) return false;
       final userAccepted = await _showPermissionDialog(
         context,
         title: 'Display Over Other Apps',
@@ -340,6 +341,7 @@ class NotificationService {
     // 3. Full-screen intent (Android 14+) — show dialog first
     final fsiOk = await hasFullScreenIntentPermission();
     if (!fsiOk) {
+      if (!context.mounted) return false;
       final userAccepted = await _showPermissionDialog(
         context,
         title: 'Full-Screen Alarm',
@@ -673,11 +675,11 @@ class NotificationService {
 
     // If the computed time is still in the past (stale task), bail out.
     if (scheduledDate.isBefore(now)) {
-      print('\u23f0 scheduleTaskAlarm: skipped \u2014 scheduledDate $scheduledDate is in the past (now: $now)');
+      debugPrint('\u23f0 scheduleTaskAlarm: skipped \u2014 scheduledDate $scheduledDate is in the past (now: $now)');
       return;
     }
 
-    print('\u23f0 scheduleTaskAlarm: scheduling "$taskTitle" at $scheduledDate (millis: ${scheduledDate.millisecondsSinceEpoch})');
+    debugPrint('\u23f0 scheduleTaskAlarm: scheduling "$taskTitle" at $scheduledDate (millis: ${scheduledDate.millisecondsSinceEpoch})');
 
     try {
       // Use native Android alarm with full-screen intent
@@ -688,9 +690,9 @@ class NotificationService {
         'triggerTimeMillis': scheduledDate.millisecondsSinceEpoch,
         'isPermanent': isPermanent,
       });
-      print('\u2705 scheduleTaskAlarm: native alarm scheduled successfully (id: $notificationId)');
+      debugPrint('\u2705 scheduleTaskAlarm: native alarm scheduled successfully (id: $notificationId)');
     } catch (e) {
-      print('\u274c scheduleTaskAlarm: platform call failed: $e');
+      debugPrint('\u274c scheduleTaskAlarm: platform call failed: $e');
       rethrow;
     }
   }

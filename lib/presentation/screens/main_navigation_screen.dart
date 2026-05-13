@@ -29,12 +29,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    // Check and request alarm-related permissions with user-facing dialogs.
-    // Basic notification/exact-alarm permissions are already requested in main.dart.
-    // This handles overlay & full-screen intent via explanation dialogs.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(notificationServiceProvider).ensureAlarmPermissions(context);
-    });
+    // Note: alarm/overlay permissions are requested contextually when the
+    // user actually sets an alarm (in QuickAddTaskSheet/TaskDetail save flow).
+    // No startup prompt — that's annoying for users who don't use alarms.
   }
 
   final List<Widget> _screens = const [
@@ -79,13 +76,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
+          border: Border(
+            top: BorderSide(
+              color: AppTheme.getCardBorderColor(context),
+              width: 1,
             ),
-          ],
+          ),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
@@ -239,7 +235,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: selectedTypeId,
+                        initialValue: selectedTypeId,
                         decoration: const InputDecoration(
                           labelText: 'Type',
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -260,7 +256,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: selectedPriorityId,
+                        initialValue: selectedPriorityId,
                         decoration: const InputDecoration(
                           labelText: 'Priority',
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -650,13 +646,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
           children: [
             Expanded(
               child: DropdownButtonFormField<int>(
-                value: selectedHours,
+                initialValue: selectedHours,
                 decoration: const InputDecoration(
                   labelText: 'Hours',
                   prefixIcon: Icon(Icons.schedule),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                items: List.generate(25, (i) => i).map((h) {
+                items: List.generate(24, (i) => i).map((h) {
                   return DropdownMenuItem(value: h, child: Text('$h h', style: const TextStyle(fontSize: 14)));
                 }).toList(),
                 onChanged: (v) => setState(() => selectedHours = v!),
@@ -665,7 +661,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             const SizedBox(width: 12),
             Expanded(
               child: DropdownButtonFormField<int>(
-                value: selectedMinutes,
+                initialValue: selectedMinutes,
                 decoration: const InputDecoration(
                   labelText: 'Minutes',
                   prefixIcon: Icon(Icons.timer),
@@ -796,8 +792,9 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
       );
       
       if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: const Text('Task added!'),
           behavior: SnackBarBehavior.floating,

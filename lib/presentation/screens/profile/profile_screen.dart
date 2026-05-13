@@ -248,7 +248,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             Expanded(
               child: DropdownButtonFormField<int>(
-                value: currentHours.clamp(0, 24),
+                initialValue: currentHours.clamp(0, 24),
                 decoration: const InputDecoration(
                   labelText: 'Hours',
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -269,7 +269,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: DropdownButtonFormField<int>(
-                value: currentMinutes,
+                initialValue: currentMinutes,
                 decoration: const InputDecoration(
                   labelText: 'Minutes',
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -826,8 +826,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   labelController.text,
                   '',
                 );
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text('Task type "${labelController.text}" added'),
                     backgroundColor: AppTheme.success,
@@ -875,8 +876,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   labelController.text,
                   '',
                 );
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Task type updated'),
                     backgroundColor: AppTheme.success,
@@ -907,11 +909,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () async {
               final deleted = await ref.read(customTypesProvider.notifier).deleteTaskType(type.id);
               if (!context.mounted) return;
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(
-                  content: Text(deleted 
-                    ? 'Task type deleted' 
+                  content: Text(deleted
+                    ? 'Task type deleted'
                     : 'Cannot delete - at least one type required'),
                   backgroundColor: deleted ? AppTheme.success : AppTheme.error,
                   behavior: SnackBarBehavior.floating,
@@ -1000,8 +1003,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     '',
                     selectedColorValue,
                   );
+                  final messenger = ScaffoldMessenger.of(context);
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text('Priority "${labelController.text}" added'),
                       backgroundColor: AppTheme.success,
@@ -1092,8 +1096,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     '',
                     selectedColorValue,
                   );
+                  final messenger = ScaffoldMessenger.of(context);
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                       content: Text('Priority updated'),
                       backgroundColor: AppTheme.success,
@@ -1125,11 +1130,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () async {
               final deleted = await ref.read(customTypesProvider.notifier).deletePriority(priority.id);
               if (!context.mounted) return;
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(
-                  content: Text(deleted 
-                    ? 'Priority deleted' 
+                  content: Text(deleted
+                    ? 'Priority deleted'
                     : 'Cannot delete - at least one priority required'),
                   backgroundColor: deleted ? AppTheme.success : AppTheme.error,
                   behavior: SnackBarBehavior.floating,
@@ -1160,8 +1166,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () {
               ref.read(customTypesProvider.notifier).resetAll();
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 const SnackBar(
                   content: Text('Types and priorities reset to defaults'),
                   behavior: SnackBarBehavior.floating,

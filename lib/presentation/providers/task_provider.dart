@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task_entity.dart';
 import '../../data/models/task_type.dart';
@@ -282,7 +283,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
             );
           }
         } catch (e, stack) {
-          print('\u274c Alarm scheduling failed: $e\n$stack');
+          debugPrint('\u274c Alarm scheduling failed: $e\n$stack');
           state = state.copyWith(error: 'Alarm scheduling failed: $e');
         }
       }
@@ -335,7 +336,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           await _notificationService.cancelTaskAlarm(task.id);
         }
       } catch (e, stack) {
-        print('\u274c Alarm update failed: $e\n$stack');
+        debugPrint('\u274c Alarm update failed: $e\n$stack');
         state = state.copyWith(error: 'Alarm update failed: $e');
       }
       
@@ -520,7 +521,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
               taskDate: checkDate,
             );
           }
-        } catch (e) { print('Alarm scheduling error: $e'); }
+        } catch (e) { debugPrint('Alarm scheduling error: $e'); }
         return;
       }
 
@@ -541,7 +542,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
           await _scheduleRecurringAlarmForNextValidDate(task);
         }
       }
-    } catch (e) { print('ensureRecurringAlarms error: $e'); }
+    } catch (e) { debugPrint('ensureRecurringAlarms error: $e'); }
   }
 
   /// Handle alarm dismissal — clears alarmTime for non-recurring tasks
@@ -578,7 +579,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
         ));
       }
     } catch (e) {
-      print('Alarm dismissal error: $e');
+      debugPrint('Alarm dismissal error: $e');
     } finally {
       loadTasksForSelectedDate();
     }
@@ -624,7 +625,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
                 startFromTomorrow: true,
               );
             }
-          } catch (e) { print('Alarm cancel/reschedule error: $e'); }
+          } catch (e) { debugPrint('Alarm cancel/reschedule error: $e'); }
         } else {
           // Mark INCOMPLETE for this date
           completedDates.remove(selectedDate);
@@ -660,7 +661,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
                 );
               }
             }
-          } catch (e) { print('Alarm reschedule error: $e'); }
+          } catch (e) { debugPrint('Alarm reschedule error: $e'); }
         }
       } else {
         // --- Non-recurring task: single write to avoid double-write race ---
@@ -670,7 +671,7 @@ class TaskStateNotifier extends StateNotifier<TaskState> {
             if (task.alarmTime != null) {
               await _notificationService.cancelTaskAlarm(id);
             }
-          } catch (e) { print('Alarm cancel error: $e'); }
+          } catch (e) { debugPrint('Alarm cancel error: $e'); }
           await _taskRepository.updateTask(task.copyWith(
             isCompleted: true,
             completedAt: DateTime.now(),

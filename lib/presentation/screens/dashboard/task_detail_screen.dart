@@ -160,9 +160,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     final isTaskDone = task.isRecurring
         ? task.isCompletedForDate(selectedDate)
         : task.isCompleted;
-    final timerState = ref.watch(timerProvider);
-    final isActiveTimer = timerState.activeTaskId == task.id;
-    final elapsed = timerState.taskElapsed[task.id] ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -222,57 +219,64 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ),
             )
           else
-            // Timer card for incomplete tasks
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: (isActiveTimer ? AppTheme.primaryColor : Colors.grey).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                border: Border.all(
-                  color: (isActiveTimer ? AppTheme.primaryColor : Colors.grey).withValues(alpha: 0.25),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.timer_outlined,
-                    color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    elapsed > 0 ? TimerNotifier.formatElapsed(elapsed) : '00:00',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+            // Timer card — Consumer scopes rebuilds to this widget only
+            Consumer(
+              builder: (_, ref, _) {
+                final timerState = ref.watch(timerProvider);
+                final isActiveTimer = timerState.activeTaskId == task.id;
+                final elapsed = timerState.taskElapsed[task.id] ?? 0;
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: (isActiveTimer ? AppTheme.primaryColor : Colors.grey).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                    border: Border.all(
+                      color: (isActiveTimer ? AppTheme.primaryColor : Colors.grey).withValues(alpha: 0.25),
                     ),
                   ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(
-                      isActiveTimer ? Icons.pause_circle : Icons.play_circle_outline,
-                      color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
-                      size: 28,
-                    ),
-                    onPressed: () {
-                      if (isActiveTimer) {
-                        ref.read(timerProvider.notifier).pauseTimer();
-                      } else {
-                        ref.read(timerProvider.notifier).startTimer(task.id);
-                      }
-                    },
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.timer_outlined,
+                        color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        elapsed > 0 ? TimerNotifier.formatElapsed(elapsed) : '00:00',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: Icon(
+                          isActiveTimer ? Icons.pause_circle : Icons.play_circle_outline,
+                          color: isActiveTimer ? AppTheme.primaryColor : Colors.grey,
+                          size: 28,
+                        ),
+                        onPressed: () {
+                          if (isActiveTimer) {
+                            ref.read(timerProvider.notifier).pauseTimer();
+                          } else {
+                            ref.read(timerProvider.notifier).startTimer(task.id);
+                          }
+                        },
+                      ),
+                      if (elapsed > 0)
+                        IconButton(
+                          icon: const Icon(Icons.stop_circle_outlined, color: Colors.grey, size: 28),
+                          onPressed: () => ref.read(timerProvider.notifier).resetTimer(task.id),
+                        ),
+                    ],
                   ),
-                  if (elapsed > 0)
-                    IconButton(
-                      icon: const Icon(Icons.stop_circle_outlined, color: Colors.grey, size: 28),
-                      onPressed: () => ref.read(timerProvider.notifier).resetTimer(task.id),
-                    ),
-                ],
-              ),
+                );
+              },
             ),
 
           // Title
@@ -459,7 +463,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedTypeId,
+                    initialValue: _selectedTypeId,
                     decoration: const InputDecoration(
                       labelText: 'Type',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -476,7 +480,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedPriorityId,
+                    initialValue: _selectedPriorityId,
                     decoration: const InputDecoration(
                       labelText: 'Priority',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -924,7 +928,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           children: [
             Expanded(
               child: DropdownButtonFormField<int>(
-                value: _selectedHours,
+                initialValue: _selectedHours,
                 decoration: const InputDecoration(
                   labelText: 'Hours',
                   prefixIcon: Icon(Icons.schedule),
@@ -939,7 +943,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: DropdownButtonFormField<int>(
-                value: _selectedMinutes,
+                initialValue: _selectedMinutes,
                 decoration: const InputDecoration(
                   labelText: 'Minutes',
                   prefixIcon: Icon(Icons.timer),
@@ -983,6 +987,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
     if (confirmed == true) {
       ref.read(taskStateProvider.notifier).deleteTask(task.id);
+      if (!mounted) return;
       Navigator.pop(context); // Go back to task list
     }
   }

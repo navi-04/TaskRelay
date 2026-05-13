@@ -4,9 +4,9 @@
 // that core model classes can be instantiated correctly.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sampleapp/data/models/task_entity.dart';
-import 'package:sampleapp/data/models/task_type.dart';
-import 'package:sampleapp/data/models/task_priority.dart';
+import 'package:TaskRelay/data/models/task_entity.dart';
+import 'package:TaskRelay/data/models/task_type.dart';
+import 'package:TaskRelay/data/models/task_priority.dart';
 
 void main() {
   group('TaskEntity', () {

@@ -92,110 +92,106 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 70,
-        title: Row(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               isToday ? 'Today\'s Tasks' : 'Tasks',
               style: const TextStyle(
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(width: 12),
             Text(
               displayDate,
               style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.normal,
+                fontSize: 12,
+                color: AppTheme.getSecondaryTextColor(context),
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
         ),
         automaticallyImplyLeading: widget.selectedDate != null,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
-          child: Column(
-            children: [
-              // Search bar and view mode selector
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        actions: [
+          // View mode menu
+          PopupMenuButton<TaskViewMode>(
+            tooltip: 'Group by',
+            icon: const Icon(Icons.tune),
+            onSelected: (mode) => setState(() => _viewMode = mode),
+            itemBuilder: (ctx) => TaskViewMode.values.map((mode) {
+              return PopupMenuItem(
+                value: mode,
                 child: Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search tasks...',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: Theme.of(context).cardColor,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                      ),
+                    Icon(
+                      mode == _viewMode ? Icons.check : Icons.remove,
+                      size: 18,
+                      color: mode == _viewMode ? AppTheme.primaryColor : Colors.transparent,
                     ),
                     const SizedBox(width: 8),
-                    // View mode dropdown
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: DropdownButton<TaskViewMode>(
-                        value: _viewMode,
-                        underline: const SizedBox(),
-                        icon: const Icon(Icons.arrow_drop_down),
-                        borderRadius: BorderRadius.circular(12),
-                        items: TaskViewMode.values.map((mode) {
-                          return DropdownMenuItem(
-                            value: mode,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              child: Text(mode.label),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (mode) {
-                          if (mode != null) {
-                            setState(() {
-                              _viewMode = mode;
-                            });
-                          }
-                        },
+                    Text(mode.label),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(width: 4),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(96),
+          child: Column(
+            children: [
+              // Search bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search tasks...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    isDense: true,
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                      borderSide: BorderSide(
+                        color: AppTheme.getCardBorderColor(context),
+                        width: 1,
                       ),
                     ),
-                  ],
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                 ),
               ),
               // Tab bar
               TabBar(
                 controller: _tabController,
-                labelColor: Theme.of(context).colorScheme.onSurface,
-                unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: AppTheme.getSecondaryTextColor(context),
                 indicatorColor: Theme.of(context).colorScheme.primary,
                 tabs: [
                   Tab(text: 'All (${taskState.tasks.length})'),
-                  Tab(text: 'Active (${taskState.tasks.length - taskState.completedTasks.length})'),
+                  Tab(text: 'Active (${taskState.pendingTasks.length})'),
                   Tab(text: 'Done (${taskState.completedTasks.length})'),
                 ],
               ),
@@ -920,13 +916,16 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
     if (_searchQuery.isNotEmpty) return 'No matches found';
     if (completedFilter == true) return 'No completed tasks';
     if (completedFilter == false) return 'All caught up!';
-    return 'No tasks yet';
+    return 'No tasks here';
   }
-  
+
   String _getEmptySubtitle(bool? completedFilter) {
+    final selectedDate = ref.read(taskStateProvider).selectedDate;
+    final isPast = DateHelper.isPast(DateHelper.parseDate(selectedDate));
     if (_searchQuery.isNotEmpty) return 'Try a different search term';
     if (completedFilter == true) return 'Complete some tasks to see them here';
-    if (completedFilter == false) return 'All tasks completed!';
+    if (completedFilter == false) return 'Nothing pending. Great work!';
+    if (isPast) return 'No tasks were scheduled for this date';
     return 'Tap the + button to add your first task';
   }
   
@@ -983,8 +982,11 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     if (!isTaskDone) {
                       final note = await _showCompletionNoteDialog(context, task.title);
                       if (!context.mounted) return;
+                      // null = user cancelled; bail without completing
+                      if (note == null) return;
+                      final trimmed = note.trim();
                       ref.read(taskStateProvider.notifier)
-                          .toggleTaskCompletion(task.id, completionNote: note?.trim().isEmpty == true ? null : note?.trim());
+                          .toggleTaskCompletion(task.id, completionNote: trimmed.isEmpty ? null : trimmed);
                       ref.read(timerProvider.notifier).stopTimer(task.id);
                     } else {
                       ref.read(taskStateProvider.notifier).toggleTaskCompletion(task.id);
@@ -1042,9 +1044,10 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         ),
                       ),
                     Consumer(
-                      builder: (_, ref, __) {
-                        final elapsed = ref.watch(timerProvider).taskElapsed[task.id] ?? 0;
-                        final isActive = ref.watch(timerProvider).activeTaskId == task.id;
+                      builder: (_, ref, _) {
+                        final timerSnap = ref.watch(timerProvider);
+                        final elapsed = timerSnap.taskElapsed[task.id] ?? 0;
+                        final isActive = timerSnap.activeTaskId == task.id;
                         if (elapsed == 0) return const SizedBox.shrink();
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -1066,7 +1069,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                   children: [
                     if (!isTaskDone)
                       Consumer(
-                        builder: (_, ref, __) {
+                        builder: (_, ref, _) {
                           final timerState = ref.watch(timerProvider);
                           final isActiveTimer = timerState.activeTaskId == task.id;
                           return IconButton(
@@ -1093,78 +1096,34 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
               ),
               Padding(
                 padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        // Task Type (tappable)
-                        GestureDetector(
-                          onTap: () => _showChangeTypeDialog(context, task),
-                          child: Builder(builder: (_) {
-                            final customTypes = ref.read(customTypesProvider);
-                            return _buildChip(
-                              customTypes.taskTypeLabelById(task.effectiveTypeId),
-                              Colors.purple,
-                            );
-                          }),
+                child: Builder(builder: (_) {
+                  final customTypes = ref.watch(customTypesProvider);
+                  final estimationMode = ref.watch(settingsProvider).estimationMode;
+                  return Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _showChangeTypeDialog(context, task),
+                        child: _buildChip(
+                          customTypes.taskTypeLabelById(task.effectiveTypeId),
+                          Colors.purple,
                         ),
-                        const SizedBox(width: 6),
-                        // Priority (tappable)
-                        GestureDetector(
-                          onTap: () => _showChangePriorityDialog(context, task),
-                          child: Builder(builder: (_) {
-                            final customTypes = ref.read(customTypesProvider);
-                            return _buildChip(
-                              customTypes.priorityLabelById(task.effectivePriorityId),
-                              customTypes.priorityColorById(task.effectivePriorityId),
-                            );
-                          }),
+                      ),
+                      GestureDetector(
+                        onTap: () => _showChangePriorityDialog(context, task),
+                        child: _buildChip(
+                          customTypes.priorityLabelById(task.effectivePriorityId),
+                          customTypes.priorityColorById(task.effectivePriorityId),
                         ),
-                        const SizedBox(width: 6),
-                        // Duration (mode-dependent)
-                        if (ref.read(settingsProvider).estimationMode == EstimationMode.timeBased)
-                          _buildChip(
-                            task.formattedDuration,
-                            AppTheme.info,
-                          ),
-                        if (task.isCarriedOver) ...[
-                          const SizedBox(width: 6),
-                          _buildChip(
-                            'Carried',
-                            Colors.amber,
-                          ),
-                        ],
-                        if (task.isRecurring) ...[
-                          const SizedBox(width: 6),
-                          _buildChip(
-                            'Recursive',
-                            AppTheme.primaryColor,
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // Created date
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.create,
-                          size: 12,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Created on ${DateHelper.formatDateForDisplay(DateHelper.parseDate(task.createdDate))}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      if (estimationMode == EstimationMode.timeBased)
+                        _buildChip(task.formattedDuration, AppTheme.info),
+                      if (task.isCarriedOver) _buildChip('Carried', Colors.amber),
+                      if (task.isRecurring) _buildChip('Recursive', AppTheme.primaryColor),
+                    ],
+                  );
+                }),
               ),
                 ],
               ),
@@ -1300,8 +1259,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     taskTypeId: ct.id,
                   ),
                 );
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text('Changed type to ${ct.label}'),
                     behavior: SnackBarBehavior.floating,
@@ -1337,8 +1297,9 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                     priorityId: cp.id,
                   ),
                 );
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text('Changed priority to ${cp.label}'),
                     behavior: SnackBarBehavior.floating,
@@ -1527,7 +1488,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: selectedTypeId,
+                            initialValue: selectedTypeId,
                             decoration: const InputDecoration(
                               labelText: 'Type',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1548,7 +1509,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: selectedPriorityId,
+                            initialValue: selectedPriorityId,
                             decoration: const InputDecoration(
                               labelText: 'Priority',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1587,7 +1548,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<int>(
-                              value: selectedHours,
+                              initialValue: selectedHours,
                               decoration: const InputDecoration(
                                 labelText: 'Hours',
                                 prefixIcon: Icon(Icons.schedule),
@@ -1609,7 +1570,7 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                           const SizedBox(width: 12),
                           Expanded(
                             child: DropdownButtonFormField<int>(
-                              value: selectedMinutes,
+                              initialValue: selectedMinutes,
                               decoration: const InputDecoration(
                                 labelText: 'Minutes',
                                 prefixIcon: Icon(Icons.timer),
@@ -2102,13 +2063,14 @@ class _DailyTaskScreenState extends ConsumerState<DailyTaskScreen> with SingleTi
                                   );
                                 }
                                 
+                                final messenger = ScaffoldMessenger.of(context);
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(isEditing ? 'Task updated!' : 'Task added!'),
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                                     ),
                                   ),
                                 );

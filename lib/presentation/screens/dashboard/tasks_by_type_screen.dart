@@ -540,7 +540,7 @@ class _TaskItem extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: selectedTypeId,
+                            initialValue: selectedTypeId,
                             decoration: const InputDecoration(
                               labelText: 'Type',
                               contentPadding: EdgeInsets.symmetric(
@@ -569,7 +569,7 @@ class _TaskItem extends ConsumerWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: selectedPriorityId,
+                            initialValue: selectedPriorityId,
                             decoration: const InputDecoration(
                               labelText: 'Priority',
                               contentPadding: EdgeInsets.symmetric(
@@ -614,7 +614,7 @@ class _TaskItem extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<int>(
-                              value: selectedHours,
+                              initialValue: selectedHours,
                               decoration: const InputDecoration(
                                 labelText: 'Hours',
                                 prefixIcon: Icon(Icons.schedule),
@@ -623,7 +623,7 @@ class _TaskItem extends ConsumerWidget {
                                   vertical: 8,
                                 ),
                               ),
-                              items: List.generate(25, (index) => index).map((
+                              items: List.generate(24, (index) => index).map((
                                 hour,
                               ) {
                                 return DropdownMenuItem(
@@ -644,7 +644,7 @@ class _TaskItem extends ConsumerWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: DropdownButtonFormField<int>(
-                              value: selectedMinutes,
+                              initialValue: selectedMinutes,
                               decoration: const InputDecoration(
                                 labelText: 'Minutes',
                                 prefixIcon: Icon(Icons.timer),
@@ -840,8 +840,9 @@ class _TaskItem extends ConsumerWidget {
                                   ),
                                 );
 
+                                final messenger = ScaffoldMessenger.of(context);
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                messenger.showSnackBar(
                                   SnackBar(
                                     content: const Text('Task updated!'),
                                     behavior: SnackBarBehavior.floating,

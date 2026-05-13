@@ -141,15 +141,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
   
   Widget _buildLegend(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Wrap(
+        alignment: WrapAlignment.spaceAround,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           _buildLegendItem(context, 'Completed', AppTheme.success),
           _buildLegendItem(context, 'Partial', AppTheme.warning),
           _buildLegendItem(context, 'Missed', AppTheme.error),
-          _buildLegendItem(context, 'No Tasks', 
+          _buildLegendItem(context, 'No Tasks',
               AppTheme.getCardBorderColor(context)),
         ],
       ),

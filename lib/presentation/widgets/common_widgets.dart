@@ -335,16 +335,15 @@ class AchievementBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final lockedBg = isDark ? const Color(0xFF1A2236) : const Color(0xFFF0F2F7);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: isUnlocked 
-            ? color.withValues(alpha: 0.06) 
-            : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+        color: isUnlocked ? color.withValues(alpha: 0.07) : lockedBg,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         border: Border.all(
-          color: isUnlocked 
-              ? color.withValues(alpha: 0.2) 
+          color: isUnlocked
+              ? color.withValues(alpha: 0.25)
               : AppTheme.getCardBorderColor(context),
           width: 1,
         ),
@@ -352,25 +351,26 @@ class AchievementBadge extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.emoji_events,
-            size: 32,
-            color: isUnlocked ? color : Colors.grey,
+          Opacity(
+            opacity: isUnlocked ? 1.0 : 0.3,
+            child: Text(emoji, style: const TextStyle(fontSize: 28)),
           ),
           const SizedBox(height: 8),
           Text(
             title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: isUnlocked ? color : Colors.grey,
+              fontWeight: FontWeight.w700,
+              color: isUnlocked ? color : AppTheme.getSecondaryTextColor(context),
+              fontSize: 12,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             description,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: AppTheme.getSecondaryTextColor(context),
+              fontSize: 11,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,

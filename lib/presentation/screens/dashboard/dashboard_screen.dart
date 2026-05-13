@@ -6,233 +6,212 @@ import '../../providers/task_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 
-/// Dashboard Screen - Main screen showing today's overview with modern UI
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
-  
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider);
     final settings = ref.watch(settingsProvider);
-    
+    final taskState = ref.watch(taskStateProvider);
+    final streak = dashboard.streak;
+
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(dashboardProvider);
-          ref.read(taskStateProvider.notifier).loadTasksForSelectedDate();
-        },
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // App Bar
-            _buildSliverAppBar(context, dashboard.todayDate, settings.isDarkMode, ref),
-            
-            // Content
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Greeting Section
-                  _buildGreetingSection(context),
-                  const SizedBox(height: 24),
-                  
-                  // Streak Card with Gradient
-                  _buildStreakCard(context, dashboard.streak),
-                  const SizedBox(height: 16),
-                  
-                  // Progress Overview
-                  _buildProgressOverview(
-                    context,
-                    dashboard.usedMinutes,
-                    dashboard.dailyLimitMinutes,
-                    dashboard.remainingMinutes,
-                    dashboard.progressPercentage,
-                    dashboard.isOverLimit,
-                    dashboard.todaySummary,
-                    dashboard,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Quick Stats Row
-                  _buildQuickStatsRow(context, dashboard),
-                  const SizedBox(height: 24),
-                  
-                  // Today's Progress
-                  _buildTodaysProgress(context, dashboard.todaySummary),
-                  const SizedBox(height: 24),
-                  
-                  // Weekly Overview
-                  _buildWeeklyOverview(context, dashboard.weeklyStats),
-                  const SizedBox(height: 24),
-                  
-                  // Motivational Quote
-                  _buildMotivationalCard(context, dashboard.streak),
-                  const SizedBox(height: 100), // Bottom padding for nav bar
-                ]),
-              ),
+      appBar: _buildAppBar(context, settings.isDarkMode, ref),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Focus header — progress ring + date + status
+            _buildFocusHeader(context, dashboard, taskState),
+            const SizedBox(height: 10),
+
+            // Quick stats row
+            _buildQuickStatsRow(context, dashboard, taskState),
+            const SizedBox(height: 10),
+
+            // Progress card — expands to fill remaining space
+            Expanded(
+              flex: 5,
+              child: _buildProgressCard(context, dashboard, taskState),
             ),
+            const SizedBox(height: 10),
+
+            // Weekly card — expands equally
+            Expanded(
+              flex: 5,
+              child: _buildWeeklyCard(context, dashboard.weeklyStats),
+            ),
+
+            // Streak banner — only shows if there's a streak
+            if (streak > 0) ...[
+              const SizedBox(height: 10),
+              _buildStreakBanner(context, streak),
+            ],
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildSliverAppBar(BuildContext context, String date, bool isDarkMode, WidgetRef ref) {
-    return SliverAppBar(
-      floating: true,
-      pinned: false,
-      expandedHeight: 60,
+
+  AppBar _buildAppBar(BuildContext context, bool isDarkMode, WidgetRef ref) {
+    return AppBar(
       automaticallyImplyLeading: false,
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
+              color: AppTheme.primaryColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              border: Border.all(
+                color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                width: 1,
+              ),
             ),
-            child: const Icon(Icons.task_alt, color: Colors.white, size: 22),
+            child: const Icon(Icons.task_alt, color: AppTheme.primaryColor, size: 18),
           ),
-          const SizedBox(width: 12),
-          const Text(
+          const SizedBox(width: 10),
+          Text(
             'TaskRelay',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            ),
           ),
         ],
       ),
       actions: [
         IconButton(
-          icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
+          icon: const Icon(Icons.refresh, size: 20),
+          onPressed: () {
+            ref.invalidate(dashboardProvider);
+            ref.read(taskStateProvider.notifier).loadTasksForSelectedDate();
+          },
+          tooltip: 'Refresh',
+        ),
+        IconButton(
+          icon: Icon(
+            isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+            size: 20,
+          ),
           onPressed: () => ref.read(settingsProvider.notifier).toggleDarkMode(),
           tooltip: 'Toggle Theme',
         ),
       ],
     );
   }
-  
-  Widget _buildGreetingSection(BuildContext context) {
-    final hour = DateTime.now().hour;
-    String greeting;
-    
-    if (hour < 12) {
-      greeting = 'Good Morning! ☀️';
-    } else if (hour < 17) {
-      greeting = 'Good Afternoon! 🌤️';
+
+  Widget _buildFocusHeader(
+    BuildContext context,
+    DashboardStats dashboard,
+    TaskState taskState,
+  ) {
+    final isToday = taskState.selectedDate == dashboard.todayDate;
+    final totalTasks = isToday
+        ? taskState.tasks.length
+        : (dashboard.todaySummary?.totalTasks ?? 0);
+    final completedTasks = isToday
+        ? taskState.completedTasks.length
+        : (dashboard.todaySummary?.completedTasks ?? 0);
+    final progress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
+
+    final now = DateTime.now();
+    const weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dateStr = '${weekdayNames[now.weekday - 1]}, ${monthNames[now.month - 1]} ${now.day}';
+
+    final hour = now.hour;
+    final String greeting = hour < 12 ? 'Good morning'
+        : hour < 17 ? 'Good afternoon'
+        : 'Good evening';
+
+    Color progressColor;
+    String statusText;
+    if (totalTasks == 0) {
+      progressColor = AppTheme.getSecondaryTextColor(context);
+      statusText = 'No tasks today';
+    } else if (progress >= 1.0) {
+      progressColor = AppTheme.success;
+      statusText = 'All done!';
+    } else if (dashboard.isOverLimit) {
+      progressColor = AppTheme.error;
+      statusText = 'Over limit';
     } else {
-      greeting = 'Good Evening! 🌙';
+      progressColor = AppTheme.primaryColor;
+      statusText = '$completedTasks of $totalTasks done';
     }
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          greeting,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Let\'s make today productive!',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: AppTheme.getSecondaryTextColor(context),
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildStreakCard(BuildContext context, int streak) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF6B35),
-            Color(0xFFF7931E),
-            Color(0xFFFFB627),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF6B35).withValues(alpha: 0.30),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
+
+    return GradientCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+          SizedBox(
+            width: 72,
+            height: 72,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: CircularProgressIndicator(
+                    value: progress.clamp(0.0, 1.0),
+                    strokeWidth: 6,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: AppTheme.getProgressBackgroundColor(context),
+                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                  ),
+                ),
+                Text(
+                  '${(progress * 100).toInt()}%',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.local_fire_department,
-              size: 48,
-              color: Colors.white,
-            ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.whatshot,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Current Streak',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+                Text(
+                  greeting,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.getSecondaryTextColor(context),
+                    letterSpacing: 0.2,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 2),
+                Text(
+                  dateStr,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '$streak',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        height: 1.0,
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: progressColor,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        streak == 1 ? 'day' : 'days',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    const SizedBox(width: 6),
+                    Text(
+                      statusText,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: progressColor,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -240,510 +219,286 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
           ),
-          if (streak >= 7)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '🔥',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'On Fire!',
-                    style: TextStyle(
-                      color: Color(0xFFFF6B35),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
   }
-  
-  Widget _buildProgressOverview(
+
+  Widget _buildQuickStatsRow(
     BuildContext context,
-    int usedMinutes,
-    int limitMinutes,
-    int remainingMinutes,
-    double percentage,
-    bool isOverLimit,
-    dynamic summary,
     DashboardStats dashboard,
+    TaskState taskState,
   ) {
-    final totalTasks = summary?.totalTasks ?? 0;
-    final completedTasks = summary?.completedTasks ?? 0;
-    final taskProgress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
-    
-    return GradientCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Today\'s Progress',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isOverLimit 
-                      ? AppTheme.error.withValues(alpha: 0.10)
-                      : AppTheme.success.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                ),
-                child: Text(
-                  isOverLimit ? 'Over Limit' : 'On Track',
-                  style: TextStyle(
-                    color: isOverLimit ? AppTheme.error : AppTheme.success,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          
-          // Time Progress
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(dashboard.progressLabel),
-                        Text(
-                          '${dashboard.formattedUsedValue} / ${dashboard.formattedDailyLimitValue}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isOverLimit ? AppTheme.error : AppTheme.primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusXS),
-                      child: LinearProgressIndicator(
-                        value: (percentage / 100).clamp(0.0, 1.0),
-                        minHeight: 8,
-                        backgroundColor: AppTheme.getProgressBackgroundColor(context),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isOverLimit ? AppTheme.error : AppTheme.primaryColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Task Progress
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Tasks Completed'),
-                        Text(
-                          '$completedTasks / $totalTasks',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.success,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusXS),
-                      child: LinearProgressIndicator(
-                        value: taskProgress,
-                        minHeight: 8,
-                        backgroundColor: AppTheme.getProgressBackgroundColor(context),
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.success),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildQuickStatsRow(BuildContext context, dynamic dashboard) {
+    final isToday = taskState.selectedDate == dashboard.todayDate;
+    final completed = isToday
+        ? taskState.completedTasks.length
+        : (dashboard.todaySummary?.completedTasks ?? 0);
+    final total = isToday
+        ? taskState.tasks.length
+        : (dashboard.todaySummary?.totalTasks ?? 0);
+    final pending = (total - completed).clamp(0, total);
+    final carried = isToday
+        ? taskState.carriedOverTasks.length
+        : (dashboard.todaySummary?.carriedOverTasks ?? 0);
+
     return Row(
       children: [
-        Expanded(
-          child: _buildQuickStatCard(
-            context,
-            Icons.check_circle,
-            'Completed',
-            '${dashboard.todaySummary?.completedTasks ?? 0}',
-            AppTheme.success,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildQuickStatCard(
-            context,
-            Icons.pending_actions,
-            'Pending',
-            '${(dashboard.todaySummary?.totalTasks ?? 0) - (dashboard.todaySummary?.completedTasks ?? 0)}',
-            AppTheme.warning,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildQuickStatCard(
-            context,
-            Icons.arrow_forward,
-            'Carried',
-            '${dashboard.todaySummary?.carriedOverTasks ?? 0}',
-            Colors.amber,
-          ),
-        ),
+        Expanded(child: _buildStatChip(context, '$completed', 'Done', AppTheme.success)),
+        const SizedBox(width: 8),
+        Expanded(child: _buildStatChip(context, '$pending', 'Pending', AppTheme.warning)),
+        const SizedBox(width: 8),
+        Expanded(child: _buildStatChip(context, '$carried', 'Carried', AppTheme.info)),
       ],
     );
   }
-  
-  Widget _buildQuickStatCard(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
+
+  Widget _buildStatChip(BuildContext context, String value, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 10),
           Text(
             value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
               color: color,
+              height: 1.0,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: AppTheme.getSecondaryTextColor(context),
+              fontSize: 11,
             ),
           ),
         ],
       ),
     );
   }
-  
-  Widget _buildTodaysProgress(BuildContext context, dynamic summary) {
-    final total = summary?.totalTasks ?? 0;
-    final completed = summary?.completedTasks ?? 0;
-    
-    if (total == 0) {
-      return GradientCard(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+
+  Widget _buildProgressCard(
+    BuildContext context,
+    DashboardStats dashboard,
+    TaskState taskState,
+  ) {
+    final isToday = taskState.selectedDate == dashboard.todayDate;
+    final totalTasks = isToday
+        ? taskState.tasks.length
+        : (dashboard.todaySummary?.totalTasks ?? 0);
+    final completedTasks = isToday
+        ? taskState.completedTasks.length
+        : (dashboard.todaySummary?.completedTasks ?? 0);
+    final taskProgress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
+    final isOverLimit = dashboard.isOverLimit;
+    final limitColor = isOverLimit ? AppTheme.error : AppTheme.primaryColor;
+
+    return GradientCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Progress',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const Spacer(),
+          _buildProgressRow(
+            context,
+            label: dashboard.progressLabel,
+            trailing: '${dashboard.formattedUsedValue} / ${dashboard.formattedDailyLimitValue}',
+            value: (dashboard.progressPercentage / 100).clamp(0.0, 1.0),
+            color: limitColor,
+          ),
+          const Spacer(),
+          _buildProgressRow(
+            context,
+            label: 'Tasks Completed',
+            trailing: '$completedTasks / $totalTasks',
+            value: taskProgress,
+            color: AppTheme.success,
+          ),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressRow(
+    BuildContext context, {
+    required String label,
+    required String trailing,
+    required double value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.add_task,
-                size: 48,
-                color: AppTheme.primaryColor.withValues(alpha: 0.45),
-              ),
-            ),
-            const SizedBox(height: 16),
             Text(
-              'No tasks for today',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add tasks from the Tasks tab to get started!',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppTheme.getSecondaryTextColor(context),
               ),
-              textAlign: TextAlign.center,
+            ),
+            Text(
+              trailing,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ],
         ),
-      );
-    }
-    
-    return GradientCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Task Completion',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${(completed / total * 100).toInt()}%',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          
-          // Circular progress visualization
-          Center(
-            child: SizedBox(
-              width: 150,
-              height: 150,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 150,
-                    height: 150,
-                    child: CircularProgressIndicator(
-                      value: completed / total,
-                      strokeWidth: 10,
-                      strokeCap: StrokeCap.round,
-                      backgroundColor: AppTheme.getProgressBackgroundColor(context),
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                    ),
-                  ),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$completed',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'of $total',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.getSecondaryTextColor(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildWeeklyOverview(BuildContext context, Map<String, dynamic> stats) {
-    final completionRate = stats['completionPercentage'] as double? ?? 0.0;
-    
-    return GradientCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.info.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                ),
-                child: const Icon(Icons.analytics, color: AppTheme.info),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Weekly Overview',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildWeeklyStat(
-                context,
-                '${completionRate.toStringAsFixed(0)}%',
-                'Completion',
-                Icons.pie_chart,
-                AppTheme.success,
-              ),
-              _buildWeeklyStat(
-                context,
-                '${stats['missedTasks'] ?? 0}',
-                'Missed',
-                Icons.cancel,
-                AppTheme.error,
-              ),
-              _buildWeeklyStat(
-                context,
-                (stats['averageDailyLoad'] as double? ?? 0).toStringAsFixed(1),
-                'Avg Load',
-                Icons.fitness_center,
-                AppTheme.info,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildWeeklyStat(
-    BuildContext context,
-    String value,
-    String label,
-    IconData icon,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 28),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.getSecondaryTextColor(context),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+          child: LinearProgressIndicator(
+            value: value,
+            minHeight: 7,
+            backgroundColor: AppTheme.getProgressBackgroundColor(context),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
       ],
     );
   }
-  
-  Widget _buildMotivationalCard(BuildContext context, int streak) {
-    final quotes = [
-      {'quote': 'The secret of getting ahead is getting started.', 'author': 'Mark Twain'},
-      {'quote': 'It\'s not about being the best. It\'s about being better than you were yesterday.', 'author': 'Unknown'},
-      {'quote': 'Small daily improvements are the key to staggering long-term results.', 'author': 'Unknown'},
-      {'quote': 'Success is the sum of small efforts repeated day in and day out.', 'author': 'Robert Collier'},
-      {'quote': 'The only way to do great work is to love what you do.', 'author': 'Steve Jobs'},
-    ];
-    
-    final quoteIndex = streak % quotes.length;
-    final selectedQuote = quotes[quoteIndex];
-    
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.primaryColor.withValues(alpha: 0.08),
-            AppTheme.primaryLight.withValues(alpha: 0.04),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.12)),
-      ),
+
+  Widget _buildWeeklyCard(BuildContext context, Map<String, dynamic> stats) {
+    final completionRate = stats['completionPercentage'] as double? ?? 0.0;
+    final missed = stats['missedTasks'] ?? 0;
+    final completed = stats['completedTasks'] ?? 0;
+    final avgLoad = (stats['averageDailyLoad'] as double? ?? 0).toStringAsFixed(1);
+
+    return GradientCard(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Row(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.format_quote, color: AppTheme.primaryColor),
-              SizedBox(width: 8),
               Text(
-                'Daily Motivation',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
+                'This Week',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                ),
+                child: Text(
+                  '${completionRate.toStringAsFixed(0)}% done',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            '"${selectedQuote['quote']}"',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontStyle: FontStyle.italic,
-              height: 1.5,
+          const Spacer(),
+          IntrinsicHeight(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildWeeklyStat(context, '$completed', 'Completed', AppTheme.success),
+                VerticalDivider(
+                  color: AppTheme.getCardBorderColor(context),
+                  width: 1,
+                  thickness: 1,
+                ),
+                _buildWeeklyStat(context, '$missed', 'Missed', AppTheme.error),
+                VerticalDivider(
+                  color: AppTheme.getCardBorderColor(context),
+                  width: 1,
+                  thickness: 1,
+                ),
+                _buildWeeklyStat(context, avgLoad, 'Avg Load', AppTheme.info),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyStat(
+    BuildContext context,
+    String value,
+    String label,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: color,
+            letterSpacing: -0.2,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppTheme.getSecondaryTextColor(context),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStreakBanner(BuildContext context, int streak) {
+    const orange = Color(0xFFFF6B35);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: orange.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+        border: Border.all(color: orange.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.local_fire_department, color: orange, size: 18),
+          const SizedBox(width: 8),
           Text(
-            '— ${selectedQuote['author']}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.getSecondaryTextColor(context),
-              fontWeight: FontWeight.w500,
+            '$streak ${streak == 1 ? 'day' : 'days'} streak',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: orange,
             ),
           ),
+          const Spacer(),
+          if (streak >= 7)
+            Text(
+              'On Fire!',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: orange.withValues(alpha: 0.75),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
         ],
       ),
     );
