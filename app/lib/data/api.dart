@@ -80,6 +80,10 @@ class Api {
     return ((j['habits'] as List?) ?? const []).map((h) => Habit.fromJson(h as Json)).toList();
   }
 
+  /// One row per day in [from]..[to] (max 92 days): a tick cell per repeating task, the day's one-off tasks, and totals.
+  Future<SheetView> sheet({String? from, String? to}) async =>
+      SheetView.fromJson(_map(await _c.get('/sheet', query: {if (from != null) 'from': from, if (to != null) 'to': to})));
+
   Future<Review> review({String? weekStart}) async => Review.fromJson(_map(await _c.get('/review', query: weekStart == null ? null : {'week_start': weekStart})));
 
   Future<SearchPage> search(String q, {int offset = 0, int limit = 20}) async =>

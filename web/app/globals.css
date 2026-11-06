@@ -91,6 +91,14 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: 
   nav.tabs a { flex-direction: row; gap: 6px; font-size: 0.875rem; }
   main { padding-bottom: 32px; }
 }
+/* six tabs on a phone: share the bar equally and let the labels shrink; the icons keep their size */
+@media (max-width: 639px) {
+  nav.tabs { gap: 0; }
+  nav.tabs a { flex: 1 1 0; min-width: 0; padding: 4px 1px; font-size: 0.68rem; letter-spacing: -0.01em; }
+}
+@media (max-width: 359px) {
+  nav.tabs a { font-size: 0.62rem; letter-spacing: -0.02em; }
+}
 
 /* ── surfaces ─────────────────────────────────────────── */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
@@ -130,8 +138,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── feedback ─────────────────────────────────────────── */
 .banner { padding: 10px 12px 10px 14px; border-radius: var(--radius-sm); margin-bottom: 12px; border: 1px solid var(--field-border); border-left: 6px solid var(--text); font-weight: 600; }
-.banner::before { content: '⚠ '; }
-.banner.ok::before, .banner.note::before { content: ''; }
+/* A monochrome warning triangle, painted in the text colour. The warning-sign character is drawn as a colour emoji on many phones, so it is a mask. */
+.banner::before, .field-error::before {
+  content: ''; display: inline-block; width: 1.05em; height: 1.05em; margin-right: 0.45em; vertical-align: -0.15em; background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2 1 21h22zM11 9h2v6h-2zM11 17h2v2h-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2 1 21h22zM11 9h2v6h-2zM11 17h2v2h-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.banner.ok::before, .banner.note::before { display: none; }
 .empty { text-align: center; color: var(--muted); padding: 28px 8px; }
 .skeleton { border-radius: var(--radius-sm); background: linear-gradient(90deg, var(--track), var(--input), var(--track)); background-size: 200% 100%; animation: shimmer 1.4s infinite; min-height: 18px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
@@ -193,4 +206,70 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 
 /* inline validation / warning text: bold with a mark, never colour alone */
 .field-error { font-weight: 700; font-size: 0.875rem; margin: 4px 0 0; }
-.field-error::before { content: '⚠ '; }
+
+/* ── sheet (spreadsheet view) ─────────────────────────── */
+/* a wide table wants more room than the 720px column; the top bar follows so the two stay aligned */
+main:has(.sheet-page) { max-width: 1200px; }
+body:has(.sheet-page) .topbar { max-width: 1200px; }
+
+.sheet-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+.sheet-nav, .sheet-filters { display: flex; align-items: center; gap: 8px; }
+.sheet-nav { gap: 4px; }
+.sheet-nav h2 { margin: 0; min-width: 9.5em; text-align: center; }
+.sheet-filters select { width: auto; }
+@media (max-width: 639px) {
+  .sheet-filters { flex: 1 1 100%; }
+  .sheet-filters select { flex: 1; min-width: 0; }
+}
+
+/* the table scrolls inside its own region; the header row and the Date and Day columns stay put */
+.sheet-region { overflow: auto; max-height: calc(100vh - 280px); max-height: calc(100dvh - 280px); min-height: 240px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); scroll-padding: 72px 0 0 112px; /* keyboard focus is not hidden under the frozen header or columns */ }
+.sheet { --row-bg: var(--surface); border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.85rem; }
+.sheet th, .sheet td { padding: 4px 6px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--row-bg); text-align: left; vertical-align: middle; white-space: nowrap; }
+.sheet tr.weekend { --row-bg: var(--track); }
+
+/* header: a solid band (inverted, so it works in both themes) */
+.sheet thead th { position: sticky; top: 0; z-index: 3; background: var(--accent); color: var(--accent-ink); border-color: var(--accent-ink); font-weight: 800; vertical-align: bottom; }
+.sheet thead th.sticky { z-index: 5; }
+.sheet .h-title { display: block; font-size: 0.78rem; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; }
+.sheet .h-meta { display: block; font-size: 0.68rem; line-height: 1.25; font-weight: 500; white-space: normal; }
+
+/* Date and Day are frozen on the left */
+.sheet .sticky { position: sticky; z-index: 2; }
+.sheet .c-date { left: 0; width: 58px; min-width: 58px; max-width: 58px; font-weight: 700; }
+.sheet .c-day { left: 58px; width: 50px; min-width: 50px; max-width: 50px; padding-inline: 4px; border-right: 2px solid var(--field-border); }
+.sheet thead .c-day { border-right-color: var(--accent-ink); }
+
+/* one narrow tick column per repeating task */
+.sheet .c-habit { width: 76px; min-width: 76px; max-width: 76px; padding: 0; text-align: center; }
+.sheet thead .c-habit { padding: 4px 6px; }
+/* not scheduled that day: a grey diagonal hatch and no button */
+.sheet td.na { background: repeating-linear-gradient(135deg, var(--field-border) 0 1px, transparent 1px 6px), var(--row-bg); }
+
+.sheet button.cell { display: grid; place-items: center; width: 100%; min-height: 40px; padding: 4px 0; border: 0; border-radius: 0; background: transparent; color: var(--text); }
+.sheet .box { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--field-border); border-radius: 6px; font-weight: 800; font-size: 0.95rem; line-height: 1; background: var(--surface); }
+.sheet .box.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.sheet .box.skipped { border-style: dashed; color: var(--muted); }
+.sheet button.cell:hover .box { border-color: var(--text); }
+.sheet button:focus-visible { outline-offset: -3px; }
+
+/* the day's one-off tasks wrap onto several lines */
+.sheet .c-tasks { min-width: 200px; white-space: normal; }
+.sheet-tasks { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 0; }
+.sheet button.pill { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 2px 10px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; text-align: left; }
+.sheet .pill .t-title { overflow-wrap: anywhere; }
+.sheet .pill .t-min { font-weight: 500; }
+
+/* totals */
+.sheet .c-num { text-align: right; font-variant-numeric: tabular-nums; min-width: 48px; }
+.sheet thead .c-num { text-align: right; }
+.sheet td.pct.full { background: var(--accent); color: var(--accent-ink); font-weight: 800; }
+.sheet td.pct.missed { font-weight: 800; } /* a past day with something not done: bold, never a colour */
+.sheet .c-notes { min-width: 160px; white-space: normal; overflow-wrap: anywhere; font-size: 0.8rem; color: var(--muted); border-right: 0; }
+.sheet thead .c-notes { color: var(--accent-ink); font-size: inherit; }
+.sheet td.sheet-none { padding: 20px 8px; text-align: center; color: var(--muted); border-right: 0; }
+
+/* today: bold, ruled above and below */
+.sheet tr.today th, .sheet tr.today td { font-weight: 800; border-top: 2px solid var(--text); border-bottom: 2px solid var(--text); }
+.sheet tr.today .c-notes { color: var(--text); }
+.sheet tr.today button.pill { font-weight: 800; }

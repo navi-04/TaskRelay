@@ -34,6 +34,15 @@ class SurfaceCard extends StatelessWidget {
   }
 }
 
+/// Label style for a chip. The colour is chosen HERE from `selected`, as a plain Color. Relying on the theme to resolve a
+/// state-dependent label colour left the unselected labels blank on a real phone (white on white in the White theme), while the same
+/// chips looked fine in widget tests. A plain colour has nothing to resolve.
+TextStyle chipLabel(BuildContext context, {required bool selected}) => TextStyle(
+      color: selected ? context.tr.accentInk : Theme.of(context).colorScheme.onSurface,
+      fontWeight: FontWeight.w600,
+      fontSize: 13,
+    );
+
 /// Text with a leading Material icon. Use this instead of an emoji: Android draws emoji in full colour,
 /// and this app is strictly black and white (test/monochrome_test.dart fails the build if one slips in).
 class IconText extends StatelessWidget {
@@ -54,6 +63,56 @@ class IconText extends StatelessWidget {
       style: style,
     );
   }
+}
+
+/// Asks for some text in a dialog; returns it trimmed, or null when cancelled.
+/// The dialog OWNS its controller. Disposing a controller right after `await showDialog` breaks the dialog's closing animation
+/// ("TextEditingController used after being disposed": the red error screen), so it is disposed with the dialog's State instead.
+Future<String?> askText(
+  BuildContext context, {
+  required String title,
+  String initial = '',
+  String? hint,
+  int maxLength = 40,
+  int maxLines = 1,
+  String confirm = 'Save',
+}) =>
+    showDialog<String>(
+      context: context,
+      builder: (_) => _TextDialog(title: title, initial: initial, hint: hint, maxLength: maxLength, maxLines: maxLines, confirm: confirm),
+    );
+
+class _TextDialog extends StatefulWidget {
+  const _TextDialog({required this.title, required this.initial, required this.hint, required this.maxLength, required this.maxLines, required this.confirm});
+  final String title;
+  final String initial;
+  final String? hint;
+  final int maxLength;
+  final int maxLines;
+  final String confirm;
+
+  @override
+  State<_TextDialog> createState() => _TextDialogState();
+}
+
+class _TextDialogState extends State<_TextDialog> {
+  late final TextEditingController _ctl = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.title),
+        content: TextField(controller: _ctl, autofocus: true, maxLength: widget.maxLength, maxLines: widget.maxLines, decoration: InputDecoration(hintText: widget.hint)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, _ctl.text.trim()), child: Text(widget.confirm)),
+        ],
+      );
 }
 
 class SectionTitle extends StatelessWidget {
@@ -86,12 +145,13 @@ class ErrorBanner extends StatelessWidget {
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+        // No borderRadius: Flutter refuses to paint a radius on a border whose sides differ (it throws while painting, and the whole
+        // banner came out blank on the phone).
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           border: Border(left: BorderSide(color: text, width: 6), top: BorderSide(color: context.tr.fieldBorder), right: BorderSide(color: context.tr.fieldBorder), bottom: BorderSide(color: context.tr.fieldBorder)),
         ),
         child: Row(children: [
-          Expanded(child: Text('⚠  $message', style: const TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(child: IconText(Icons.warning_amber_outlined, message, style: const TextStyle(fontWeight: FontWeight.w700))),
           if (onRetry != null) TextButton(onPressed: onRetry, child: const Text('Retry')),
         ]),
       ),

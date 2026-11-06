@@ -153,6 +153,8 @@ final statsProvider = FutureProvider.autoDispose.family<StatsView, DateRange>((r
 
 final habitsProvider = FutureProvider.autoDispose.family<List<Habit>, int>((ref, days) => ref.watch(apiProvider).habits(days: days));
 
+final sheetProvider = FutureProvider.autoDispose.family<SheetView, DateRange>((ref, r) => ref.watch(apiProvider).sheet(from: r.from, to: r.to));
+
 final reviewProvider = FutureProvider.autoDispose.family<Review, String?>((ref, weekStart) => ref.watch(apiProvider).review(weekStart: weekStart));
 
 final activityProvider = FutureProvider.autoDispose<List<ActivityItem>>((ref) => ref.watch(apiProvider).activity());
@@ -181,6 +183,7 @@ class TaskActions {
     _ref.invalidate(dayViewProvider);
     _ref.invalidate(statsProvider);
     _ref.invalidate(habitsProvider);
+    _ref.invalidate(sheetProvider);
     _ref.invalidate(reviewProvider);
     _ref.invalidate(syncStatusProvider);
   }
@@ -189,6 +192,7 @@ class TaskActions {
     _ref.invalidate(dayViewProvider);
     _ref.invalidate(statsProvider);
     _ref.invalidate(habitsProvider);
+    _ref.invalidate(sheetProvider);
     _ref.invalidate(reviewProvider);
     unawaited(_ref.read(bridgeProvider).requestSync());
   }
@@ -202,6 +206,9 @@ class TaskActions {
   Future<Task> create(Json body) => _run(() => _api.createTask(body));
 
   Future<Task> update(String id, Json patch) => _run(() => _api.updateTask(id, patch));
+
+  /// Tick or untick one task on one day, from the spreadsheet (which knows ids and dates but holds no [Task]).
+  Future<void> setCell(String taskId, String date, bool done) => _run(() => _api.setDay(taskId, date, done ? 'done' : 'open'));
 
   Future<void> setDone(Task t, bool done) => _run(() => _api.setDay(t.id, t.date, done ? 'done' : 'open'));
 

@@ -182,16 +182,7 @@ class _LabelsCardState extends ConsumerState<LabelsCard> {
   }
 
   Future<void> _rename(Label l) async {
-    final ctl = TextEditingController(text: l.label);
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Rename “${l.label}”'),
-        content: TextField(controller: ctl, autofocus: true, maxLength: 40),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text.trim()), child: const Text('Save'))],
-      ),
-    );
-    ctl.dispose();
+    final name = await askText(context, title: 'Rename “${l.label}”', initial: l.label);
     if (name == null || name.isEmpty || name == l.label) return;
     await _act(() => ref.read(apiProvider).renameLabel(l.id, name).then((_) {}));
   }
@@ -218,7 +209,7 @@ class _LabelsCardState extends ConsumerState<LabelsCard> {
           Padding(padding: const EdgeInsets.only(top: 8, bottom: 4), child: Text(title, style: TextStyle(color: context.tr.muted, fontWeight: FontWeight.w700, fontSize: 13))),
           Wrap(spacing: 8, runSpacing: 4, children: [
             for (final l in items)
-              InputChip(label: Text(l.label), onPressed: _busy ? null : () => _rename(l), onDeleted: _busy ? null : () => _delete(l), deleteButtonTooltipMessage: 'Delete ${l.label}', tooltip: 'Rename ${l.label}'),
+              InputChip(label: Text(l.label), labelStyle: chipLabel(context, selected: false), onPressed: _busy ? null : () => _rename(l), onDeleted: _busy ? null : () => _delete(l), deleteButtonTooltipMessage: 'Delete ${l.label}', tooltip: 'Rename ${l.label}'),
           ]),
         ]);
 
@@ -302,7 +293,7 @@ class _AlarmHealthCardState extends ConsumerState<AlarmHealthCard> with WidgetsB
             Widget perm(String key, bool ok) => ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  leading: Text(ok ? '✓' : '⚠', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                  leading: Icon(ok ? Icons.check : Icons.warning_amber_outlined),
                   title: Text(permissionTitle(key)),
                   trailing: ok ? null : OutlinedButton(onPressed: () async { await fixPermission(context, ref.read(bridgeProvider), key); ref.invalidate(syncStatusProvider); }, child: const Text('Allow')),
                 );

@@ -58,6 +58,8 @@ class FakeServer {
         return json(fixture('stats'));
       case 'GET /habits':
         return json(fixture('habits'));
+      case 'GET /sheet':
+        return json(fixture('sheet'));
       case 'GET /review':
         return json(fixture('review'));
       case 'GET /activity':
@@ -78,6 +80,11 @@ class FakeServer {
     if (req.method == 'PUT' && seg.length == 4 && seg[2] == 'days') return json(_task(seg[1], {'status': sent['status'], 'day_note': sent['note']}));
     if (req.method == 'PUT' && seg.length == 3 && seg[0] == 'days' && seg[2] == 'top') return json(fixture('day-view'));
     if (req.method == 'PATCH' && path == '/settings') return json({...(fixture('settings') as Map<String, dynamic>), ...sent});
+    if (req.method == 'PATCH' && seg.length == 2 && seg[0] == 'labels') {
+      final all = [...(fixture('labels')['types'] as List), ...(fixture('labels')['priorities'] as List)].cast<Map<String, dynamic>>();
+      return json({...all.firstWhere((l) => l['id'] == seg[1], orElse: () => all.first), ...sent});
+    }
+    if (req.method == 'POST' && path == '/me/password') return json({'ok': true});
     return error(404, 'not_found', 'No fake route for ${req.method} $path');
   }
 

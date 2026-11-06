@@ -170,9 +170,11 @@ object AlarmScheduler {
     private enum class ArmResult { EXACT, INEXACT_NO_PERMISSION, INEXACT_OTHER, FAILED }
 
     /**
-     * Task entries use setAlarmClock (never deferred by Doze, shows the show-intent in the system clock UI). Reminders and the
-     * midnight refresh use setExactAndAllowWhileIdle so they do not put a fake "next alarm" in the status bar. Without exact-alarm
-     * permission (API 31+) everything falls back to setAndAllowWhileIdle and the loss of precision is reported, never an exception.
+     * Task entries (alarm / notification / snooze) use setAlarmClock: never deferred by Doze, it shows the show-intent in the system
+     * clock UI, and Android EXEMPTS it from the exact-alarm permission, so task alarms are exact even when "Alarms & reminders" is off
+     * (the default on Android 14+). Reminders and the midnight refresh use setExactAndAllowWhileIdle so they do not put a fake "next
+     * alarm" in the status bar; that one needs the permission, and without it they fall back to setAndAllowWhileIdle (reported, never
+     * an exception).
      */
     private fun arm(app: Context, am: AlarmManager, e: Entry, exactOk: Boolean): ArmResult {
         val pi = PendingIntent.getBroadcast(
@@ -182,13 +184,19 @@ object AlarmScheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         var noPermission = !exactOk
-        if (exactOk) {
+        if (Kind.isTaskKind(e.kind)) {
             try {
-                if (Kind.isTaskKind(e.kind)) {
-                    am.setAlarmClock(AlarmManager.AlarmClockInfo(e.triggerMs, showPI(app)), pi)
-                } else {
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, e.triggerMs, pi)
-                }
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(e.triggerMs, showPI(app)), pi)
+                return ArmResult.EXACT
+            } catch (se: SecurityException) {
+                noPermission = true
+                Log.w(TAG, "alarm clock not permitted, falling back to inexact")
+            } catch (t: Throwable) {
+                Log.w(TAG, "alarm clock arm failed (${t.javaClass.simpleName}), falling back to inexact")
+            }
+        } else if (exactOk) {
+            try {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, e.triggerMs, pi)
                 return ArmResult.EXACT
             } catch (se: SecurityException) {
                 noPermission = true

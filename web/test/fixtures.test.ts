@@ -14,6 +14,7 @@ import { listHabits } from '../lib/services/habits';
 import { listLabels } from '../lib/services/labels';
 import { weeklyReview } from '../lib/services/review';
 import { searchTasks } from '../lib/services/search';
+import { sheetView } from '../lib/services/sheet';
 import { getSettings } from '../lib/services/settings';
 import { buildSync } from '../lib/services/sync';
 import { createTask, setDay, updateTask } from '../lib/services/tasks';
@@ -99,6 +100,7 @@ async function buildFixtures(): Promise<Record<string, unknown>> {
     stats: await statsView(ctx, '2026-10-31', '2026-11-06'),
     sync: await buildSync(ctx, 14, 'W/"fixture"'),
     habits: await listHabits(ctx, '2026-11-06', 30),
+    sheet: await sheetView(ctx, '2026-11-02', '2026-11-08'), // Mon..Sun
     review: await weeklyReview(ctx),
     activity: await listActivity(ctx),
     search: await searchTasks(ctx, 'report'),
@@ -140,6 +142,9 @@ describe('contract fixtures', () => {
     expect(all['day-view'].overdue.count).toBe(1);
     expect(all.sync.alarms.length).toBeGreaterThan(3);
     expect(all.habits.habits.length).toBe(2);
+    expect(all.sheet.columns.length).toBe(2);
+    expect(all.sheet.days.length).toBe(7);
+    expect(all.sheet.days.some((d: { tasks: unknown[] }) => d.tasks.length > 0)).toBe(true);
     expect(all.review.totals.planned).toBeGreaterThan(5);
     expect(all.activity.items.map((i: { kind: string }) => i.kind)).toEqual(['updated', 'created']);
     expect(all['recurrence-cases'].every((c: { occurs: string[] }) => c.occurs.length > 0)).toBe(true);

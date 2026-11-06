@@ -10,7 +10,7 @@ plain-HTTP access to the local dev server and is not part of release builds.
 |---|---|---|
 | `INTERNET` | Automatically | Sign in, load and save tasks, and sync the alarm schedule with the TaskRelay server. |
 | `POST_NOTIFICATIONS` | Runtime prompt (Android 13+) | Show task reminders, the daily/end-of-day reminder and "Missed" notices. |
-| `SCHEDULE_EXACT_ALARM` | User turns it on in system settings (Android 12+) | Ring a task's alarm at the exact minute the user chose (`AlarmManager.setAlarmClock`). Without it alarms fall back to "approximately on time" and the app says so. |
+| `SCHEDULE_EXACT_ALARM` | User turns it on in system settings (Android 12+) | Make the daily and end-of-day reminders arrive on the exact minute (`setExactAndAllowWhileIdle`). **Task alarms do not depend on it**: they use `AlarmManager.setAlarmClock`, which Android exempts from this permission, so they ring on the minute even when it is off. Without it only the reminders fall back to "approximately on time". |
 | `USE_FULL_SCREEN_INTENT` | Automatic; user-revocable on Android 14+ | Show the alarm screen over the lock screen with **Complete / Snooze 10 min / Dismiss**, so an alarm can be answered without unlocking. |
 | `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Automatically | While an alarm rings, a foreground service of type `mediaPlayback` plays the looping alarm sound and vibration. It stops by itself after 3 minutes (then posts "Missed: <task>"). |
 | `VIBRATE` | Automatically | Vibrate with the alarm and with reminders. |
@@ -34,12 +34,13 @@ No other permission is requested: no location, contacts, camera, microphone, sto
 Nothing is requested at launch, and a new user with no alarms is never asked for anything.
 
 1. **When the user saves a task that has an alarm or reminder**, the app explains and offers the first permission that is missing, in this order:
-   notifications (`POST_NOTIFICATIONS`), then exact alarms (`SCHEDULE_EXACT_ALARM`, opens the system "Alarms & reminders" page), then the full-screen
-   alarm (`USE_FULL_SCREEN_INTENT`, Android 14+, opens its system page if it was revoked). Each step starts with a plain-language reason and a
-   **Not now** button.
-2. **Once alarms are armed and a permission is still missing**, a dismissible banner ("Allow “…” so your reminders and alarms can ring") appears at the top
+   notifications (`POST_NOTIFICATIONS`), then the full-screen alarm (`USE_FULL_SCREEN_INTENT`, Android 14+, opens its system page if it was revoked).
+   Each step starts with a plain-language reason and a **Not now** button.
+2. **Once alarms are armed and one of those is still missing**, a dismissible banner ("Allow “…” so your reminders and alarms can ring") appears at the top
    of the app, with **Fix** for the next missing permission. It does not appear when the schedule has no alarms.
-3. **Profile → Alarm health** always shows when the schedule last synced, how many alarms are armed and through which date, and what is next.
+3. **Profile → Alarm health** always shows when the schedule last synced, how many alarms are armed and through which date, what is next, and the
+   state of all three permissions, including the optional **Exact reminder times** (`SCHEDULE_EXACT_ALARM`), which is never nagged about because task
+   alarms do not need it.
 
 If the user declines, nothing is lost and no data is touched; the alarms that cannot ring are simply the ones Android will not allow.
 
@@ -60,7 +61,8 @@ These are the answers to paste into the Play Console forms. Submitting them is a
 
 **Exact alarms (`SCHEDULE_EXACT_ALARM`)**
 
-> Task alarms must ring at the exact time the user picked. If the user denies the permission, the app still works and tells them alarms may be late.
+> Used only so the user's daily and end-of-day reminder notifications arrive on the minute they chose. Task alarms are scheduled with
+> `setAlarmClock`, which does not need this permission. If the user denies it, the app still works and those reminders may arrive a little late.
 
 ## Notes
 

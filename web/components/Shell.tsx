@@ -26,9 +26,10 @@ export const useMe = () => {
 const TABS = [
   { href: '/today', label: 'Today', icon: '✓' },
   { href: '/calendar', label: 'Calendar', icon: '▦' },
+  { href: '/sheet', label: 'Sheet', icon: '▤' },
   { href: '/review', label: 'Review', icon: '↺' },
   { href: '/search', label: 'Search', icon: '⌕' },
-  { href: '/profile', label: 'Profile', icon: '☺' },
+  { href: '/profile', label: 'Profile', icon: '◉' },
 ] as const;
 
 /** Signed-in frame: checks the session (redirects to / when signed out), keeps the server's timezone in sync, shows the nav. */

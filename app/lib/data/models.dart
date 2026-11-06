@@ -459,3 +459,109 @@ class SearchPage {
 
   factory SearchPage.fromJson(Json j) => SearchPage(items: _list(j['items'], Task.fromJson), hasMore: j['has_more'] as bool);
 }
+
+// ── the spreadsheet view ─────────────────────────────────────────────────────────────────────────────────────
+
+enum CellState { done, open, skipped }
+
+CellState _cell(Object? v) => switch (v) {
+      'done' => CellState.done,
+      'skipped' => CellState.skipped,
+      _ => CellState.open,
+    };
+
+/// A repeating task: it gets its own tick column.
+class SheetColumn {
+  const SheetColumn({required this.taskId, required this.title, required this.durationMin, required this.alarmTime, required this.recurDays});
+  final String taskId;
+  final String title;
+  final int durationMin;
+  final String? alarmTime;
+
+  /// 1=Mon..7=Sun, or null for every day.
+  final List<int>? recurDays;
+
+  factory SheetColumn.fromJson(Json j) => SheetColumn(
+        taskId: j['task_id'] as String,
+        title: j['title'] as String,
+        durationMin: _int(j['duration_min']),
+        alarmTime: _str(j['alarm_time']),
+        recurDays: (j['recur_days'] as List?)?.map((e) => _int(e)).toList(),
+      );
+}
+
+/// A one-off task on its day.
+class SheetTask {
+  const SheetTask({required this.id, required this.title, required this.status, required this.durationMin, required this.alarmTime});
+  final String id;
+  final String title;
+  final CellState status;
+  final int durationMin;
+  final String? alarmTime;
+
+  bool get isDone => status == CellState.done;
+
+  factory SheetTask.fromJson(Json j) => SheetTask(id: j['id'] as String, title: j['title'] as String, status: _cell(j['status']), durationMin: _int(j['duration_min']), alarmTime: _str(j['alarm_time']));
+}
+
+class SheetDay {
+  const SheetDay({
+    required this.date,
+    required this.weekday,
+    required this.isWeekend,
+    required this.isToday,
+    required this.cells,
+    required this.tasks,
+    required this.planned,
+    required this.done,
+    required this.pct,
+    required this.notes,
+  });
+  final String date;
+
+  /// 1=Mon..7=Sun.
+  final int weekday;
+  final bool isWeekend;
+  final bool isToday;
+
+  /// Task id -> state, for the repeating tasks that occur this day. A missing key means "not scheduled".
+  final Map<String, CellState> cells;
+  final List<SheetTask> tasks;
+  final int planned;
+  final int done;
+  final int? pct;
+  final List<String> notes;
+
+  /// Something planned and not all done.
+  bool get isIncomplete => planned > done;
+
+  factory SheetDay.fromJson(Json j) => SheetDay(
+        date: j['date'] as String,
+        weekday: _int(j['weekday']),
+        isWeekend: j['is_weekend'] as bool,
+        isToday: j['is_today'] as bool,
+        cells: {for (final e in (j['cells'] as Json).entries) e.key: _cell(e.value)},
+        tasks: _list(j['tasks'], SheetTask.fromJson),
+        planned: _int(j['planned']),
+        done: _int(j['done']),
+        pct: j['pct'] == null ? null : _int(j['pct']),
+        notes: ((j['notes'] as List?) ?? const []).cast<String>(),
+      );
+}
+
+class SheetView {
+  const SheetView({required this.from, required this.to, required this.today, required this.columns, required this.days});
+  final String from;
+  final String to;
+  final String today;
+  final List<SheetColumn> columns;
+  final List<SheetDay> days;
+
+  factory SheetView.fromJson(Json j) => SheetView(
+        from: j['from'] as String,
+        to: j['to'] as String,
+        today: j['today'] as String,
+        columns: _list(j['columns'], SheetColumn.fromJson),
+        days: _list(j['days'], SheetDay.fromJson),
+      );
+}

@@ -54,6 +54,13 @@ object FeedPlanner {
     const val MIDNIGHT_TIME = "00:01"
 
     /**
+     * How long after its nominal time an entry that has NOT fired yet is still kept. Without exact-alarm permission Android delivers
+     * an inexact alarm anywhere in a window that it caps at one hour, so a sync inside that window must not drop (and cancel) it.
+     * Firing removes an entry from the store, so "stored and past its time" means "still waiting to be delivered".
+     */
+    const val PENDING_GRACE_MS = 65 * 60_000L
+
+    /**
      * @param pendingCompletes (taskId, date) pairs that have an un-synced `complete` record: the feed still lists them as open,
      *   but the user already completed them, so they must not ring.
      * @param existingSnoozes native-owned snooze entries currently stored; kept unless the feed shows they are obsolete.
@@ -69,15 +76,22 @@ object FeedPlanner {
         carryOver: List<Entry> = emptyList(),
     ): List<Entry> {
         val byKey = LinkedHashMap<String, Entry>()
+        val storedByKey = carryOver.associateBy { it.key }
 
         // 1. Feed alarms. Past instants are dropped, never moved to tomorrow.
         for (a in feed.alarms) {
             if (TaskDay(a.taskId, a.date) in pendingCompletes) continue
             val time = Times.normalizeTime(a.time) ?: continue
             val trigger = Times.resolve(a.date, time, zone) ?: continue
-            if (trigger <= nowMs) continue
             val kind = if (a.kind == Kind.ALARM) Kind.ALARM else Kind.NOTIFICATION
             val key = Entry.keyFor(kind, a.taskId, a.date)
+            if (trigger <= nowMs) {
+                // Past its nominal time. If it is still stored it has not fired (firing removes it) and Android may yet deliver it late,
+                // so keep that entry; never create one from the feed, or an alarm that already fired would ring a second time.
+                val waiting = storedByKey[key]
+                if (waiting != null && waiting.triggerMs == trigger && !waiting.isExpired(nowMs)) byKey[key] = waiting
+                continue
+            }
             byKey[key] = Entry(key, kind, a.taskId, a.date, time, a.title, trigger)
         }
 
@@ -94,11 +108,11 @@ object FeedPlanner {
         }
 
         // 3. Reminders + midnight refresh triggers.
-        for (e in planReminders(feed.settings, nowMs, zone)) byKey[e.key] = e
+        for (e in plannedReminders(feed.settings, carryOver, nowMs, zone)) byKey[e.key] = e
 
         // 4. Native-owned snoozes survive a re-plan unless the feed shows they are obsolete.
         for (s in existingSnoozes) {
-            if (s.kind != Kind.SNOOZE || s.triggerMs <= nowMs) continue
+            if (s.kind != Kind.SNOOZE || s.isExpired(nowMs)) continue
             val tid = s.taskId
             if (tid != null) {
                 if (TaskDay(tid, s.date) in pendingCompletes) continue
@@ -111,22 +125,22 @@ object FeedPlanner {
     }
 
     /** `reminder_daily` / `reminder_eod` for each of the next 14 days plus a `midnight` entry per day; instants <= now are dropped. */
-    fun planReminders(settings: FeedSettings?, nowMs: Long, zone: ZoneId): List<Entry> {
+    fun planReminders(settings: FeedSettings?, nowMs: Long, zone: ZoneId, keepAfterMs: Long = nowMs): List<Entry> {
         val out = ArrayList<Entry>()
         val today = Times.localDate(nowMs, zone)
         for (i in 0 until REMINDER_DAYS) {
             val date = today.plusDays(i.toLong()).toString()
             if (settings?.dailyReminderOn == true) {
-                add(out, Kind.REMINDER_DAILY, date, Times.hhmm(settings.dailyReminderHour, settings.dailyReminderMin), "Daily reminder", nowMs, zone)
+                add(out, Kind.REMINDER_DAILY, date, Times.hhmm(settings.dailyReminderHour, settings.dailyReminderMin), "Daily reminder", keepAfterMs, zone)
             }
             if (settings?.endOfDayOn == true) {
-                add(out, Kind.REMINDER_EOD, date, Times.hhmm(settings.endOfDayHour, settings.endOfDayMin), "End of day", nowMs, zone)
+                add(out, Kind.REMINDER_EOD, date, Times.hhmm(settings.endOfDayHour, settings.endOfDayMin), "End of day", keepAfterMs, zone)
             }
         }
         // Midnight triggers: the next 14 local midnights (00:01 of tomorrow ... of today+14).
         for (i in 0..REMINDER_DAYS) {
             val date = today.plusDays(i.toLong()).toString()
-            add(out, Kind.MIDNIGHT, date, MIDNIGHT_TIME, "Daily refresh", nowMs, zone)
+            add(out, Kind.MIDNIGHT, date, MIDNIGHT_TIME, "Daily refresh", keepAfterMs, zone)
         }
         return out
     }
@@ -144,17 +158,27 @@ object FeedPlanner {
     ): List<Entry> {
         val byKey = LinkedHashMap<String, Entry>()
         for (e in stored) {
-            if (!Kind.isTaskKind(e.kind) || e.triggerMs <= nowMs) continue
+            if (!Kind.isTaskKind(e.kind) || e.isExpired(nowMs)) continue
             if (e.taskId != null && TaskDay(e.taskId, e.date) in pendingCompletes) continue
             byKey[e.key] = e
         }
-        for (e in planReminders(settings, nowMs, zone)) byKey[e.key] = e
+        for (e in plannedReminders(settings, stored, nowMs, zone)) byKey[e.key] = e
         return byKey.values.sortedWith(ORDER).take(MAX_ENTRIES)
     }
 
-    private fun add(out: MutableList<Entry>, kind: String, date: String, time: String, title: String, nowMs: Long, zone: ZoneId) {
+    /** Future reminders and midnight triggers, plus stored ones past their time that have not fired yet (see [PENDING_GRACE_MS]). */
+    private fun plannedReminders(settings: FeedSettings?, stored: List<Entry>, nowMs: Long, zone: ZoneId): List<Entry> {
+        val storedByKey = stored.associateBy { it.key }
+        return planReminders(settings, nowMs, zone, keepAfterMs = nowMs - PENDING_GRACE_MS).filter { e ->
+            e.triggerMs > nowMs || storedByKey[e.key]?.let { it.triggerMs == e.triggerMs && !it.isExpired(nowMs) } == true
+        }
+    }
+
+    private fun Entry.isExpired(nowMs: Long): Boolean = triggerMs <= nowMs - PENDING_GRACE_MS
+
+    private fun add(out: MutableList<Entry>, kind: String, date: String, time: String, title: String, keepAfterMs: Long, zone: ZoneId) {
         val trigger = Times.resolve(date, time, zone) ?: return
-        if (trigger <= nowMs) return
+        if (trigger <= keepAfterMs) return
         out.add(Entry(Entry.keyFor(kind, null, date), kind, null, date, time, title, trigger))
     }
 

@@ -48,7 +48,9 @@ describe('the web UI is strictly black and white', () => {
   });
 
   it('has no emoji (they render in colour); text symbols and words only', () => {
-    const bad = lines().filter((l) => /[\p{Emoji_Presentation}️]/u.test(l.text));
+    // Beyond Latin-1, anything with the Emoji property: that also catches the warning sign, which defaults to text presentation
+    // but is drawn as a colour emoji by Android's font. The text symbols we use on purpose (✓ ✕ ◐ ↻ ★ ☆ • – · — …) are not emoji.
+    const bad = lines().filter((l) => /(?![\u0000-\u00FF])\p{Emoji}|\uFE0F/u.test(l.text));
     expect(bad.map((l) => `${l.where}: ${l.text.trim()}`)).toEqual([]);
   });
 

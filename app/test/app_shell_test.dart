@@ -26,9 +26,14 @@ void main() {
       expect(find.text('Fix'), findsOneWidget);
     });
 
-    testWidgets('moves on to exact alarms when notifications are already allowed', (tester) async {
+    testWidgets('does not nag about exact alarms: task alarms use setAlarmClock, which does not need that permission', (tester) async {
       await openShell(tester, const SyncStatus(signedIn: true, armedCount: 1, exactAlarmAllowed: false));
-      expect(find.textContaining('Allow “Exact alarms”'), findsOneWidget);
+      expect(find.textContaining('Allow “'), findsNothing);
+    });
+
+    testWidgets('moves on to the full-screen permission once notifications are allowed', (tester) async {
+      await openShell(tester, const SyncStatus(signedIn: true, armedCount: 1, exactAlarmAllowed: false, fullScreenIntentAllowed: false));
+      expect(find.textContaining('Allow “Full-screen alarms”'), findsOneWidget);
     });
 
     testWidgets('can be dismissed', (tester) async {
@@ -67,9 +72,9 @@ void main() {
     expect(bridge.pendingLaunchAction, isNull, reason: 'consumed, so a later resume does not reopen the form');
   });
 
-  testWidgets('three tabs, and back from another tab returns to Today first', (tester) async {
+  testWidgets('four tabs, and back from another tab returns to Today first', (tester) async {
     await openShell(tester, const SyncStatus(signedIn: true));
-    for (final label in ['Today', 'Calendar', 'Profile']) {
+    for (final label in ['Today', 'Calendar', 'Sheet', 'Profile']) {
       expect(find.text(label), findsWidgets);
     }
     await tester.tap(find.text('Profile').last);

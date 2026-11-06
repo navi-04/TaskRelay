@@ -229,6 +229,45 @@ void main() {
     expect(server.where('POST', '/tasks'), isEmpty);
   });
 
+  testWidgets('the completion note: Cancel closes cleanly, Save sends the note with the day (same dialog fix as the labels)', (tester) async {
+    final server = await open(tester);
+    await openMenu(tester, 'Team standup', 'Edit note');
+    expect(find.text('Note'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Note'), findsNothing);
+    expect(server.where('PUT', '/tasks/fx-task-standup/days/2026-11-06'), isEmpty);
+
+    await openMenu(tester, 'Team standup', 'Edit note');
+    await tester.enterText(find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)), '  Went well  ');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final put = body(server.where('PUT', '/tasks/fx-task-standup/days/2026-11-06').single);
+    expect([put['status'], put['note']], ['done', 'Went well']);
+  });
+
+  testWidgets('a failed save keeps the form open and shows its banner (and painting the banner must not throw)', (tester) async {
+    final server = await open(tester, overrides: {'POST /tasks': (_) => FakeServer.error(500, 'internal', 'boom')});
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'Add task'));
+    await tester.pumpAndSettle();
+    expect(find.text('New task'), findsOneWidget);
+
+    final sheet = find.byType(BottomSheet);
+    await tester.enterText(find.descendant(of: sheet, matching: find.byType(TextField)).first, 'Pay rent'); // the title is the first field
+    final submit = find.descendant(of: sheet, matching: find.widgetWithText(FilledButton, 'Add task'));
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    expect(server.where('POST', '/tasks'), isNotEmpty, reason: 'the save was really attempted');
+
+    expect(find.text('New task'), findsOneWidget, reason: 'never closes on failure');
+    expect(find.textContaining('server had a problem'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('tasks changed by Claude carry a visible badge', (tester) async {
     final day = fixture('day-view') as Map<String, dynamic>;
     final tasks = (day['tasks'] as List).map((t) => {...(t as Map<String, dynamic>)}).toList();

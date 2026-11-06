@@ -95,7 +95,8 @@ class AlarmService : Service() {
         handler.removeCallbacks(timeout)
         handler.postDelayed(timeout, RING_TIMEOUT_MS)
 
-        AlarmActivity.instance?.updateFrom(e)
+        if (AlarmActivity.instance != null) AlarmActivity.instance?.updateFrom(e)
+        else if (!Permissions.notificationsAllowed(this)) Notifications.openAlarmScreen(this, e) // no notification, so no other way to silence it
     }
 
     private fun tryForeground(n: Notification): Boolean = try {

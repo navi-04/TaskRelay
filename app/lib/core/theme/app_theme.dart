@@ -193,8 +193,12 @@ class AppTheme {
         side: BorderSide(color: c.fieldBorder),
         shape: const StadiumBorder(),
         showCheckmark: false,
-        labelStyle: WidgetStateTextStyle.resolveWith(
-          (s) => TextStyle(color: s.contains(WidgetState.selected) ? c.accentInk : text, fontWeight: FontWeight.w600, fontSize: 13),
+        // The state-dependent colour must be a WidgetStateColor INSIDE the TextStyle: chips ignore a WidgetStateTextStyle here, which left a
+        // selected chip's label the same colour as its fill (invisible) and the unselected label the wrong tone (test/monochrome_test.dart).
+        labelStyle: TextStyle(
+          color: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.selected) ? c.accentInk : text),
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 6),
       ),

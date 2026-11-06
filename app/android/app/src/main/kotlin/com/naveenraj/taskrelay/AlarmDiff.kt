@@ -46,7 +46,10 @@ object AlarmDiff {
         val selected = selectNearest(planned, nowMs, limit)
         val selectedKeys = selected.mapTo(HashSet()) { it.key }
         val toArm = selected.filter { !isUnchanged(storedByKey[it.key], it) || !isArmed(it.key) }
-        val toCancel = stored.map { it.key }.filter { it !in selectedKeys }
+        // Planned entries past their nominal time but inside the grace were kept on purpose (Android can deliver an inexact alarm
+        // late): leave their registration alone so the alarm still rings. Anything else not selected is cancelled.
+        val waitingKeys = planned.filter { it.triggerMs <= nowMs && it.triggerMs > nowMs - FeedPlanner.PENDING_GRACE_MS }.mapTo(HashSet()) { it.key }
+        val toCancel = stored.map { it.key }.filter { it !in selectedKeys && it !in waitingKeys }
         return ArmPlan(selected, toArm, toCancel)
     }
 

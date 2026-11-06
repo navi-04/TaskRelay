@@ -104,6 +104,19 @@ object Notifications {
     private fun openAppPI(ctx: Context): PendingIntent =
         PendingIntent.getActivity(ctx, REQ_OPEN, openAppIntent(ctx, "notification"), IMMUTABLE_UPDATE)
 
+    /**
+     * Opens the alarm screen directly. Used when notifications are blocked: the full-screen-intent notification is then never shown,
+     * so without this a ringing alarm would have no buttons at all. Android only allows it while the app is visible; from the
+     * background it silently does nothing, and the "allow notifications" banner in the app is the remedy.
+     */
+    fun openAlarmScreen(ctx: Context, e: Entry) {
+        try {
+            ctx.startActivity(alarmActivityIntent(ctx, e))
+        } catch (t: Throwable) {
+            Log.w(TAG, "alarm screen not opened: ${t.javaClass.simpleName}")
+        }
+    }
+
     private fun alarmActivityIntent(ctx: Context, e: Entry): Intent =
         e.putExtras(
             Intent(ctx, AlarmActivity::class.java)

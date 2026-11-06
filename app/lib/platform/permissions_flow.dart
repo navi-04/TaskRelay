@@ -2,23 +2,24 @@ import 'package:flutter/material.dart';
 
 import 'platform_bridge.dart';
 
-/// Which permission needs attention first (null when everything is allowed).
+/// Which permission needs attention first (null when nothing important is missing).
+/// Exact alarms are deliberately NOT nagged about: task alarms use setAlarmClock, which Android exempts from that permission, so they
+/// ring on the exact minute without it. It only affects the daily / end-of-day reminders, so it is offered in Profile > Alarm health.
 String? firstMissingPermission(Permissions p) {
   if (!p.notifications) return 'notifications';
-  if (!p.exactAlarm) return 'exactAlarm';
   if (!p.fullScreenIntent) return 'fullScreenIntent';
   return null;
 }
 
 String permissionTitle(String key) => switch (key) {
       'notifications' => 'Notifications',
-      'exactAlarm' => 'Exact alarms',
+      'exactAlarm' => 'Exact reminder times',
       _ => 'Full-screen alarms',
     };
 
 String permissionWhy(String key) => switch (key) {
       'notifications' => 'TaskRelay needs notifications to show your reminders and alarms.',
-      'exactAlarm' => 'Android needs this so alarms ring at the exact minute. Turn on “Alarms & reminders” for TaskRelay on the next screen.',
+      'exactAlarm' => 'Optional. Your task alarms already ring on the exact minute. Android needs this only so the daily and end-of-day reminders arrive on the minute too. Turn on “Alarms & reminders” for TaskRelay on the next screen.',
       _ => 'This lets an alarm take over the lock screen so you can’t miss it. Turn it on for TaskRelay on the next screen.',
     };
 

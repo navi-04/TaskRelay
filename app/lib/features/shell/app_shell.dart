@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../platform/permissions_flow.dart';
 import '../../platform/platform_bridge.dart';
+import '../../shared/widgets.dart';
 import '../../state/providers.dart';
 import '../calendar/calendar_screen.dart';
 import '../profile/profile_screen.dart';
+import '../sheet/sheet_screen.dart';
 import '../today/today_screen.dart';
 
 /// The signed-in app: three tabs, a sync on launch and on resume, and the glue to the native layer.
@@ -124,7 +126,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
               onDismiss: () => setState(() => _bannerDismissed = true),
             ),
           Expanded(
-            child: IndexedStack(index: index, children: const [TodayScreen(), CalendarScreen(), ProfileScreen()]),
+            child: IndexedStack(index: index, children: const [TodayScreen(), CalendarScreen(), SheetScreen(), ProfileScreen()]),
           ),
         ]),
         bottomNavigationBar: NavigationBar(
@@ -133,6 +135,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
           destinations: const [
             NavigationDestination(icon: Icon(Icons.check_circle_outline), selectedIcon: Icon(Icons.check_circle), label: 'Today'),
             NavigationDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: 'Calendar'),
+            NavigationDestination(icon: Icon(Icons.grid_on_outlined), selectedIcon: Icon(Icons.grid_on), label: 'Sheet'),
             NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
@@ -158,7 +161,7 @@ class _PermissionBanner extends StatelessWidget {
           decoration: BoxDecoration(border: Border(left: BorderSide(color: Theme.of(context).colorScheme.onSurface, width: 6), bottom: BorderSide(color: t.border))),
           padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
           child: Row(children: [
-            Expanded(child: Text('⚠  Allow “$what” so your reminders and alarms can ring.', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
+            Expanded(child: IconText(Icons.warning_amber_outlined, 'Allow “$what” so your reminders and alarms can ring.', iconSize: 16, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
             TextButton(onPressed: onFix, child: const Text('Fix')),
             IconButton(tooltip: 'Dismiss', icon: const Icon(Icons.close, size: 18), onPressed: onDismiss),
           ]),

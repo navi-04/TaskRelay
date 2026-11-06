@@ -105,8 +105,9 @@ class AlarmDiffTest {
     }
 
     @Test
-    fun staleStoredEntriesThatAreAlreadyPastAreCancelled() {
-        val past = alarm("task-aaaa1", now - 10)
+    fun staleStoredEntriesPastTheGraceAreCancelled() {
+        // (an entry only a moment past its time is NOT stale: see doesNotCancelAnEntryThatIsPastItsTimeButStillPlanned)
+        val past = alarm("task-aaaa1", now - FeedPlanner.PENDING_GRACE_MS - 10)
         val future = alarm("task-bbbb2", now + 10)
         val plan = AlarmDiff.compute(listOf(past, future), listOf(past, future), now, isArmed = armedEverything)
         assertEquals(listOf(past.key), plan.toCancel)
@@ -169,5 +170,29 @@ class AlarmDiffTest {
         assertEquals(StoreState(), AlarmStore(f).read())
         assertFalse(AlarmStore(f).update { it.copy(armedCount = 1) }.entries.isNotEmpty())
         assertEquals(1, AlarmStore(f).read().armedCount)
+    }
+
+    // ── an entry past its nominal time that has not fired ───────────────────────────────────────────────────────
+
+    @Test
+    fun doesNotCancelAnEntryThatIsPastItsTimeButStillPlanned() {
+        val late = alarm("task-late-1", now - 60_000)
+        val plan = AlarmDiff.compute(listOf(late), listOf(late.copy()), now, isArmed = armedEverything)
+        assertTrue("the OS registration must survive until the alarm is delivered", plan.toCancel.isEmpty())
+        assertTrue(plan.toArm.isEmpty())
+    }
+
+    @Test
+    fun cancelsAPastEntryThatLeftThePlan() {
+        val late = alarm("task-late-1", now - 60_000)
+        val plan = AlarmDiff.compute(listOf(late), emptyList(), now, isArmed = armedEverything)
+        assertEquals(listOf(late.key), plan.toCancel)
+    }
+
+    @Test
+    fun cancelsAPastEntryOnceTheGraceHasEnded() {
+        val old = alarm("task-old-1", now - FeedPlanner.PENDING_GRACE_MS - 1_000)
+        val plan = AlarmDiff.compute(listOf(old), listOf(old.copy()), now, isArmed = armedEverything)
+        assertEquals(listOf(old.key), plan.toCancel)
     }
 }

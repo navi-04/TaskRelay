@@ -110,16 +110,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   }
 
   Future<void> _editNote(Task t) async {
-    final ctl = TextEditingController(text: t.dayNote ?? '');
-    final saved = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Note'),
-        content: TextField(controller: ctl, autofocus: true, maxLength: 1000, maxLines: 3, decoration: const InputDecoration(hintText: 'How did it go? (optional)')),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text.trim()), child: const Text('Save'))],
-      ),
-    );
-    ctl.dispose();
+    final saved = await askText(context, title: 'Note', initial: t.dayNote ?? '', hint: 'How did it go? (optional)', maxLength: 1000, maxLines: 3);
     if (saved == null || !mounted) return;
     await _guard(busyId: t.id, () => ref.read(taskActionsProvider).setNote(t, saved.isEmpty ? null : saved));
   }
@@ -267,7 +258,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               onSubmitted: (_) => _quickAdd(v),
             ),
           ),
-          IconButton.filled(tooltip: 'Add task', onPressed: _working ? null : () => _quickAdd(v), icon: const Icon(Icons.arrow_upward)),
+          // explicit colours: the theme-wide icon foreground equals this button's fill, which made the arrow invisible
+          IconButton.filled(
+            tooltip: 'Add task',
+            style: IconButton.styleFrom(backgroundColor: t.accent, foregroundColor: t.accentInk),
+            onPressed: _working ? null : () => _quickAdd(v),
+            icon: const Icon(Icons.arrow_upward),
+          ),
         ]),
       ),
 

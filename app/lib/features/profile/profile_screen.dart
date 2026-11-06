@@ -82,56 +82,8 @@ class _AppearanceCard extends ConsumerWidget {
 class _AccountCard extends ConsumerWidget {
   const _AccountCard();
 
-  Future<void> _changePassword(BuildContext context, WidgetRef ref) async {
-    final cur = TextEditingController(), next = TextEditingController(), again = TextEditingController();
-    String? error;
-    var busy = false;
-    final done = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text('Change password'),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              if (error != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('⚠  $error', style: const TextStyle(fontWeight: FontWeight.w700))),
-              TextField(controller: cur, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
-              const SizedBox(height: 8),
-              TextField(controller: next, obscureText: true, decoration: const InputDecoration(labelText: 'New password (8+ characters)')),
-              const SizedBox(height: 8),
-              TextField(controller: again, obscureText: true, decoration: const InputDecoration(labelText: 'Repeat new password')),
-            ]),
-          ),
-          actions: [
-            TextButton(onPressed: busy ? null : () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      if (next.text.length < 8) return setState(() => error = 'The new password must be at least 8 characters.');
-                      if (next.text != again.text) return setState(() => error = 'The new passwords don’t match.');
-                      setState(() {
-                        busy = true;
-                        error = null;
-                      });
-                      try {
-                        await ref.read(apiProvider).changePassword(cur.text, next.text);
-                        if (ctx.mounted) Navigator.pop(ctx, true);
-                      } on ApiException catch (e) {
-                        setState(() {
-                          busy = false;
-                          error = friendlyError(e);
-                        });
-                      }
-                    },
-              child: Text(busy ? 'Saving…' : 'Change'),
-            ),
-          ],
-        ),
-      ),
-    );
-    cur.dispose();
-    next.dispose();
-    again.dispose();
+  Future<void> _changePassword(BuildContext context) async {
+    final done = await showDialog<bool>(context: context, builder: (_) => const _ChangePasswordDialog());
     if (done == true && context.mounted) showMessage(context, 'Password changed. Other devices were signed out.');
   }
 
@@ -146,47 +98,7 @@ class _AccountCard extends ConsumerWidget {
   }
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    final pw = TextEditingController();
-    String? error;
-    var busy = false;
-    final done = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text('Delete your account?'),
-          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('This permanently deletes your account, tasks, history and settings. It cannot be undone. Enter your password to confirm.'),
-            if (error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text('⚠  $error', style: const TextStyle(fontWeight: FontWeight.w700))),
-            const SizedBox(height: 12),
-            TextField(controller: pw, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
-          ]),
-          actions: [
-            TextButton(onPressed: busy ? null : () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      setState(() {
-                        busy = true;
-                        error = null;
-                      });
-                      try {
-                        await ref.read(apiProvider).deleteAccount(pw.text);
-                        if (ctx.mounted) Navigator.pop(ctx, true);
-                      } on ApiException catch (e) {
-                        setState(() {
-                          busy = false;
-                          error = friendlyError(e);
-                        });
-                      }
-                    },
-              child: Text(busy ? 'Deleting…' : 'Delete everything'),
-            ),
-          ],
-        ),
-      ),
-    );
-    pw.dispose();
+    final done = await showDialog<bool>(context: context, builder: (_) => const _DeleteAccountDialog());
     if (done == true) await ref.read(sessionProvider.notifier).expire();
   }
 
@@ -197,7 +109,7 @@ class _AccountCard extends ConsumerWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SectionTitle('Account'),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          OutlinedButton.icon(onPressed: () => _changePassword(context, ref), icon: const Icon(Icons.lock_outline, size: 18), label: const Text('Change password')),
+          OutlinedButton.icon(onPressed: () => _changePassword(context), icon: const Icon(Icons.lock_outline, size: 18), label: const Text('Change password')),
           OutlinedButton.icon(onPressed: () => _copyData(context, ref), icon: const Icon(Icons.download_outlined, size: 18), label: const Text('Copy my data')),
           OutlinedButton.icon(
             onPressed: () async {
@@ -235,6 +147,123 @@ class _AccountCard extends ConsumerWidget {
       ]),
     );
   }
+}
+
+// These dialogs own their text controllers: disposing them right after `await showDialog` breaks the closing animation
+// ("used after being disposed", the red error screen), so they are disposed here, when the dialog is really gone.
+
+class _ChangePasswordDialog extends ConsumerStatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  ConsumerState<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
+  final _cur = TextEditingController();
+  final _next = TextEditingController();
+  final _again = TextEditingController();
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _cur.dispose();
+    _next.dispose();
+    _again.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_next.text.length < 8) return setState(() => _error = 'The new password must be at least 8 characters.');
+    if (_next.text != _again.text) return setState(() => _error = 'The new passwords don’t match.');
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(apiProvider).changePassword(_cur.text, _next.text);
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = friendlyError(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Change password'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: IconText(Icons.warning_amber_outlined, _error!, style: const TextStyle(fontWeight: FontWeight.w700))),
+            TextField(controller: _cur, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
+            const SizedBox(height: 8),
+            TextField(controller: _next, obscureText: true, decoration: const InputDecoration(labelText: 'New password (8+ characters)')),
+            const SizedBox(height: 8),
+            TextField(controller: _again, obscureText: true, decoration: const InputDecoration(labelText: 'Repeat new password')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: _busy ? null : () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: _busy ? null : _submit, child: Text(_busy ? 'Saving…' : 'Change')),
+        ],
+      );
+}
+
+class _DeleteAccountDialog extends ConsumerStatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  ConsumerState<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
+  final _pw = TextEditingController();
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _pw.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(apiProvider).deleteAccount(_pw.text);
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = friendlyError(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('This permanently deletes your account, tasks, history and settings. It cannot be undone. Enter your password to confirm.'),
+          if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: IconText(Icons.warning_amber_outlined, _error!, style: const TextStyle(fontWeight: FontWeight.w700))),
+          const SizedBox(height: 12),
+          TextField(controller: _pw, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
+        ]),
+        actions: [
+          TextButton(onPressed: _busy ? null : () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: _busy ? null : _submit, child: Text(_busy ? 'Deleting…' : 'Delete everything')),
+        ],
+      );
 }
 
 class _AboutCard extends ConsumerWidget {

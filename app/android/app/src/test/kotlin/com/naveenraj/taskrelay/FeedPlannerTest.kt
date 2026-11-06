@@ -227,8 +227,8 @@ class FeedPlannerTest {
     }
 
     @Test
-    fun pastSnoozeIsDropped() {
-        val s = snooze("fx-task-gym", "2026-11-06", offsetMs = -1)
+    fun snoozeOlderThanTheGraceIsDropped() {
+        val s = snooze("fx-task-gym", "2026-11-06", offsetMs = -FeedPlanner.PENDING_GRACE_MS - 1)
         val plan = FeedPlanner.plan(feed(listOf(alarm("fx-task-gym", "2026-11-06", "08:00"))), now, utc, noPending, listOf(s))
         assertFalse(s in plan)
     }
@@ -327,5 +327,80 @@ class FeedPlannerTest {
         assertEquals("12:10", restored.localTime)
         assertEquals(Kind.ALARM, e.ringKind)
         assertEquals(Kind.NOTIFICATION, TestFixtures.entry(Kind.NOTIFICATION, "t", "2026-11-06", "10:00", 1).ringKind)
+    }
+
+    // ── alarms that are late but have not fired ─────────────────────────────────────────────────────────────────
+    // Without exact-alarm permission Android delivers an inexact alarm up to an hour late. A sync that lands after the nominal time but
+    // before delivery used to drop the entry, and the scheduler then cancelled the pending OS alarm: the alarm never rang, silently.
+
+    private val lateAt = ms("2026-11-06T20:37:00Z")
+    private val lateKey = Entry.keyFor(Kind.ALARM, "task-late-1", "2026-11-06")
+    private fun storedLate(trigger: Long = lateAt) = TestFixtures.entry(Kind.ALARM, "task-late-1", "2026-11-06", "20:37", trigger, "Late")
+    private fun lateFeed() = feed(alarms = listOf(alarm("task-late-1", "2026-11-06", "20:37", Kind.ALARM, "Late")))
+
+    @Test
+    fun keepsAStoredAlarmWhoseTimePassedButHasNotFiredYet() {
+        val plan = FeedPlanner.plan(lateFeed(), lateAt + 56_000, utc, noPending, emptyList(), carryOver = listOf(storedLate()))
+        assertEquals(storedLate(), plan.single { it.key == lateKey })
+    }
+
+    @Test
+    fun neverCreatesAPastAlarmFromTheFeedSoOneThatAlreadyFiredDoesNotRingAgain() {
+        // firing removes the entry from the store, so nothing is stored here
+        val plan = FeedPlanner.plan(lateFeed(), lateAt + 56_000, utc, noPending, emptyList(), carryOver = emptyList())
+        assertTrue(plan.none { it.key == lateKey })
+    }
+
+    @Test
+    fun givesUpOnAPendingAlarmAfterTheGracePeriod() {
+        val now = lateAt + FeedPlanner.PENDING_GRACE_MS + 1_000
+        val plan = FeedPlanner.plan(lateFeed(), now, utc, noPending, emptyList(), carryOver = listOf(storedLate()))
+        assertTrue(plan.none { it.key == lateKey })
+        val justInside = FeedPlanner.plan(lateFeed(), lateAt + FeedPlanner.PENDING_GRACE_MS - 1_000, utc, noPending, emptyList(), carryOver = listOf(storedLate()))
+        assertTrue(justInside.any { it.key == lateKey })
+    }
+
+    @Test
+    fun aPendingAlarmIsDroppedWhenTheTaskLeftTheFeedOrWasCompletedOnThePhone() {
+        val now = lateAt + 30_000
+        val gone = FeedPlanner.plan(feed(), now, utc, noPending, emptyList(), carryOver = listOf(storedLate())) // deleted / done elsewhere
+        assertTrue(gone.none { it.key == lateKey })
+        val done = FeedPlanner.plan(lateFeed(), now, utc, setOf(TaskDay("task-late-1", "2026-11-06")), emptyList(), carryOver = listOf(storedLate()))
+        assertTrue(done.none { it.key == lateKey })
+    }
+
+    @Test
+    fun aPendingAlarmIsDroppedWhenItsTimeWasEditedToAnotherInstant() {
+        val moved = feed(alarms = listOf(alarm("task-late-1", "2026-11-06", "20:36", Kind.ALARM, "Late"))) // earlier, also past
+        val plan = FeedPlanner.plan(moved, lateAt + 30_000, utc, noPending, emptyList(), carryOver = listOf(storedLate()))
+        assertTrue(plan.none { it.key == lateKey })
+    }
+
+    @Test
+    fun keepsAPendingDailyReminderOnlyIfItIsStored() {
+        val settings = FeedSettings(dailyReminderOn = true, dailyReminderHour = 9, dailyReminderMin = 0, endOfDayOn = false)
+        val nine = ms("2026-11-06T09:00:00Z")
+        val key = Entry.keyFor(Kind.REMINDER_DAILY, null, "2026-11-06")
+        val stored = TestFixtures.entry(Kind.REMINDER_DAILY, null, "2026-11-06", "09:00", nine, "Daily reminder")
+        val now = nine + 10 * 60_000
+        assertTrue(FeedPlanner.plan(feed(settings = settings), now, utc, noPending, emptyList(), carryOver = listOf(stored)).any { it.key == key })
+        assertTrue(FeedPlanner.plan(feed(settings = settings), now, utc, noPending, emptyList(), carryOver = emptyList()).none { it.key == key })
+    }
+
+    @Test
+    fun aPendingSnoozeSurvivesAReplan() {
+        val snooze = TestFixtures.entry(Kind.SNOOZE, "task-late-1", "2026-11-06", "20:47", lateAt + 10 * 60_000, "Late", orig = Kind.ALARM)
+        val plan = FeedPlanner.plan(lateFeed(), lateAt + 10 * 60_000 + 20_000, utc, noPending, listOf(snooze))
+        assertTrue(plan.any { it.key == snooze.key })
+    }
+
+    @Test
+    fun replanKeepsAPendingTaskEntryUntilTheGraceEnds() {
+        val kept = FeedPlanner.replan(listOf(storedLate()), null, lateAt + 90_000, utc, noPending)
+        assertTrue(kept.any { it.key == lateKey })
+        val dropped = FeedPlanner.replan(listOf(storedLate()), null, lateAt + FeedPlanner.PENDING_GRACE_MS + 1_000, utc, noPending)
+        assertTrue(dropped.none { it.key == lateKey })
+        val completed = FeedPlanner.replan(listOf(storedLate()), null, lateAt + 90_000, utc, setOf(TaskDay("task-late-1", "2026-11-06")))
+        assertTrue(completed.none { it.key == lateKey })
     }
 }

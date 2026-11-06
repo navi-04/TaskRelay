@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/time.dart';
+import '../../shared/widgets.dart';
 import '../../data/api_exception.dart';
 import '../../data/models.dart';
 import '../../platform/platform_bridge.dart';
@@ -190,7 +191,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             const _Label('Time needed (minutes)'),
             Wrap(spacing: 8, runSpacing: 4, children: [
               for (final d in _durations)
-                ChoiceChip(label: Text('$d'), selected: _mins == d, onSelected: (_) => setState(() => _minutes.text = '$d')),
+                ChoiceChip(label: Text('$d'), labelStyle: chipLabel(context, selected: _mins == d), selected: _mins == d, onSelected: (_) => setState(() => _minutes.text = '$d')),
             ]),
             const SizedBox(height: 8),
             TextField(
@@ -202,14 +203,14 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             const SizedBox(height: 12),
             const _Label('Priority'),
             Wrap(spacing: 8, runSpacing: 4, children: [
-              ChoiceChip(label: const Text('None'), selected: _priorityId == null, onSelected: (_) => setState(() => _priorityId = null)),
-              for (final p in widget.labels.priorities) ChoiceChip(label: Text(p.label), selected: _priorityId == p.id, onSelected: (_) => setState(() => _priorityId = p.id)),
+              ChoiceChip(label: const Text('None'), labelStyle: chipLabel(context, selected: _priorityId == null), selected: _priorityId == null, onSelected: (_) => setState(() => _priorityId = null)),
+              for (final p in widget.labels.priorities) ChoiceChip(label: Text(p.label), labelStyle: chipLabel(context, selected: _priorityId == p.id), selected: _priorityId == p.id, onSelected: (_) => setState(() => _priorityId = p.id)),
             ]),
             const SizedBox(height: 12),
             const _Label('Type'),
             Wrap(spacing: 8, runSpacing: 4, children: [
-              ChoiceChip(label: const Text('None'), selected: _typeId == null, onSelected: (_) => setState(() => _typeId = null)),
-              for (final p in widget.labels.types) ChoiceChip(label: Text(p.label), selected: _typeId == p.id, onSelected: (_) => setState(() => _typeId = p.id)),
+              ChoiceChip(label: const Text('None'), labelStyle: chipLabel(context, selected: _typeId == null), selected: _typeId == null, onSelected: (_) => setState(() => _typeId = null)),
+              for (final p in widget.labels.types) ChoiceChip(label: Text(p.label), labelStyle: chipLabel(context, selected: _typeId == p.id), selected: _typeId == p.id, onSelected: (_) => setState(() => _typeId = p.id)),
             ]),
             const SizedBox(height: 12),
             const _Label('Reminder'),
@@ -243,6 +244,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                 for (var i = 0; i < 7; i++)
                   FilterChip(
                     label: Text(names[i]),
+                    labelStyle: chipLabel(context, selected: _days.contains(i + 1)),
                     selected: _days.contains(i + 1),
                     onSelected: (on) => setState(() => on ? _days.add(i + 1) : _days.remove(i + 1)),
                   ),
@@ -311,7 +313,7 @@ class _Err extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(top: 4), child: Text('⚠  $text', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)));
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(top: 4), child: IconText(Icons.warning_amber_outlined, text, iconSize: 14, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)));
 }
 
 class _Banner extends StatelessWidget {
@@ -322,7 +324,7 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppTheme.radiusSm), border: Border(left: BorderSide(color: Theme.of(context).colorScheme.onSurface, width: 6), top: BorderSide(color: context.tr.fieldBorder), right: BorderSide(color: context.tr.fieldBorder), bottom: BorderSide(color: context.tr.fieldBorder))),
-        child: Semantics(liveRegion: true, child: Text('⚠  $text', style: const TextStyle(fontWeight: FontWeight.w700))),
+        decoration: BoxDecoration(border: Border(left: BorderSide(color: Theme.of(context).colorScheme.onSurface, width: 6), top: BorderSide(color: context.tr.fieldBorder), right: BorderSide(color: context.tr.fieldBorder), bottom: BorderSide(color: context.tr.fieldBorder))),
+        child: Semantics(liveRegion: true, child: IconText(Icons.warning_amber_outlined, text, style: const TextStyle(fontWeight: FontWeight.w700))),
       );
 }
