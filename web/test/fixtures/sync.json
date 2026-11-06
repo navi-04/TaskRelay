@@ -1,0 +1,113 @@
+{
+  "version": "W/\"fixture\"",
+  "server_time": "2026-11-06T12:00:00.000Z",
+  "timezone": "UTC",
+  "today": {
+    "date": "2026-11-06",
+    "planned": 4,
+    "done": 1,
+    "overdue_count": 1,
+    "top": [
+      "Team standup",
+      "Gym"
+    ],
+    "tasks": [
+      {
+        "id": "fx-task-standup",
+        "title": "Team standup",
+        "status": "done",
+        "is_top": true,
+        "duration_min": 15
+      },
+      {
+        "id": "fx-task-gym",
+        "title": "Gym",
+        "status": "open",
+        "is_top": true,
+        "duration_min": 60
+      },
+      {
+        "id": "fx-task-meditate",
+        "title": "Meditate",
+        "status": "open",
+        "is_top": false,
+        "duration_min": 10
+      },
+      {
+        "id": "fx-task-report",
+        "title": "Write quarterly report",
+        "status": "open",
+        "is_top": false,
+        "duration_min": 90
+      }
+    ]
+  },
+  "window": {
+    "from": "2026-11-06",
+    "to": "2026-11-19",
+    "covered_until": "2026-11-19",
+    "truncated": false
+  },
+  "alarms": [
+    {
+      "task_id": "fx-task-gym",
+      "date": "2026-11-06",
+      "time": "18:00",
+      "title": "Gym",
+      "kind": "notification",
+      "duration_min": 60
+    },
+    {
+      "task_id": "fx-task-gym",
+      "date": "2026-11-09",
+      "time": "18:00",
+      "title": "Gym",
+      "kind": "notification",
+      "duration_min": 60
+    },
+    {
+      "task_id": "fx-task-gym",
+      "date": "2026-11-11",
+      "time": "18:00",
+      "title": "Gym",
+      "kind": "notification",
+      "duration_min": 60
+    },
+    {
+      "task_id": "fx-task-gym",
+      "date": "2026-11-13",
+      "time": "18:00",
+      "title": "Gym",
+      "kind": "notification",
+      "duration_min": 60
+    },
+    {
+      "task_id": "fx-task-gym",
+      "date": "2026-11-16",
+      "time": "18:00",
+      "title": "Gym",
+      "kind": "notification",
+      "duration_min": 60
+    },
+    {
+      "task_id": "fx-task-gym",
+      "date": "2026-11-18",
+      "time": "18:00",
+      "title": "Gym",
+      "kind": "notification",
+      "duration_min": 60
+    }
+  ],
+  "settings": {
+    "estimation_mode": "time",
+    "daily_time_limit_min": 480,
+    "daily_count_limit": 10,
+    "daily_reminder_on": true,
+    "daily_reminder_hour": 9,
+    "daily_reminder_min": 0,
+    "end_of_day_on": false,
+    "end_of_day_hour": 21,
+    "end_of_day_min": 0,
+    "carry_over_alerts": true
+  }
+}

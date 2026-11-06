@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "id": 2,
+      "at": "2026-11-06T12:00:00.000Z",
+      "actor": "ai",
+      "kind": "updated",
+      "task_id": "fx-task-ai",
+      "title": "Fix login bug",
+      "date": "2026-11-07",
+      "detail": null
+    },
+    {
+      "id": 1,
+      "at": "2026-11-06T12:00:00.000Z",
+      "actor": "ai",
+      "kind": "created",
+      "task_id": "fx-task-ai",
+      "title": "Fix login bug",
+      "date": "2026-11-07",
+      "detail": null
+    }
+  ],
+  "next_before": null
+}

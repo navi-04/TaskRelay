@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, ApiFail, errorMessage } from '@/lib/web/api';
+import { useTheme } from '@/lib/web/theme';
+import { FeedbackProvider } from './Feedback';
 
 export interface Me {
   id: string;
@@ -21,12 +23,21 @@ export const useMe = () => {
   return ctx;
 };
 
+const TABS = [
+  { href: '/today', label: 'Today', icon: '✓' },
+  { href: '/calendar', label: 'Calendar', icon: '▦' },
+  { href: '/review', label: 'Review', icon: '↺' },
+  { href: '/search', label: 'Search', icon: '⌕' },
+  { href: '/profile', label: 'Profile', icon: '☺' },
+] as const;
+
 /** Signed-in frame: checks the session (redirects to / when signed out), keeps the server's timezone in sync, shows the nav. */
 export default function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const path = usePathname();
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { toggle: toggleTheme } = useTheme();
 
   const refresh = async () => setMe(await api<Me>('/me'));
 
@@ -45,20 +56,41 @@ export default function Shell({ children }: { children: ReactNode }) {
       });
   }, [router]);
 
-  if (error) return <main><div className="banner">{error}</div><button onClick={() => location.reload()}>Retry</button></main>;
-  if (!me) return <main><p className="muted">Loading…</p></main>;
-
-  const link = (href: string, label: string) => (
-    <Link href={href} aria-current={path === href ? 'page' : undefined}>{label}</Link>
-  );
+  if (error)
+    return (
+      <main>
+        <div className="banner" role="alert">{error}</div>
+        <button onClick={() => location.reload()}>Retry</button>
+      </main>
+    );
+  if (!me)
+    return (
+      <main aria-busy="true">
+        <p className="muted">Loading…</p>
+      </main>
+    );
 
   return (
     <MeContext.Provider value={{ me, refresh }}>
-      <header className="bar">
-        <span className="brand">TaskRelay</span>
-        <nav>{link('/today', 'Today')}{link('/profile', 'Profile')}</nav>
-      </header>
-      <main>{children}</main>
+      <FeedbackProvider>
+        <header className="topbar">
+          <span className="brand">
+            <span className="brand-mark" aria-hidden="true">✓</span>TaskRelay
+          </span>
+          <div className="topbar-right">
+            <nav className="tabs" aria-label="Main">
+              {TABS.map((t) => (
+                <Link key={t.href} href={t.href} aria-current={path === t.href ? 'page' : undefined}>
+                  <span className="ico" aria-hidden="true">{t.icon}</span>
+                  {t.label}
+                </Link>
+              ))}
+            </nav>
+            <button className="icon" aria-label="Switch between white and black theme" title="Switch theme" onClick={toggleTheme}>◐</button>
+          </div>
+        </header>
+        <main>{children}</main>
+      </FeedbackProvider>
     </MeContext.Provider>
   );
 }

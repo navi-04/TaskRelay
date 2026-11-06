@@ -9,6 +9,8 @@ export interface DayView {
   /** The server's idea of today for this user (their timezone). */
   today: string;
   tasks: TaskDto[];
+  /** Ids of that day's Top 3 in order (position 1..3), also marked on each task as `top_position`. */
+  top: string[];
   summary: ReturnType<typeof summarize>;
   /** Only present when `date` is today. */
   overdue?: { items: TaskDto[]; count: number };
@@ -18,7 +20,11 @@ export interface DayView {
 export async function dayView(ctx: Ctx, date: string): Promise<DayView> {
   const today = todayFor(ctx.now(), ctx.tz);
   const tasks = await listTasksForDate(ctx, date);
-  const view: DayView = { date, today, tasks, summary: summarize(tasks) };
+  const top = tasks
+    .filter((t) => t.top_position != null)
+    .sort((a, b) => a.top_position! - b.top_position!)
+    .map((t) => t.id);
+  const view: DayView = { date, today, tasks, top, summary: summarize(tasks) };
   if (date === today) view.overdue = await listOverdue(ctx, today);
   return view;
 }

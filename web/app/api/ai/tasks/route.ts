@@ -1,4 +1,4 @@
-import { resolveBodyDates, resolveDate, resolveLabelNames, withLabelNames } from '@/lib/ai';
+import { resolveBodyDates, resolveBodyDays, resolveDate, resolveLabelNames, withLabelNames } from '@/lib/ai';
 import { badRequest } from '@/lib/errors';
 import { aiJson, aiRoute, readBody, todayOf } from '@/lib/http';
 import { createTask, listTasksForDate } from '@/lib/services/tasks';
@@ -34,7 +34,7 @@ export const GET = (req: Request) =>
 export const POST = (req: Request) =>
   aiRoute(req, async (ctx) => {
     const raw = await readBody(req, z.record(z.string(), z.unknown()));
-    const body = await resolveLabelNames(ctx, resolveBodyDates(ctx, raw));
+    const body = await resolveLabelNames(ctx, resolveBodyDays(resolveBodyDates(ctx, raw)));
     const task = await createTask(ctx, taskCreate.parse(body));
     return aiJson((await withLabelNames(ctx, [task]))[0], 201);
   });

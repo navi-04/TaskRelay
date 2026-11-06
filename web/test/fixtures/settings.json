@@ -1,0 +1,12 @@
+{
+  "estimation_mode": "time",
+  "daily_time_limit_min": 480,
+  "daily_count_limit": 10,
+  "daily_reminder_on": true,
+  "daily_reminder_hour": 9,
+  "daily_reminder_min": 0,
+  "end_of_day_on": false,
+  "end_of_day_hour": 21,
+  "end_of_day_min": 0,
+  "carry_over_alerts": true
+}

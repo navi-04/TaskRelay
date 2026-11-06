@@ -13,13 +13,15 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="android:windowBackground">@color/tr_bg</item>
     </style>
 
-    <style name="AlarmTheme" parent="@android:style/Theme.NoTitleBar.Fullscreen">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowShowWallpaper">true</item>
-        <item name="android:colorBackgroundCacheHint">@null</item>
+    <!-- Full-screen alarm over the lock screen: white background, black text. -->
+    <style name="AlarmTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/tr_bg</item>
+        <item name="android:statusBarColor">@color/tr_bg</item>
+        <item name="android:navigationBarColor">@color/tr_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowShowWallpaper">false</item>
     </style>
 </resources>

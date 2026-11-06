@@ -1,0 +1,136 @@
+[
+  {
+    "name": "one-off",
+    "recur": "none",
+    "due_date": "2026-11-10",
+    "recur_until": null,
+    "recur_days": null,
+    "from": "2026-11-08",
+    "to": "2026-11-12",
+    "occurs": [
+      "2026-11-10"
+    ]
+  },
+  {
+    "name": "every day from a start date",
+    "recur": "daily",
+    "due_date": "2026-11-10",
+    "recur_until": null,
+    "recur_days": null,
+    "from": "2026-11-08",
+    "to": "2026-11-14",
+    "occurs": [
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13",
+      "2026-11-14"
+    ]
+  },
+  {
+    "name": "until is inclusive",
+    "recur": "daily",
+    "due_date": "2026-11-10",
+    "recur_until": "2026-11-12",
+    "recur_days": null,
+    "from": "2026-11-09",
+    "to": "2026-11-14",
+    "occurs": [
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12"
+    ]
+  },
+  {
+    "name": "Mon/Wed/Fri",
+    "recur": "daily",
+    "due_date": "2026-11-02",
+    "recur_until": null,
+    "recur_days": [
+      1,
+      3,
+      5
+    ],
+    "from": "2026-11-02",
+    "to": "2026-11-15",
+    "occurs": [
+      "2026-11-02",
+      "2026-11-04",
+      "2026-11-06",
+      "2026-11-09",
+      "2026-11-11",
+      "2026-11-13"
+    ]
+  },
+  {
+    "name": "start date outside the weekdays",
+    "recur": "daily",
+    "due_date": "2026-11-07",
+    "recur_until": null,
+    "recur_days": [
+      1
+    ],
+    "from": "2026-11-07",
+    "to": "2026-11-16",
+    "occurs": [
+      "2026-11-09",
+      "2026-11-16"
+    ]
+  },
+  {
+    "name": "weekends with an end date",
+    "recur": "daily",
+    "due_date": "2026-11-01",
+    "recur_until": "2026-11-22",
+    "recur_days": [
+      6,
+      7
+    ],
+    "from": "2026-11-01",
+    "to": "2026-11-30",
+    "occurs": [
+      "2026-11-01",
+      "2026-11-07",
+      "2026-11-08",
+      "2026-11-14",
+      "2026-11-15",
+      "2026-11-21",
+      "2026-11-22"
+    ]
+  },
+  {
+    "name": "across a year boundary",
+    "recur": "daily",
+    "due_date": "2026-12-28",
+    "recur_until": null,
+    "recur_days": [
+      2,
+      4
+    ],
+    "from": "2026-12-28",
+    "to": "2027-01-12",
+    "occurs": [
+      "2026-12-29",
+      "2026-12-31",
+      "2027-01-05",
+      "2027-01-07",
+      "2027-01-12"
+    ]
+  },
+  {
+    "name": "across a leap day",
+    "recur": "daily",
+    "due_date": "2028-02-26",
+    "recur_until": null,
+    "recur_days": [
+      2,
+      3
+    ],
+    "from": "2028-02-26",
+    "to": "2028-03-06",
+    "occurs": [
+      "2028-02-29",
+      "2028-03-01"
+    ]
+  }
+]

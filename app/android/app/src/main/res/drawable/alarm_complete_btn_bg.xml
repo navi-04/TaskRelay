@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Primary button: solid foreground colour (black in light, white in night) -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#44FFFFFF">
+    android:color="@color/tr_ripple">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#FF4CAF50" />
+            <solid android:color="@color/tr_fg" />
             <corners android:radius="16dp" />
         </shape>
     </item>

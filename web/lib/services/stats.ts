@@ -1,5 +1,6 @@
 import type { Ctx } from '../ctx';
 import { badRequest } from '../errors';
+import { occursSql } from '../recurrence';
 import { addDays, daysBetween, todayFor } from '../time';
 
 export interface DayStat {
@@ -16,6 +17,8 @@ export interface DayStat {
 
 export const MAX_RANGE_DAYS = 62;
 const STREAK_LOOKBACK_DAYS = 400;
+/** The streak walk fetches this many days per query and stops at the first break. */
+const STREAK_CHUNK_DAYS = 62;
 
 /**
  * Per-day totals for [from, to], one row per calendar day (zeros for empty days).
@@ -30,8 +33,7 @@ async function rangeStats(ctx: Ctx, from: string, to: string): Promise<DayStat[]
             SELECT days.d AS d, t.duration_min AS dur, td.status AS st, td.completed_on AS co
             FROM days
             JOIN tasks t ON t.user_id = :uid AND t.deleted_at IS NULL
-              AND ( (t.recur = 'none' AND t.due_date = days.d)
-                 OR (t.recur = 'daily' AND t.due_date <= days.d AND (t.recur_until IS NULL OR t.recur_until >= days.d)) )
+              AND ${occursSql('t', 'days.d')}
             LEFT JOIN task_days td ON td.task_id = t.id AND td.date = days.d
             WHERE COALESCE(td.status, 'open') <> 'skipped'
           )
@@ -74,18 +76,32 @@ export async function dayStats(ctx: Ctx, from: string, to: string): Promise<DayS
  * a day with unfinished/late tasks breaks the streak; today never breaks it while in progress.
  */
 export async function streak(ctx: Ctx, today = todayFor(ctx.now(), ctx.tz)): Promise<number> {
-  const from = addDays(today, -STREAK_LOOKBACK_DAYS);
-  const days = await rangeStats(ctx, from, today);
-  const last = days.length - 1; // today
+  // Nothing can be planned before the user's earliest task, so never look further back than that.
+  const first = await ctx.db.execute({
+    sql: 'SELECT MIN(due_date) AS first FROM tasks WHERE user_id = ? AND deleted_at IS NULL',
+    args: [ctx.userId],
+  });
+  if (first.rows[0].first == null) return 0;
+  const earliest = String(first.rows[0].first);
+  const floor = earliest > addDays(today, -STREAK_LOOKBACK_DAYS) ? earliest : addDays(today, -STREAK_LOOKBACK_DAYS);
+
   let count = 0;
-  for (let i = last - 1; i >= 0; i--) {
-    const d = days[i];
-    if (d.planned === 0) continue;
-    if (d.on_time === d.planned) count++;
-    else break;
+  let end = today;
+  while (end >= floor) {
+    const start = addDays(end, -(STREAK_CHUNK_DAYS - 1)) > floor ? addDays(end, -(STREAK_CHUNK_DAYS - 1)) : floor;
+    const days = await rangeStats(ctx, start, end);
+    for (let i = days.length - 1; i >= 0; i--) {
+      const d = days[i];
+      if (d.date === today) {
+        if (d.planned > 0 && d.on_time === d.planned) count++; // clean today counts; in-progress today never breaks
+        continue;
+      }
+      if (d.planned === 0) continue;
+      if (d.on_time === d.planned) count++;
+      else return count;
+    }
+    end = addDays(start, -1);
   }
-  const t = days[last];
-  if (t.planned > 0 && t.on_time === t.planned) count++;
   return count;
 }
 

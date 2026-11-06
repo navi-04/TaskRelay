@@ -1,186 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'data/models/task_entity.dart';
-import 'data/models/settings_entity.dart';
-import 'data/models/day_summary_entity.dart';
-import 'data/models/task_type.dart';
-import 'data/models/task_priority.dart';
-import 'data/models/custom_task_type.dart';
-import 'presentation/providers/providers.dart';
-import 'presentation/providers/settings_provider.dart';
-import 'presentation/providers/task_provider.dart';
-import 'presentation/providers/dashboard_provider.dart';
-import 'presentation/providers/custom_types_provider.dart';
-import 'presentation/screens/main_navigation_screen.dart';
-import 'presentation/screens/onboarding/onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'app.dart';
 import 'core/theme/app_theme.dart';
+import 'platform/platform_bridge.dart';
+import 'state/providers.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Hive
-  await Hive.initFlutter();
-  
-  // Register Hive Adapters
-  Hive.registerAdapter(TaskEntityAdapter());
-  Hive.registerAdapter(SettingsEntityAdapter());
-  Hive.registerAdapter(DaySummaryEntityAdapter());
-  Hive.registerAdapter(TaskTypeAdapter());
-  Hive.registerAdapter(TaskPriorityAdapter());
-  Hive.registerAdapter(CustomTaskTypeAdapter());
-  Hive.registerAdapter(CustomPriorityAdapter());
-  
-  runApp(const ProviderScope(child: MyApp()));
-}
+  final prefs = await SharedPreferences.getInstance();
+  final bridge = PlatformBridge();
+  final version = await bridge.appVersion(); // sent as X-App-Version so the server can ask old apps to update
 
-class MyApp extends ConsumerStatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  ConsumerState<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends ConsumerState<MyApp> {
-  bool _isInitialized = false;
-  
-  @override
-  void initState() {
-    super.initState();
-    _initializeApp();
-  }
-  
-  Future<void> _initializeApp() async {
-    try {
-      // Initialize data sources
-      await ref.read(taskLocalDataSourceProvider).init();
-      await ref.read(settingsLocalDataSourceProvider).init();
-      await ref.read(daySummaryLocalDataSourceProvider).init();
-      
-      // Initialize custom types
-      await ref.read(customTypesProvider.notifier).init();
-      
-      // Reload settings after box is initialized
-      ref.read(settingsProvider.notifier).reloadSettings();
-      
-      // Reload tasks after boxes are initialized
-      ref.read(taskStateProvider.notifier).loadTasksForSelectedDate();
-      
-      // Initialize notification service
-      await ref.read(notificationServiceProvider).initialize();
-      await ref.read(notificationServiceProvider).requestPermissions();
-
-      // Wire up "Mark as Complete" callback from native alarm UI
-      ref.read(notificationServiceProvider).onTaskCompletedFromAlarm = (taskId, taskTitle) {
-        ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
-      };
-
-      // Wire up "Dismiss" callback from native alarm UI / notification tap
-      ref.read(notificationServiceProvider).onTaskDismissedFromAlarm = (taskId) {
-        ref.read(taskStateProvider.notifier).handleAlarmDismissal(taskId);
-      };
-
-      // Process any pending completions from alarm UI (persisted via SharedPreferences
-      // when the user tapped "Mark as Complete" while the app was not running)
-      final pendingCompletions = await ref.read(notificationServiceProvider).getPendingCompletions();
-      for (final taskId in pendingCompletions) {
-        await ref.read(taskStateProvider.notifier).toggleTaskCompletion(taskId);
-      }
-
-      // Process any pending dismissals from alarm UI (persisted via SharedPreferences
-      // when the user tapped "Dismiss" while the app was not running)
-      final pendingDismissals = await ref.read(notificationServiceProvider).getPendingDismissals();
-      for (final taskId in pendingDismissals) {
-        await ref.read(taskStateProvider.notifier).handleAlarmDismissal(taskId);
-      }
-
-      // Ensure all recurring task alarms are properly scheduled.
-      // Reads alarm data stored in Hive and schedules the next valid alarm
-      // for each recurring task. This recovers alarms after reboots, app
-      // updates, or any missed rescheduling.
-      await ref.read(taskStateProvider.notifier).ensureRecurringAlarmsScheduled();
-      
-      // Process any pending carry-overs (this will also refresh task state)
-      final carryOverResult = await ref.read(taskStateProvider.notifier).processCarryOverAndRefresh();
-      
-      // Schedule daily reminder
-      final carryOverService = ref.read(taskCarryOverServiceProvider);
-      await carryOverService.scheduleDailyReminder();
-      
-      // Show carry-over notification if tasks were carried
-      if (carryOverResult.hasCarriedTasks) {
-        // Tasks carried over
-      }
-      
-      // Invalidate providers to refresh UI with actual data
-      ref.invalidate(dashboardProvider);
-      
-      setState(() {
-        _isInitialized = true;
-      });
-    } catch (e) {
-      setState(() {
-        _isInitialized = true; // Allow app to start even if error
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_isInitialized) {
-      final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-      final isDark = brightness == Brightness.dark;
-      return MaterialApp(
-        home: Scaffold(
-          backgroundColor: isDark ? Colors.black : Colors.white,
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('TaskRelay',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    
-    // Only watch settings after initialization is complete
-    final settings = ref.watch(settingsProvider);
-    final isDark = settings.isDarkMode;
-    final isFirstLaunch = settings.isFirstLaunch;
-    
-    return MaterialApp(
-      title: 'TaskRelay',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme.copyWith(
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      darkTheme: AppTheme.darkTheme.copyWith(
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-      home: isFirstLaunch ? const OnboardingScreen() : const MainNavigationScreen(),
-    );
-  }
+  runApp(ProviderScope(
+    overrides: [
+      prefsProvider.overrideWithValue(prefs),
+      bridgeProvider.overrideWithValue(bridge),
+      appVersionProvider.overrideWithValue(version),
+    ],
+    child: const TaskRelayApp(),
+  ));
 }

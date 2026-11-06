@@ -26,6 +26,10 @@ export type Clock = ReturnType<typeof makeClock>;
 export interface TestUser {
   id: string;
   email: string;
+  /** The session token returned by registration. */
+  token: string;
+  /** Every test user is registered with this password. */
+  password: string;
   ctx: (actor?: Actor) => Ctx;
 }
 
@@ -34,10 +38,12 @@ let counter = 0;
 export async function makeUser(db: Client, clock: Clock, opts: { email?: string; tz?: string } = {}): Promise<TestUser> {
   const email = opts.email ?? `user${++counter}@example.com`;
   const tz = opts.tz ?? 'UTC';
-  const { user } = await registerUser(db, { email, password: 'correct horse 9', timezone: tz }, { ip: `ip-${counter}`, now: clock.now() });
+  const { user, token } = await registerUser(db, { email, password: 'correct horse 9', timezone: tz }, { ip: `ip-${counter}`, now: clock.now() });
   return {
     id: user.id,
     email,
+    token,
+    password: 'correct horse 9',
     ctx: (actor = 'app') => ({ db, userId: user.id, tz, actor, now: clock.now }),
   };
 }

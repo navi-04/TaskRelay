@@ -3,7 +3,7 @@ import type { Ctx } from './ctx';
 import { getDb } from './db';
 import { ApiError, badRequest, forbidden, unauthorized } from './errors';
 import { dateStr } from './validation';
-import { authenticateAi, authenticateSession, type UserDto } from './services/auth';
+import { authenticateAi, authenticateSession, type SessionUser } from './services/auth';
 import { enforce } from './services/rateLimit';
 import { todayFor } from './time';
 
@@ -67,6 +67,22 @@ export const queryDate = (url: URL, name: string): string | undefined => {
   return v == null ? undefined : dateStr.parse(v);
 };
 
+/** An integer query parameter within [min, max]; `fallback` when absent. */
+export function queryInt(url: URL, name: string, min: number, max: number, fallback: number): number {
+  const raw = url.searchParams.get(name);
+  if (raw == null || raw === '') return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < min || n > max) throw badRequest(`${name} must be a whole number from ${min} to ${max}`, 'invalid_query');
+  return n;
+}
+
+/** The search text: 2-100 characters after trimming. */
+export function querySearch(url: URL): string {
+  const q = (url.searchParams.get('q') ?? '').trim();
+  if (q.length < 2 || q.length > 100) throw badRequest('q must be 2 to 100 characters', 'invalid_query');
+  return q;
+}
+
 export function clientIp(req: Request): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown';
 }
@@ -102,7 +118,7 @@ function checkAppVersion(req: Request) {
 
 export interface AppAuth {
   ctx: Ctx;
-  user: UserDto;
+  user: SessionUser;
   token: string;
 }
 

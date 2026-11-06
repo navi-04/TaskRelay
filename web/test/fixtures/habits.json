@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-06",
+  "habits": [
+    {
+      "task_id": "fx-task-gym",
+      "title": "Gym",
+      "recur_days": [
+        1,
+        3,
+        5
+      ],
+      "current_streak": 1,
+      "best_streak": 2,
+      "rate_30": 60,
+      "rate_90": 60,
+      "last7": [
+        {
+          "date": "2026-10-31",
+          "state": "none"
+        },
+        {
+          "date": "2026-11-01",
+          "state": "none"
+        },
+        {
+          "date": "2026-11-02",
+          "state": "missed"
+        },
+        {
+          "date": "2026-11-03",
+          "state": "none"
+        },
+        {
+          "date": "2026-11-04",
+          "state": "done"
+        },
+        {
+          "date": "2026-11-05",
+          "state": "none"
+        },
+        {
+          "date": "2026-11-06",
+          "state": "pending"
+        }
+      ]
+    },
+    {
+      "task_id": "fx-task-meditate",
+      "title": "Meditate",
+      "recur_days": null,
+      "current_streak": 2,
+      "best_streak": 3,
+      "rate_30": 71,
+      "rate_90": 71,
+      "last7": [
+        {
+          "date": "2026-10-31",
+          "state": "done"
+        },
+        {
+          "date": "2026-11-01",
+          "state": "done"
+        },
+        {
+          "date": "2026-11-02",
+          "state": "done"
+        },
+        {
+          "date": "2026-11-03",
+          "state": "missed"
+        },
+        {
+          "date": "2026-11-04",
+          "state": "done"
+        },
+        {
+          "date": "2026-11-05",
+          "state": "done"
+        },
+        {
+          "date": "2026-11-06",
+          "state": "pending"
+        }
+      ]
+    }
+  ]
+}

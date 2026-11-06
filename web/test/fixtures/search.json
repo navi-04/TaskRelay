@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "id": "fx-task-report",
+      "title": "Write quarterly report",
+      "notes": "Include the Q3 numbers",
+      "duration_min": 90,
+      "type_id": null,
+      "priority_id": null,
+      "due_date": "2026-11-06",
+      "alarm_time": null,
+      "reminder_kind": "alarm",
+      "recur": "none",
+      "recur_until": null,
+      "recur_days": null,
+      "created_at": "2026-11-06T12:00:00.000Z",
+      "updated_at": "2026-11-06T12:00:00.000Z",
+      "updated_by": "app",
+      "date": "2026-11-06",
+      "status": "open",
+      "day_note": null,
+      "completed_at": null,
+      "day_updated_by": null,
+      "top_position": null
+    }
+  ],
+  "has_more": false
+}

@@ -1,0 +1,54 @@
+{
+  "unauthorized": {
+    "error": {
+      "code": "unauthorized",
+      "message": "Not signed in"
+    }
+  },
+  "not_found": {
+    "error": {
+      "code": "not_found",
+      "message": "Task not found"
+    }
+  },
+  "conflict": {
+    "error": {
+      "code": "id_in_use",
+      "message": "That task id is already in use"
+    }
+  },
+  "unprocessable": {
+    "error": {
+      "code": "not_on_date",
+      "message": "The task does not occur on that day"
+    }
+  },
+  "upgrade_required": {
+    "error": {
+      "code": "upgrade_required",
+      "message": "Please update TaskRelay to continue"
+    }
+  },
+  "rate_limited": {
+    "error": {
+      "code": "rate_limited",
+      "message": "Too many attempts. Try again in 15 min."
+    }
+  },
+  "validation_error": {
+    "error": {
+      "code": "validation_error",
+      "message": "✖ Invalid input: expected string, received undefined\n  → at title\n✖ Invalid input: expected string, received undefined\n  → at due_date",
+      "issues": [
+        {
+          "path": "title",
+          "message": "Invalid input: expected string, received undefined"
+        },
+        {
+          "path": "due_date",
+          "message": "Invalid input: expected string, received undefined"
+        }
+      ]
+    }
+  }
+}

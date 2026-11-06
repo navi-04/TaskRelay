@@ -1,0 +1,90 @@
+{
+  "types": [
+    {
+      "id": "label-type-1",
+      "kind": "type",
+      "label": "Task",
+      "color": 4284513675,
+      "sort_order": 0
+    },
+    {
+      "id": "label-type-2",
+      "kind": "type",
+      "label": "Bug",
+      "color": 4284513675,
+      "sort_order": 1
+    },
+    {
+      "id": "label-type-3",
+      "kind": "type",
+      "label": "Feature",
+      "color": 4284513675,
+      "sort_order": 2
+    },
+    {
+      "id": "label-type-4",
+      "kind": "type",
+      "label": "Story",
+      "color": 4284513675,
+      "sort_order": 3
+    },
+    {
+      "id": "label-type-5",
+      "kind": "type",
+      "label": "Epic",
+      "color": 4284513675,
+      "sort_order": 4
+    },
+    {
+      "id": "label-type-6",
+      "kind": "type",
+      "label": "Improvement",
+      "color": 4284513675,
+      "sort_order": 5
+    },
+    {
+      "id": "label-type-7",
+      "kind": "type",
+      "label": "Subtask",
+      "color": 4284513675,
+      "sort_order": 6
+    },
+    {
+      "id": "label-type-8",
+      "kind": "type",
+      "label": "Research",
+      "color": 4284513675,
+      "sort_order": 7
+    }
+  ],
+  "priorities": [
+    {
+      "id": "label-priority-1",
+      "kind": "priority",
+      "label": "Low",
+      "color": 4280391411,
+      "sort_order": 0
+    },
+    {
+      "id": "label-priority-2",
+      "kind": "priority",
+      "label": "Medium",
+      "color": 4294940672,
+      "sort_order": 1
+    },
+    {
+      "id": "label-priority-3",
+      "kind": "priority",
+      "label": "High",
+      "color": 4294198070,
+      "sort_order": 2
+    },
+    {
+      "id": "label-priority-4",
+      "kind": "priority",
+      "label": "Critical",
+      "color": 4294924066,
+      "sort_order": 3
+    }
+  ]
+}

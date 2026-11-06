@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TaskRelay">
+  <rect width="512" height="512" fill="#000000"/>
+  <!-- the check mark stays inside the central 80% so the icon survives maskable cropping -->
+  <path d="M148 268l78 78 138-162" fill="none" stroke="#ffffff" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

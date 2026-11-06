@@ -3,11 +3,17 @@ import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'no
 import { ApiError, conflict, forbidden, tooMany } from '../errors';
 import { seedLabelStatements } from './labels';
 import { clear, enforce, hit, retryAfter } from './rateLimit';
+import { bumpVersion } from './version';
 
 export interface UserDto {
   id: string;
   email: string;
   timezone: string;
+}
+
+/** The authenticated user of a session; `data_version` is the change counter the phone feed's ETag uses. */
+export interface SessionUser extends UserDto {
+  data_version: number;
 }
 
 export interface MeDto extends UserDto {
@@ -51,6 +57,9 @@ const getDummyHash = () => (dummyHash ??= hashPassword('not-a-real-password'));
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
+/** The stored identifier of a session token (the raw token is never stored). */
+export const sessionTokenHash = sha256;
+
 function sessionStatement(userId: string, now: Date): { token: string; statement: InStatement } {
   const token = randomBytes(32).toString('base64url');
   return {
@@ -63,10 +72,10 @@ function sessionStatement(userId: string, now: Date): { token: string; statement
 }
 
 /** The signed-in user for a session token, or null. Extends the session (sliding) at most once a day. */
-export async function authenticateSession(db: Client, token: string, now: Date): Promise<UserDto | null> {
+export async function authenticateSession(db: Client, token: string, now: Date): Promise<SessionUser | null> {
   if (!token) return null;
   const rs = await db.execute({
-    sql: `SELECT s.expires_at, s.last_used, u.id, u.email, u.timezone
+    sql: `SELECT s.expires_at, s.last_used, u.id, u.email, u.timezone, u.data_version
           FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
     args: [sha256(token)],
   });
@@ -82,7 +91,7 @@ export async function authenticateSession(db: Client, token: string, now: Date):
       args: [now.toISOString(), new Date(now.getTime() + SESSION_DAYS * DAY_MS).toISOString(), sha256(token)],
     });
   }
-  return { id: String(r.id), email: String(r.email), timezone: String(r.timezone) };
+  return { id: String(r.id), email: String(r.email), timezone: String(r.timezone), data_version: Number(r.data_version) };
 }
 
 export async function logout(db: Client, token: string): Promise<void> {
@@ -93,13 +102,18 @@ export async function revokeAllSessions(db: Client, userId: string): Promise<voi
   await db.execute({ sql: 'DELETE FROM sessions WHERE user_id = ?', args: [userId] });
 }
 
-/** Change a password and sign the user out everywhere. */
-export async function setPassword(db: Client, userId: string, newPassword: string): Promise<void> {
+/**
+ * Change a password and sign the user out everywhere, except (optionally) the session that asked for the change.
+ * Pass `keepTokenHash` (see `sessionTokenHash`) to keep that one session signed in.
+ */
+export async function setPassword(db: Client, userId: string, newPassword: string, keepTokenHash?: string): Promise<void> {
   const hash = await hashPassword(newPassword);
   await db.batch(
     [
       { sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [hash, userId] },
-      { sql: 'DELETE FROM sessions WHERE user_id = ?', args: [userId] },
+      keepTokenHash
+        ? { sql: 'DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?', args: [userId, keepTokenHash] }
+        : { sql: 'DELETE FROM sessions WHERE user_id = ?', args: [userId] },
     ],
     'write',
   );
@@ -200,7 +214,11 @@ export async function getMe(db: Client, userId: string): Promise<MeDto> {
 }
 
 export async function setTimezone(db: Client, userId: string, timezone: string): Promise<void> {
-  await db.execute({ sql: 'UPDATE users SET timezone = ? WHERE id = ?', args: [timezone, userId] });
+  // "Today" (and so every phone alarm and the /sync ETag) depends on the timezone: bump the version.
+  await db.execute({
+    sql: 'UPDATE users SET timezone = ?, data_version = data_version + 1 WHERE id = ?',
+    args: [timezone, userId],
+  });
 }
 
 /** A new random id; the old one stops working immediately. */
@@ -236,7 +254,10 @@ export async function deleteAllTasks(db: Client, userId: string): Promise<void> 
   await db.batch(
     [
       { sql: 'DELETE FROM task_days WHERE user_id = ?', args: [userId] },
+      { sql: 'DELETE FROM day_focus WHERE user_id = ?', args: [userId] },
+      { sql: 'DELETE FROM activity WHERE user_id = ?', args: [userId] },
       { sql: 'DELETE FROM tasks WHERE user_id = ?', args: [userId] },
+      bumpVersion(userId),
     ],
     'write',
   );

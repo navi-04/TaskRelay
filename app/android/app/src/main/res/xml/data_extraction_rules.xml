@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: never back up or transfer the keystore-wrapped session, the alarm store, the action log or the cache.
+     The AndroidKeyStore key does not survive a restore, so a restored session would be undecryptable anyway. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="taskrelay_session.xml" />
+        <exclude domain="file" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="taskrelay_session.xml" />
+        <exclude domain="file" path="." />
+    </device-transfer>
+</data-extraction-rules>

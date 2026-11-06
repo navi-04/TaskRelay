@@ -1,0 +1,75 @@
+{
+  "today": "2026-11-06",
+  "from": "2026-10-31",
+  "to": "2026-11-06",
+  "days": [
+    {
+      "date": "2026-10-31",
+      "planned": 1,
+      "done": 1,
+      "on_time": 1,
+      "planned_min": 10,
+      "done_min": 10
+    },
+    {
+      "date": "2026-11-01",
+      "planned": 2,
+      "done": 1,
+      "on_time": 1,
+      "planned_min": 55,
+      "done_min": 10
+    },
+    {
+      "date": "2026-11-02",
+      "planned": 2,
+      "done": 1,
+      "on_time": 1,
+      "planned_min": 70,
+      "done_min": 10
+    },
+    {
+      "date": "2026-11-03",
+      "planned": 1,
+      "done": 0,
+      "on_time": 0,
+      "planned_min": 10,
+      "done_min": 0
+    },
+    {
+      "date": "2026-11-04",
+      "planned": 2,
+      "done": 2,
+      "on_time": 2,
+      "planned_min": 70,
+      "done_min": 70
+    },
+    {
+      "date": "2026-11-05",
+      "planned": 1,
+      "done": 1,
+      "on_time": 1,
+      "planned_min": 10,
+      "done_min": 10
+    },
+    {
+      "date": "2026-11-06",
+      "planned": 4,
+      "done": 1,
+      "on_time": 1,
+      "planned_min": 175,
+      "done_min": 15
+    }
+  ],
+  "streak": 2,
+  "week": {
+    "from": "2026-10-31",
+    "to": "2026-11-06",
+    "planned": 13,
+    "done": 7,
+    "completion_pct": 54,
+    "planned_min": 400,
+    "done_min": 125,
+    "days_with_tasks": 7,
+    "avg_daily_planned_min": 57
+  }
+}

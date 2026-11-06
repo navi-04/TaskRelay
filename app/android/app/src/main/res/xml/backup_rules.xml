@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below (android:allowBackup is also false; this is belt and braces). -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="taskrelay_session.xml" />
+    <exclude domain="file" path="." />
+</full-backup-content>

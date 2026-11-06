@@ -19,6 +19,12 @@ cd web && cp .env.example .env.local   # fill in TURSO_DATABASE_URL and TURSO_AU
 npm install && npm run dev
 ```
 
+## Database & deploys
+
+- Schema changes are plain SQL files in `web/db/migrations/` (additive only, never edit one that has been applied).
+- `npm run build` applies pending migrations on a **Vercel production** build, before the new code can go live (previews and local builds never touch the database). Apply them by hand with `cd web && npm run migrate`.
+- Contract fixtures in `web/test/fixtures/` are generated from the real API output and compared by `npm test`; after an intentional API change run `UPDATE_FIXTURES=1 npm test` and review the diff. The Android app parses the same files in its tests.
+
 ## Secrets
 
 `.env*` files are git-ignored (only `*.example` templates are tracked). The Turso token lives only on the server (`web/.env.local` and the Vercel project settings), never in the phone app.

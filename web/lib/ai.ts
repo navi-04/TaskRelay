@@ -26,6 +26,41 @@ export function resolveBodyDates<T extends Record<string, unknown>>(ctx: Ctx, bo
   return out as T;
 }
 
+const WEEKDAY_NUMBERS: Record<string, number> = {
+  mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6, sun: 7, sunday: 7,
+};
+const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const unknownDays = (v: unknown) =>
+  badRequest(`Unknown weekday "${String(v)}". Use mon..sun, "weekdays", "weekends" or "daily".`, 'invalid_recur_days');
+
+/**
+ * Let the AI write repeat days naturally: `recur_days: ["mon","wed"]`, `"weekdays"`, `"weekends"` or `"daily"`.
+ * Giving weekdays without `recur` means the task repeats, so `recur` defaults to "daily" (the API's word for "repeating").
+ */
+export function resolveBodyDays<T extends Record<string, unknown>>(body: T): T {
+  if (!('recur_days' in body) || body.recur_days == null) return body;
+  const out: Record<string, unknown> = { ...body };
+  const v = out.recur_days;
+  if (typeof v === 'string') {
+    const w = v.trim().toLowerCase();
+    if (w === 'weekdays') out.recur_days = [1, 2, 3, 4, 5];
+    else if (w === 'weekends') out.recur_days = [6, 7];
+    else if (w === 'daily' || w === 'everyday' || w === 'every day') out.recur_days = null;
+    else throw unknownDays(v);
+  } else if (Array.isArray(v)) {
+    out.recur_days = v.map((x) => {
+      if (typeof x === 'number') return x;
+      const n = WEEKDAY_NUMBERS[String(x).trim().toLowerCase()];
+      if (n === undefined) throw unknownDays(x);
+      return n;
+    });
+  }
+  if (out.recur === undefined && out.recur_days != null) out.recur = 'daily';
+  return out as T;
+}
+
 /** Let the AI say `type: "Bug"` / `priority: "High"`; turn names into the ids the API stores. */
 export async function resolveLabelNames<T extends Record<string, unknown>>(ctx: Ctx, body: T): Promise<T> {
   const out: Record<string, unknown> = { ...body };
@@ -48,9 +83,9 @@ export async function resolveLabelNames<T extends Record<string, unknown>>(ctx: 
   return out as T;
 }
 
-export type AiTask = TaskDto & { type: string | null; priority: string | null };
+export type AiTask = TaskDto & { type: string | null; priority: string | null; repeat_on: string[] | null };
 
-/** Add human-readable label names next to the ids in task responses. */
+/** Add human-readable names next to the ids in task responses (label names, and weekday names for repeats). */
 export async function withLabelNames(ctx: Ctx, tasks: TaskDto[]): Promise<AiTask[]> {
   const { types, priorities } = await listLabels(ctx);
   const name = new Map([...types, ...priorities].map((l) => [l.id, l.label]));
@@ -58,6 +93,7 @@ export async function withLabelNames(ctx: Ctx, tasks: TaskDto[]): Promise<AiTask
     ...t,
     type: t.type_id ? (name.get(t.type_id) ?? null) : null,
     priority: t.priority_id ? (name.get(t.priority_id) ?? null) : null,
+    repeat_on: t.recur_days ? t.recur_days.map((d) => WEEKDAY_NAMES[d - 1]) : null,
   }));
 }
 
@@ -78,7 +114,7 @@ const ENDPOINTS: Endpoint[] = [
   {
     method: 'POST',
     path: '/api/ai/tasks',
-    does: 'Create a task. id is optional (server generates one). type/priority are names from /api/ai/labels.',
+    does: 'Create a task. id is optional (server generates one). type/priority are names from /api/ai/labels. Add recur_days (e.g. ["mon","wed","fri"], "weekdays", "weekends") to repeat on chosen weekdays, or recur:"daily" to repeat every day; recur_until ends the series.',
     body: { title: 'Write report', due_date: 'tomorrow', duration_min: 45, priority: 'High', type: 'Task', alarm_time: '09:30', notes: 'optional' },
   },
   {
@@ -91,6 +127,12 @@ const ENDPOINTS: Endpoint[] = [
   { method: 'POST', path: '/api/ai/reschedule', does: 'Move up to 50 open one-off tasks to another day (e.g. all overdue to today).', body: { ids: ['task-id'], to: 'today' } },
   { method: 'DELETE', path: '/api/ai/tasks/{id}?scope=all', does: 'Delete (soft). scope: all | day:YYYY-MM-DD (skip one day of a recurring task) | from:YYYY-MM-DD (end the series).' },
   { method: 'GET', path: '/api/ai/labels', does: 'Valid task types and priorities (names and ids).' },
+  { method: 'PUT', path: '/api/ai/days/{date}/top', does: "Set that day's Top 3 (the must-do tasks), in priority order. Replaces the list; send [] to clear. Tasks must occur on that day (move overdue ones to today first).", body: { task_ids: ['task-id-1', 'task-id-2'] } },
+  { method: 'GET', path: '/api/ai/search?q=invoice', does: 'Find tasks by title or notes across all dates (min 2 characters, 20 per page; &limit= up to 50, &offset=).' },
+  { method: 'GET', path: '/api/ai/habits', does: 'Every active repeating task with its current streak, best streak, completion rates and a 7-day strip.' },
+  { method: 'GET', path: '/api/ai/review', does: 'A week in review: planned vs done, best hours, most-missed habits, wins and misses. Optional ?week_start=YYYY-MM-DD. Use it to help the user plan the next week.' },
+  { method: 'GET', path: '/api/ai/activity', does: 'What AI assistants changed recently (newest first), so you can tell the user what already happened.' },
+  { method: 'POST', path: '/api/ai/tasks/{id}/restore', does: 'Undo a delete of a whole task (works for 30 days). Safe to repeat.' },
 ];
 
 const RULES = [
@@ -98,8 +140,11 @@ const RULES = [
   'Ask the user before deleting, or before changing many tasks at once.',
   'Prefer today/tomorrow/yesterday over computing dates yourself; the server knows the user\'s timezone.',
   'Completing a task = PUT /tasks/{id}/days/{date} with {"status":"done"}. Do not delete tasks to complete them.',
-  'A recurring task (recur="daily") repeats every day until recur_until. Complete or skip each day separately.',
-  'Overdue = an open one-off task whose due date has passed. Nothing moves automatically; use /reschedule.',
+  'A repeating task has recur="daily": it repeats every day, or only on recur_days (Mon=1..Sun=7) if set, until recur_until. Complete or skip each day separately.',
+  'Overdue = an open one-off task whose due date has passed (last 90 days). Nothing moves automatically; use /reschedule.',
+  "The Top 3 is the user's must-do list for a day (max 3, in order). Only change it when asked, or propose it and wait for a yes.",
+  'Deleted tasks can be restored for 30 days; if you delete something by mistake, restore it and tell the user.',
+  'Everything you change is recorded in /api/ai/activity and shown to the user as "changed by Claude".',
   'After any change, tell the user exactly what you changed.',
 ];
 
@@ -111,8 +156,12 @@ const FIELDS: Record<string, string> = {
   due_date: 'the day it is due (or, for recurring tasks, the first day), YYYY-MM-DD',
   alarm_time: 'optional HH:mm (24h, local) when the phone should alert',
   reminder_kind: '"alarm" (full-screen) or "notification"',
-  recur: '"none" or "daily"',
-  recur_until: 'last day of a daily task (inclusive), or null for forever',
+  recur: '"none" (one-off) or "daily" (repeating: every day, or only on recur_days)',
+  recur_days: 'weekdays a repeating task occurs on: numbers 1=Mon..7=Sun, or names ["mon","wed"], "weekdays", "weekends"; null = every day',
+  repeat_on: 'read-only: recur_days as names, e.g. ["Mon","Wed"]',
+  recur_until: 'last day of a repeating task (inclusive), or null for forever',
+  top_position: '1..3 if the task is in that day\'s Top 3, else null',
+  updated_by: '"app" (the user) or "ai" (an assistant) - who last changed the task',
   status: 'for the day being viewed: "open" | "done" | "skipped"',
   date: 'the day this view of the task is for',
   type: 'task type name', priority: 'priority name (Low, Medium, High, Critical by default)',

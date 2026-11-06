@@ -1,6 +1,7 @@
 import type { Row } from '@libsql/client';
 import type { Ctx } from '../ctx';
 import type { SettingsPatch } from '../validation';
+import { writeBatch } from './version';
 
 export interface SettingsDto {
   estimation_mode: 'time' | 'count';
@@ -38,9 +39,13 @@ function toDto(r: Row): SettingsDto {
 }
 
 export async function getSettings(ctx: Ctx): Promise<SettingsDto> {
-  // The row is created at registration; INSERT OR IGNORE heals a missing one.
-  await ctx.db.execute({ sql: 'INSERT OR IGNORE INTO settings (user_id) VALUES (?)', args: [ctx.userId] });
-  const rs = await ctx.db.execute({ sql: `SELECT ${COLUMNS.join(', ')} FROM settings WHERE user_id = ?`, args: [ctx.userId] });
+  const select = () => ctx.db.execute({ sql: `SELECT ${COLUMNS.join(', ')} FROM settings WHERE user_id = ?`, args: [ctx.userId] });
+  let rs = await select();
+  if (rs.rows.length === 0) {
+    // The row is created at registration; this heals a missing one (never expected in practice).
+    await writeBatch(ctx, [{ sql: 'INSERT OR IGNORE INTO settings (user_id) VALUES (?)', args: [ctx.userId] }]);
+    rs = await select();
+  }
   return toDto(rs.rows[0]);
 }
 
@@ -53,9 +58,9 @@ export async function patchSettings(ctx: Ctx, patch: SettingsPatch): Promise<Set
     sets.push(`${c} = ?`);
     args.push(typeof v === 'boolean' ? (v ? 1 : 0) : v);
   }
-  await ctx.db.execute({ sql: 'INSERT OR IGNORE INTO settings (user_id) VALUES (?)', args: [ctx.userId] });
-  if (sets.length > 0) {
-    await ctx.db.execute({ sql: `UPDATE settings SET ${sets.join(', ')} WHERE user_id = ?`, args: [...args, ctx.userId] });
-  }
+  await writeBatch(ctx, [
+    { sql: 'INSERT OR IGNORE INTO settings (user_id) VALUES (?)', args: [ctx.userId] },
+    ...(sets.length > 0 ? [{ sql: `UPDATE settings SET ${sets.join(', ')} WHERE user_id = ?`, args: [...args, ctx.userId] }] : []),
+  ]);
   return getSettings(ctx);
 }

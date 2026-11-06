@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "tsx scripts/migrate-on-deploy.ts && next build",
     "start": "next start",
     "migrate": "tsx scripts/migrate.ts",
     "test": "vitest run",

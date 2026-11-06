@@ -1,124 +1,83 @@
 package com.naveenraj.taskrelay
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import java.time.ZoneId
 
 /**
- * BroadcastReceiver triggered by AlarmManager.setAlarmClock().
- *
- * Starts AlarmService which handles EVERYTHING:
- *   1. Posts notification with fullScreenIntent → AlarmActivity (lock screen)
- *   2. Plays alarm sound + vibration
- *   3. Shows overlay window as fallback (if FSI didn't fire)
- *
- * IMPORTANT: We do NOT launch AlarmActivity directly here.
- * Android 10+ blocks background activity launches from receivers.
- * The fullScreenIntent on the notification is the correct mechanism
- * — Android launches AlarmActivity when the screen is off/locked.
+ * Fired by AlarmManager for every entry (the PendingIntent carries the whole entry, so a re-plan racing with the fire cannot
+ * lose it). Branches on the entry kind, then ALWAYS re-arms from the store (top-up) and forgets the entry that just fired.
  */
 class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "🚨🚨🚨 ALARM TRIGGERED! 🚨🚨🚨")
-
-        val taskTitle = intent.getStringExtra("taskTitle") ?: "Task Reminder"
-        val taskId = intent.getStringExtra("taskId") ?: ""
-        val notificationId = intent.getIntExtra("notificationId", 0)
-        Log.d(TAG, "  Task: $taskTitle, ID: $notificationId, TaskID: $taskId")
-
-        // ── Start AlarmService — it posts FSI notification + plays sound ─
-        // Do NOT launch AlarmActivity directly. Do NOT wake screen.
-        // The service will call startForeground() with a fullScreenIntent
-        // notification, and Android will launch AlarmActivity if the screen
-        // is off or the keyguard is showing.
+        val app = context.applicationContext
+        val e = Entry.fromIntent(intent) ?: return
         try {
-            val svcIntent = Intent(context, AlarmService::class.java).apply {
-                action = AlarmService.ACTION_START_ALARM
-                putExtra("taskTitle", taskTitle)
-                putExtra("taskId", taskId)
-                putExtra("notificationId", notificationId)
+            dispatch(app, e)
+        } catch (t: Throwable) {
+            Log.e(TAG, "dispatch failed for ${e.kind}: ${t.javaClass.simpleName}")
+        }
+        // Housekeeping off the main thread: drop the fired entry and top the armed set up.
+        val pending = goAsync()
+        Bg.io.execute {
+            try {
+                AlarmScheduler.markFired(app, e.key)
+            } catch (t: Throwable) {
+                Log.e(TAG, "rearm failed: ${t.javaClass.simpleName}")
+            } finally {
+                pending.finish()
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(svcIntent)
-            } else {
-                context.startService(svcIntent)
-            }
-            Log.d(TAG, "✅ AlarmService started — it will handle UI, sound, vibration")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Service start failed: ${e.message}", e)
         }
     }
 
+    private fun dispatch(app: Context, e: Entry) {
+        if (!SessionStore.isSignedIn(app)) return // signed out: a stale registration must stay silent
+        val taskId = e.taskId
+        if (Kind.isTaskKind(e.kind) && taskId != null && Stores.actionLog(app).hasComplete(taskId, e.date)) return // completed meanwhile
+
+        when (e.kind) {
+            Kind.ALARM -> ring(app, e)
+            Kind.NOTIFICATION -> Notifications.postTask(app, e)
+            Kind.SNOOZE -> if (e.ringKind == Kind.ALARM) ring(app, e) else Notifications.postTask(app, e)
+            Kind.REMINDER_DAILY -> {
+                val text = ReminderText.daily(Stores.todayCache(app).read(), today(), carryOver(app))
+                Notifications.postReminder(app, e.key, text.title, text.body)
+            }
+            Kind.REMINDER_EOD -> {
+                val text = ReminderText.endOfDay(Stores.todayCache(app).read(), today())
+                Notifications.postReminder(app, e.key, text.title, text.body)
+            }
+            Kind.MIDNIGHT -> {
+                SyncWorker.enqueueOnce(app)
+                TodayWidgetProvider.refreshAll(app)
+            }
+            else -> Log.w(TAG, "unknown entry kind ${e.kind}")
+        }
+    }
+
+    /**
+     * Rings through AlarmService. If the foreground service cannot be started (background-start restrictions) the full-screen-intent
+     * heads-up notification takes over: its channel plays the alarm sound.
+     */
+    private fun ring(app: Context, e: Entry) {
+        try {
+            val svc = e.putExtras(Intent(app, AlarmService::class.java).setAction(AlarmService.ACTION_START_ALARM))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) app.startForegroundService(svc) else app.startService(svc)
+        } catch (t: Throwable) {
+            Log.w(TAG, "AlarmService start refused (${t.javaClass.simpleName}); posting the full-screen heads-up instead")
+            Notifications.postRingFallback(app, e)
+        }
+    }
+
+    private fun today(): String = java.time.LocalDate.now(ZoneId.systemDefault()).toString()
+
+    private fun carryOver(app: Context): Boolean = Stores.alarmStore(app).read().settings?.carryOverAlerts ?: true
+
     companion object {
         private const val TAG = "AlarmReceiver"
-
-        fun scheduleAlarm(
-            context: Context,
-            notificationId: Int,
-            taskTitle: String,
-            triggerTimeMillis: Long,
-            isPermanent: Boolean,
-            taskId: String = ""
-        ) {
-            Log.d(TAG, "📅 ========== SCHEDULING ALARM ==========")
-            Log.d(TAG, "  Task       : $taskTitle")
-            Log.d(TAG, "  ID         : $notificationId")
-            Log.d(TAG, "  Trigger at : $triggerTimeMillis")
-            Log.d(TAG, "  Now        : ${System.currentTimeMillis()}")
-            Log.d(TAG, "  Delta (s)  : ${(triggerTimeMillis - System.currentTimeMillis()) / 1000}")
-
-            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
-            val receiverIntent = Intent(context, AlarmReceiver::class.java).apply {
-                putExtra("taskTitle", taskTitle)
-                putExtra("taskId", taskId)
-                putExtra("notificationId", notificationId)
-            }
-            val pi = PendingIntent.getBroadcast(
-                context, notificationId, receiverIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            try {
-                val showPI = PendingIntent.getActivity(
-                    context, notificationId,
-                    Intent(context, MainActivity::class.java),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                am.setAlarmClock(
-                    AlarmManager.AlarmClockInfo(triggerTimeMillis, showPI), pi
-                )
-                Log.d(TAG, "✅ Alarm set with setAlarmClock (highest priority)")
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ setAlarmClock failed, trying fallback: ${e.message}", e)
-                try {
-                    am.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP, triggerTimeMillis, pi
-                    )
-                    Log.d(TAG, "⚠️ Fallback: setExactAndAllowWhileIdle")
-                } catch (e2: Exception) {
-                    Log.e(TAG, "❌ All alarm methods failed: ${e2.message}", e2)
-                }
-            }
-        }
-
-        fun cancelAlarm(context: Context, notificationId: Int) {
-            Log.d(TAG, "🗑️ Canceling alarm ID: $notificationId")
-            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val pi = PendingIntent.getBroadcast(
-                context, notificationId,
-                Intent(context, AlarmReceiver::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            am.cancel(pi)
-            pi.cancel()
-            AlarmService.stopAlarm(context)
-            Log.d(TAG, "✅ Alarm canceled")
-        }
     }
 }

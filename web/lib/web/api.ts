@@ -24,7 +24,13 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     throw new ApiFail(0, 'network', 'Could not reach the server. Check your connection and try again.');
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiFail(res.status, data?.error?.code ?? 'error', data?.error?.message ?? res.statusText);
+  if (!res.ok) {
+    // An expired or revoked session anywhere sends the user back to sign in (login attempts themselves report 401 inline).
+    if (res.status === 401 && !path.startsWith('/auth/') && typeof window !== 'undefined' && window.location.pathname !== '/') {
+      window.location.assign('/');
+    }
+    throw new ApiFail(res.status, data?.error?.code ?? 'error', data?.error?.message ?? res.statusText);
+  }
   return data as T;
 }
 

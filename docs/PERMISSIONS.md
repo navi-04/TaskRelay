@@ -1,87 +1,70 @@
-# Mobile Permissions — TaskRelay
+# Permissions — TaskRelay (Android)
 
-This document lists all permissions required by the TaskRelay app on Android and iOS, along with their purpose and when they are requested at runtime.
+TaskRelay 2.0 is Android + web only (iOS is out of scope). The list below is exactly what
+[`app/android/app/src/main/AndroidManifest.xml`](../app/android/app/src/main/AndroidManifest.xml) declares; the debug-only manifest adds
+plain-HTTP access to the local dev server and is not part of release builds.
 
----
+## What the app asks for, and why
 
-## Android Permissions
-
-Declared in [`android/app/src/main/AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml).
-
-| Permission | Required | Runtime Request | Purpose |
-|---|---|---|---|
-| `POST_NOTIFICATIONS` | Yes (Android 13+) | Yes | Display task reminders and alarm notifications to the user. |
-| `SCHEDULE_EXACT_ALARM` | Yes | Yes (Settings redirect) | Schedule task alarms at a precise time (Android 12+). Required for reliable reminders. |
-| `USE_EXACT_ALARM` | Yes (Android 13+) | No (auto-granted for clock/alarm apps) | Alternative exact-alarm permission for clock/reminder apps on Android 13+. |
-| `VIBRATE` | Yes | No (auto-granted) | Vibrate the device when an alarm or notification fires. |
-| `RECEIVE_BOOT_COMPLETED` | Yes | No (auto-granted) | Re-schedule all pending alarms after a device reboot so no reminders are missed. |
-| `WAKE_LOCK` | Yes | No (auto-granted) | Keep the CPU running long enough to deliver a notification or alarm while the screen is off. |
-| `USE_FULL_SCREEN_INTENT` | Yes | No (auto-granted; user-revocable on Android 14+) | Show the alarm screen over the lock screen without requiring the user to unlock first. |
-| `SYSTEM_ALERT_WINDOW` | Yes | Yes (Settings redirect) | Draw the alarm UI over other apps and the lock screen on older Android versions. |
-| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Yes | Yes | Ask the user to exempt the app from Doze/battery optimizations so alarms fire on time in the background. |
-| `FOREGROUND_SERVICE` | Yes | No (auto-granted) | Run the alarm playback service in the foreground so it is not killed by the OS. |
-| `FOREGROUND_SERVICE_SPECIAL_USE` | Yes (Android 14+) | No (auto-granted, requires Play Store declaration) | Declare the foreground service type as `specialUse` (alarm playback) to comply with Android 14+ restrictions. |
-| `DISABLE_KEYGUARD` | Yes | No (auto-granted) | Allow the alarm activity to disable the keyguard and turn on the screen when an alarm fires. |
-
-### Runtime Permission Flow (Android)
-
-1. **App launch** — `POST_NOTIFICATIONS` is requested (Android 13+).
-2. **App launch** — `SCHEDULE_EXACT_ALARM` availability is checked; user is redirected to system settings if not granted.
-3. **App launch** — Battery optimization exemption is requested if not already granted.
-4. **App launch** — `SYSTEM_ALERT_WINDOW` is checked; user is redirected to system settings if not granted.
-
----
-
-## iOS Permissions
-
-Configured at runtime via the `flutter_local_notifications` plugin. iOS permission usage descriptions should be added to [`ios/Runner/Info.plist`](ios/Runner/Info.plist) if additional entitlements are required in future.
-
-| Permission | Required | Runtime Request | Purpose |
-|---|---|---|---|
-| **User Notifications** (`UNUserNotificationCenter`) | Yes | Yes (first launch) | Display local task reminders and alarm notifications. Covers alerts, sounds, and badges. |
-| **Critical Alerts** (optional entitlement) | No (requires Apple entitlement) | Yes (if enabled) | Play alarm sounds even when the device is in Silent or Do Not Disturb mode. |
-| **Background App Refresh** | Recommended | System setting | Allow the app to refresh notification scheduling state in the background. |
-
-### Notification Options Requested on iOS
-
-When the app requests notification permission it asks for:
-- `alert` — display a visible notification banner.
-- `sound` — play a notification/alarm sound.
-- `badge` — update the app icon badge count.
-
-### Info.plist Keys to Add (if additional permissions are needed)
-
-If future features require additional permissions, add the corresponding usage description keys to `ios/Runner/Info.plist`:
-
-```xml
-<!-- Already handled by flutter_local_notifications at runtime -->
-<!-- Add these keys only when the corresponding feature is introduced -->
-
-<!-- If camera access is added -->
-<key>NSCameraUsageDescription</key>
-<string>Required for [feature].</string>
-
-<!-- If photo library access is added -->
-<key>NSPhotoLibraryUsageDescription</key>
-<string>Required for [feature].</string>
-```
-
----
-
-## Summary by Feature
-
-| Feature | Android Permissions | iOS Permissions |
+| Permission | Granted | Why TaskRelay needs it |
 |---|---|---|
-| Local notifications | `POST_NOTIFICATIONS`, `VIBRATE` | User Notifications (alert, sound, badge) |
-| Exact / scheduled alarms | `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `WAKE_LOCK` | User Notifications (time-sensitive) |
-| Alarm over lock screen | `USE_FULL_SCREEN_INTENT`, `SYSTEM_ALERT_WINDOW`, `DISABLE_KEYGUARD` | Critical Alerts entitlement (optional) |
-| Background alarm delivery | `RECEIVE_BOOT_COMPLETED`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Background App Refresh |
+| `INTERNET` | Automatically | Sign in, load and save tasks, and sync the alarm schedule with the TaskRelay server. |
+| `POST_NOTIFICATIONS` | Runtime prompt (Android 13+) | Show task reminders, the daily/end-of-day reminder and "Missed" notices. |
+| `SCHEDULE_EXACT_ALARM` | User turns it on in system settings (Android 12+) | Ring a task's alarm at the exact minute the user chose (`AlarmManager.setAlarmClock`). Without it alarms fall back to "approximately on time" and the app says so. |
+| `USE_FULL_SCREEN_INTENT` | Automatic; user-revocable on Android 14+ | Show the alarm screen over the lock screen with **Complete / Snooze 10 min / Dismiss**, so an alarm can be answered without unlocking. |
+| `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Automatically | While an alarm rings, a foreground service of type `mediaPlayback` plays the looping alarm sound and vibration. It stops by itself after 3 minutes (then posts "Missed: <task>"). |
+| `VIBRATE` | Automatically | Vibrate with the alarm and with reminders. |
+| `WAKE_LOCK` | Automatically | Keep the CPU awake for the few seconds it takes to start the alarm screen and sound. |
+| `RECEIVE_BOOT_COMPLETED` | Automatically | Re-arm every alarm after a reboot, app update, clock change or time-zone change. It never starts the alarm service from the boot broadcast (Android 15 forbids it). |
 
----
+No other permission is requested: no location, contacts, camera, microphone, storage, or advertising ID.
+
+### Removed since 1.x (do not re-add without a reason)
+
+| Removed | Why it is gone |
+|---|---|
+| `SYSTEM_ALERT_WINDOW` | The overlay was replaced by a normal full-screen-intent activity. |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Not needed: alarms are `setAlarmClock` alarms, which Doze lets through. Also a Play policy risk. |
+| `DISABLE_KEYGUARD` | The alarm activity uses `showWhenLocked` / `turnScreenOn` instead. |
+| `USE_EXACT_ALARM` | Only for apps whose *primary* purpose is alarms/calendar; `SCHEDULE_EXACT_ALARM` with an honest fallback is the safer fit for a task app. |
+| `FOREGROUND_SERVICE_SPECIAL_USE` | Replaced by the accurate `mediaPlayback` type. |
+
+## Runtime permission flow
+
+Nothing is requested at launch, and a new user with no alarms is never asked for anything.
+
+1. **When the user saves a task that has an alarm or reminder**, the app explains and offers the first permission that is missing, in this order:
+   notifications (`POST_NOTIFICATIONS`), then exact alarms (`SCHEDULE_EXACT_ALARM`, opens the system "Alarms & reminders" page), then the full-screen
+   alarm (`USE_FULL_SCREEN_INTENT`, Android 14+, opens its system page if it was revoked). Each step starts with a plain-language reason and a
+   **Not now** button.
+2. **Once alarms are armed and a permission is still missing**, a dismissible banner ("Allow “…” so your reminders and alarms can ring") appears at the top
+   of the app, with **Fix** for the next missing permission. It does not appear when the schedule has no alarms.
+3. **Profile → Alarm health** always shows when the schedule last synced, how many alarms are armed and through which date, and what is next.
+
+If the user declines, nothing is lost and no data is touched; the alarms that cannot ring are simply the ones Android will not allow.
+
+## Declarations for Play Console
+
+These are the answers to paste into the Play Console forms. Submitting them is a Play Console action, so it is left to the developer.
+
+**Full-screen intent (`USE_FULL_SCREEN_INTENT`)**
+
+> TaskRelay is a task manager whose core feature is user-scheduled alarms (for example "Take medication at 08:00"). When an alarm the user set fires
+> while the device is locked, the app shows a full-screen alarm screen with Complete, Snooze and Dismiss buttons so the user can respond without
+> unlocking. The permission is used only for alarms the user created, never for advertising, promotions, or any other purpose.
+
+**Foreground service type `mediaPlayback`**
+
+> The service plays the alarm sound (and vibration) that the user set for a task. It runs only while an alarm is ringing and stops itself after at
+> most 3 minutes or as soon as the user completes, snoozes or dismisses the alarm.
+
+**Exact alarms (`SCHEDULE_EXACT_ALARM`)**
+
+> Task alarms must ring at the exact time the user picked. If the user denies the permission, the app still works and tells them alarms may be late.
 
 ## Notes
 
-- Permissions marked **auto-granted** are approved by the system and never shown to the user.
-- Permissions marked **Settings redirect** open the appropriate system settings screen rather than displaying a standard dialog.
-- All runtime permission requests include explanatory dialogs (rationale) before redirecting the user.
-- The `FOREGROUND_SERVICE_SPECIAL_USE` permission requires a declaration in the Play Store listing under the "Sensitive app permissions" section.
+- `allowBackup="false"`: the session token is wrapped by an AndroidKeyStore key that cannot survive a restore, so app data is never backed up or restored
+  (see `res/xml/backup_rules.xml` and `res/xml/data_extraction_rules.xml`).
+- Release builds do not allow plain-HTTP traffic. Debug builds do, only so a phone can reach a dev server over `adb reverse`.
+- No test compares the manifest with this file, so when the manifest changes, update this file in the same commit.

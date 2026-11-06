@@ -1,214 +1,266 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState, type FormEvent } from 'react';
+import { useAsk, useToast } from '@/components/Feedback';
 import Shell from '@/components/Shell';
+import TaskForm from '@/components/TaskForm';
+import TaskRow from '@/components/TaskRow';
+import { EmptyState, ErrorBanner, ProgressRing, Skeleton } from '@/components/ui';
 import { api, errorMessage } from '@/lib/web/api';
+import { fmtDay, fmtMin, plural, shiftDate } from '@/lib/web/format';
+import { useApi } from '@/lib/web/hooks';
+import type { HabitDto } from '@/lib/services/habits';
 import type { LabelDto } from '@/lib/services/labels';
 import type { SettingsDto } from '@/lib/services/settings';
 import type { TaskDto } from '@/lib/services/tasks';
 import type { DayView } from '@/lib/services/views';
 
-interface StatsView {
-  streak: number;
-}
-
-const shift = (date: string, n: number) => {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-};
-
-const fmtMin = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`);
-
 export default function TodayPage() {
   return (
     <Shell>
-      <Today />
+      <Suspense fallback={<Skeleton />}>
+        <Today />
+      </Suspense>
     </Shell>
   );
 }
 
 function Today() {
-  const [date, setDate] = useState<string | null>(null);
-  const [view, setView] = useState<DayView | null>(null);
-  const [priorities, setPriorities] = useState<LabelDto[]>([]);
-  const [settings, setSettings] = useState<SettingsDto | null>(null);
-  const [streak, setStreak] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const params = useSearchParams();
+  const toast = useToast();
+  const ask = useAsk();
+
+  const requested = params.get('date');
+  const date = requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : null;
+  const day = useApi<DayView>(`/tasks${date ? `?date=${date}` : ''}`);
+  const labels = useApi<{ types: LabelDto[]; priorities: LabelDto[] }>('/labels');
+  const settings = useApi<SettingsDto>('/settings');
+  const stats = useApi<{ streak: number }>('/stats');
+  const habits = useApi<{ habits: HabitDto[] }>('/habits?days=7');
+
   const [busy, setBusy] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<{ task?: TaskDto } | null>(null);
+  const [quick, setQuick] = useState('');
 
-  const load = useCallback(async (d: string | null) => {
-    try {
-      const v = await api<DayView>(`/tasks${d ? `?date=${d}` : ''}`);
-      setView(v);
-      setDate(v.date);
-      setError(null);
-      api<StatsView>('/stats').then((s) => setStreak(s.streak), () => undefined);
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }, []);
+  const view = day.data;
+  const refresh = () => Promise.all([day.reload(), stats.reload(), habits.reload()]).then(() => undefined);
 
-  useEffect(() => {
-    load(null);
-    api<{ priorities: LabelDto[] }>('/labels').then((l) => setPriorities(l.priorities), () => undefined);
-    api<SettingsDto>('/settings').then(setSettings, () => undefined);
-  }, [load]);
-
-  /** Run a mutation, then reload; failures stay visible instead of looking like success. */
-  async function act(fn: () => Promise<unknown>) {
+  /** Run a change; any failure stays on screen instead of looking like success. */
+  async function act(fn: () => Promise<unknown>): Promise<boolean> {
     setBusy(true);
+    setError(null);
     try {
       await fn();
-      await load(date);
+      await refresh();
+      return true;
     } catch (e) {
       setError(errorMessage(e));
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
+  if (!view) {
+    return day.error ? <ErrorBanner message={day.error} onRetry={() => void day.reload()} /> : <Skeleton rows={4} />;
+  }
+
+  const go = (d: string) => router.push(d === view.today ? '/today' : `/today?date=${d}`);
+  const priorities = labels.data?.priorities ?? [];
+  const priorityOf = (id: string | null) => priorities.find((p) => p.id === id);
+  const habitOf = (id: string) => habits.data?.habits.find((h) => h.task_id === id);
+
+  const topTasks = view.tasks.filter((t) => t.top_position != null).sort((a, b) => a.top_position! - b.top_position!);
+  const rest = view.tasks.filter((t) => t.top_position == null);
+  const { planned, done, planned_min } = view.summary;
+  const mode = settings.data?.estimation_mode ?? 'time';
+  const used = mode === 'time' ? planned_min : planned;
+  const limit = settings.data ? (mode === 'time' ? settings.data.daily_time_limit_min : settings.data.daily_count_limit) : 0;
+  const over = limit > 0 && used > limit;
+  const isToday = view.date === view.today;
+
+  // ── actions ──────────────────────────────────────────────────────────────────────────────────
   const toggle = (t: TaskDto) =>
     act(() => api(`/tasks/${t.id}/days/${t.date}`, { method: 'PUT', body: { status: t.status === 'done' ? 'open' : 'done' } }));
 
-  const remove = (t: TaskDto, scope: string) => {
-    setDeleting(null);
-    return act(() => api(`/tasks/${t.id}?scope=${encodeURIComponent(scope)}`, { method: 'DELETE' }));
+  const star = (t: TaskDto) => {
+    const next = t.top_position != null ? view.top.filter((id) => id !== t.id) : [...view.top, t.id];
+    return act(() => api(`/days/${view.date}/top`, { method: 'PUT', body: { task_ids: next } }));
   };
 
-  const moveOverdue = () =>
-    view?.overdue && act(() => api('/tasks/move', { method: 'POST', body: { ids: view.overdue!.items.map((t) => t.id), to: view.today } }));
+  async function remove(t: TaskDto) {
+    const recurring = t.recur !== 'none';
+    const choice = await ask(
+      recurring
+        ? { title: `Delete “${t.title}”?`, message: 'This task repeats. What should be deleted?', choices: [
+            { id: `day:${view!.date}`, label: `Just ${fmtDay(view!.date)}`, tone: 'danger' },
+            { id: `from:${view!.date}`, label: 'This and all following days', tone: 'danger' },
+            { id: 'all', label: 'The whole series', tone: 'danger' },
+          ] }
+        : { title: `Delete “${t.title}”?`, choices: [{ id: 'all', label: 'Delete', tone: 'danger' }] },
+    );
+    if (!choice) return;
 
-  if (!view) return error ? <div className="banner" role="alert">{error} <button onClick={() => load(date)}>Retry</button></div> : <p className="muted">Loading…</p>;
+    // How to undo each kind of delete (all of them are plain API calls, so undo survives a page reload within the toast)
+    const wholeTask = choice === 'all' || !recurring || (choice.startsWith('from:') && choice.slice(5) <= t.due_date);
+    const undo = async () => {
+      await act(() => {
+        if (wholeTask) return api(`/tasks/${t.id}/restore`, { method: 'POST' });
+        if (choice.startsWith('day:')) return api(`/tasks/${t.id}/days/${choice.slice(4)}`, { method: 'PUT', body: { status: 'open' } });
+        return api(`/tasks/${t.id}`, { method: 'PATCH', body: { recur_until: t.recur_until } }); // from:D -> put the old end date back
+      });
+    };
+    const ok = await act(() => api(`/tasks/${t.id}?scope=${encodeURIComponent(choice)}`, { method: 'DELETE' }));
+    if (ok) toast(wholeTask ? `Deleted “${t.title}”` : choice.startsWith('day:') ? `Skipped ${fmtDay(view!.date)}` : 'Series ended', { actionLabel: 'Undo', onAction: undo });
+  }
 
-  const isToday = view.date === view.today;
-  const mode = settings?.estimation_mode ?? 'time';
-  const used = mode === 'time' ? view.summary.planned_min : view.summary.planned;
-  const limit = settings ? (mode === 'time' ? settings.daily_time_limit_min : settings.daily_count_limit) : 0;
-  const over = limit > 0 && used > limit;
+  async function moveOverdue() {
+    const items = view!.overdue?.items ?? [];
+    if (items.length === 0) return;
+    const byDay = new Map<string, string[]>();
+    for (const t of items) byDay.set(t.due_date, [...(byDay.get(t.due_date) ?? []), t.id]);
+    const ok = await act(() => api('/tasks/move', { method: 'POST', body: { ids: items.map((t) => t.id), to: view!.today } }));
+    if (ok) {
+      toast(`Moved ${plural(items.length, 'task')} to today`, {
+        actionLabel: 'Undo',
+        onAction: async () => {
+          await act(async () => {
+            for (const [from, ids] of byDay) await api('/tasks/move', { method: 'POST', body: { ids, to: from } });
+          });
+        },
+      });
+    }
+  }
+
+  async function quickAdd(e: FormEvent) {
+    e.preventDefault();
+    const title = quick.trim();
+    if (!title) return;
+    // client-generated id: a retried request can't create a duplicate
+    const ok = await act(() => api('/tasks', { method: 'POST', body: { id: crypto.randomUUID(), title, due_date: view!.date, duration_min: 30 } }));
+    if (ok) setQuick('');
+  }
+
+  const row = (t: TaskDto) => (
+    <TaskRow
+      key={t.id}
+      task={t}
+      priority={priorityOf(t.priority_id)}
+      habit={habitOf(t.id)}
+      busy={busy}
+      canStar={view.top.length < 3}
+      onToggle={toggle}
+      onEdit={(x) => setForm({ task: x })}
+      onDelete={remove}
+      onStar={star}
+    />
+  );
 
   return (
-    <>
+    <div style={{ opacity: day.loading ? 0.6 : 1, transition: 'opacity .15s' }} aria-busy={day.loading}>
       <div className="spread" style={{ marginBottom: 12 }}>
         <div className="row">
-          <button aria-label="Previous day" onClick={() => load(shift(view.date, -1))}>‹</button>
-          <input type="date" aria-label="Day" value={view.date} onChange={(e) => e.target.value && load(e.target.value)} style={{ width: 'auto' }} />
-          <button aria-label="Next day" onClick={() => load(shift(view.date, 1))}>›</button>
+          <button className="icon" aria-label="Previous day" onClick={() => go(shiftDate(view.date, -1))}>‹</button>
+          <h1 style={{ margin: 0 }}>{isToday ? 'Today' : fmtDay(view.date)}</h1>
+          <button className="icon" aria-label="Next day" onClick={() => go(shiftDate(view.date, 1))}>›</button>
         </div>
-        {!isToday && <button onClick={() => load(view.today)}>Today</button>}
+        <div className="row">
+          <label className="sr-only" htmlFor="jump">Jump to date</label>
+          <input id="jump" type="date" value={view.date} style={{ width: 'auto' }} onChange={(e) => e.target.value && go(e.target.value)} />
+          {!isToday && <button onClick={() => go(view.today)}>Today</button>}
+        </div>
       </div>
 
-      {error && <div className="banner" role="alert">{error}</div>}
+      {error && <ErrorBanner message={error} />}
+      {day.error && <ErrorBanner message={`Couldn’t refresh: ${day.error}`} onRetry={() => void day.reload()} />}
 
       <section className="card" aria-label="Day summary">
-        <div className="spread">
-          <strong>{view.summary.done} of {view.summary.planned} done</strong>
-          <span className="muted">{streak > 0 ? `🔥 ${streak}-day streak` : 'No streak yet'}</span>
+        <div className="row">
+          <ProgressRing percent={planned === 0 ? 0 : (done / planned) * 100} label={`${done}/${planned}`} />
+          <div className="grow">
+            <strong>{planned === 0 ? 'Nothing planned' : done === planned ? 'All done!' : `${plural(planned - done, 'task')} to go`}</strong>
+            <div className="muted">{(stats.data?.streak ?? 0) > 0 ? `${plural(stats.data!.streak, 'day')} in a row` : 'Finish a day to start a streak'}</div>
+          </div>
         </div>
         {limit > 0 && (
-          <>
-            <div className="bar-track" style={{ margin: '10px 0 4px' }} role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={limit}>
+          <div style={{ marginTop: 12 }}>
+            <div className="bar-track" role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={limit} aria-label="Planned against your daily limit">
               <div className={`bar-fill${over ? ' over' : ''}`} style={{ width: `${Math.min(100, (used / limit) * 100)}%` }} />
             </div>
-            <span className={over ? 'banner' : 'muted'} style={over ? { display: 'inline-block', padding: '2px 8px', margin: 0 } : undefined}>
-              {mode === 'time' ? `${fmtMin(used)} planned of ${fmtMin(limit)}` : `${used} of ${limit} tasks planned`}{over ? ' — over your limit' : ''}
-            </span>
-          </>
+            <div className="small" style={{ marginTop: 4, color: over ? 'var(--text)' : 'var(--muted)', fontWeight: over ? 800 : 400 }}>
+              {mode === 'time' ? `${fmtMin(used)} planned of ${fmtMin(limit)}` : `${used} of ${limit} tasks planned`}
+              {over && ' — over your daily limit'}
+            </div>
+          </div>
         )}
       </section>
 
       {view.overdue && view.overdue.count > 0 && (
-        <section className="card" aria-label="Overdue">
+        <section className="card" aria-label="Overdue tasks">
           <div className="spread">
-            <h2 style={{ margin: 0 }}>Overdue ({view.overdue.count})</h2>
-            <button disabled={busy} onClick={moveOverdue}>Move {view.overdue.items.length} to today</button>
+            <h2 style={{ margin: 0 }}>Overdue · {view.overdue.count}</h2>
+            <button disabled={busy} onClick={moveOverdue}>Move {view.overdue.items.length === view.overdue.count ? 'all' : `${view.overdue.items.length}`} to today</button>
           </div>
           {view.overdue.items.map((t) => (
             <div className="task" key={t.id}>
-              <div className="grow">
+              <div className="body">
                 <div className="title">{t.title}</div>
-                <div className="muted">was due {t.due_date} · {fmtMin(t.duration_min)}</div>
+                <div className="muted small">was due {fmtDay(t.due_date)} · {fmtMin(t.duration_min)}</div>
               </div>
+              <button className="icon" aria-label={`Edit: ${t.title}`} disabled={busy} onClick={() => setForm({ task: t })}>✎</button>
+              <button className="icon" aria-label={`Delete: ${t.title}`} disabled={busy} onClick={() => remove(t)}>✕</button>
             </div>
           ))}
+          {view.overdue.count > view.overdue.items.length && <p className="muted small">Showing the {view.overdue.items.length} most recent of {view.overdue.count}.</p>}
+        </section>
+      )}
+
+      {topTasks.length > 0 && (
+        <section className="card" aria-label="Top 3">
+          <h2>★ Top 3 for {isToday ? 'today' : fmtDay(view.date)}</h2>
+          {topTasks.map(row)}
         </section>
       )}
 
       <section className="card" aria-label="Tasks">
+        {topTasks.length > 0 && <h2>Other tasks</h2>}
         {view.tasks.length === 0 ? (
-          <p className="empty">Nothing planned for this day.</p>
+          <EmptyState title={isToday ? 'A clear day' : 'Nothing planned for this day'}>Add a task below to get started.</EmptyState>
+        ) : rest.length === 0 ? (
+          <p className="muted">Everything is in your Top 3.</p>
         ) : (
-          view.tasks.map((t) => (
-            <div className={`task${t.status === 'done' ? ' done' : ''}`} key={t.id}>
-              <input className="check" type="checkbox" checked={t.status === 'done'} disabled={busy} aria-label={`Mark "${t.title}" ${t.status === 'done' ? 'not done' : 'done'}`} onChange={() => toggle(t)} />
-              <div className="grow">
-                <div className="title">{t.title}</div>
-                <div>
-                  <span className="chip">{fmtMin(t.duration_min)}</span>
-                  {t.alarm_time && <span className="chip">⏰ {t.alarm_time}</span>}
-                  {t.recur === 'daily' && <span className="chip">repeats daily</span>}
-                  {priorities.find((p) => p.id === t.priority_id) && <span className="chip">{priorities.find((p) => p.id === t.priority_id)!.label}</span>}
-                </div>
-                {deleting === t.id && (
-                  <div className="row wrap" style={{ marginTop: 8 }}>
-                    <button className="danger" onClick={() => remove(t, `day:${t.date}`)}>Just this day</button>
-                    <button className="danger" onClick={() => remove(t, `from:${t.date}`)}>This and following days</button>
-                    <button className="danger" onClick={() => remove(t, 'all')}>Whole series</button>
-                    <button onClick={() => setDeleting(null)}>Cancel</button>
-                  </div>
-                )}
-              </div>
-              <button className="link" aria-label={`Delete "${t.title}"`} disabled={busy}
-                onClick={() => (t.recur === 'daily' ? setDeleting(t.id) : confirm(`Delete "${t.title}"?`) && remove(t, 'all'))}>✕</button>
-            </div>
-          ))
+          rest.map(row)
         )}
       </section>
 
-      <AddTask date={view.date} priorities={priorities} busy={busy} onAdd={(body) => act(() => api('/tasks', { method: 'POST', body }))} />
-    </>
-  );
-}
+      <form className="card" onSubmit={quickAdd} aria-label="Add a task">
+        <div className="row">
+          <label className="sr-only" htmlFor="quick">Task title</label>
+          <input id="quick" className="grow" placeholder={`Add a task for ${isToday ? 'today' : fmtDay(view.date)}…`} maxLength={200} value={quick} onChange={(e) => setQuick(e.target.value)} />
+          <button className="primary" disabled={busy || !quick.trim()}>Add</button>
+        </div>
+        <div className="row" style={{ marginTop: 4 }}>
+          <button type="button" className="link" onClick={() => setForm({})}>More options (time, reminder, repeat…)</button>
+        </div>
+      </form>
 
-function AddTask({ date, priorities, busy, onAdd }: { date: string; priorities: LabelDto[]; busy: boolean; onAdd: (body: Record<string, unknown>) => Promise<void> }) {
-  const [title, setTitle] = useState('');
-  const [minutes, setMinutes] = useState(30);
-  const [priority, setPriority] = useState('');
-  const [time, setTime] = useState('');
-  const [daily, setDaily] = useState(false);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) return;
-    await onAdd({
-      id: crypto.randomUUID(), // client-generated, so a retried request can't create a duplicate
-      title: title.trim(),
-      due_date: date,
-      duration_min: minutes,
-      priority_id: priority || null,
-      alarm_time: time || null,
-      recur: daily ? 'daily' : 'none',
-    });
-    setTitle('');
-  }
-
-  return (
-    <form className="card" onSubmit={submit} aria-label="Add a task">
-      <div className="row">
-        <input aria-label="Task title" className="grow" placeholder="Add a task…" maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <button className="primary" disabled={busy || !title.trim()}>Add</button>
-      </div>
-      <div className="row wrap" style={{ marginTop: 8 }}>
-        <label className="row muted" style={{ margin: 0 }}>Minutes
-          <input type="number" min={1} max={1440} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} style={{ width: 80 }} />
-        </label>
-        <select aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)} style={{ width: 'auto' }}>
-          <option value="">Priority</option>
-          {priorities.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
-        <input type="time" aria-label="Alarm time" value={time} onChange={(e) => setTime(e.target.value)} style={{ width: 'auto' }} />
-        <label className="row muted" style={{ margin: 0 }}><input type="checkbox" checked={daily} onChange={(e) => setDaily(e.target.checked)} /> Repeat daily</label>
-      </div>
-    </form>
+      {form && (
+        <TaskForm
+          task={form.task}
+          date={view.date}
+          today={view.today}
+          types={labels.data?.types ?? []}
+          priorities={priorities}
+          onClose={() => setForm(null)}
+          onSaved={() => {
+            setForm(null);
+            void refresh();
+          }}
+        />
+      )}
+    </div>
   );
 }

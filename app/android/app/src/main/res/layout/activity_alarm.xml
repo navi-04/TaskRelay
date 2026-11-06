@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#CC000000">
+    android:fitsSystemWindows="true">
 
     <!-- Centered card container -->
     <LinearLayout
@@ -16,14 +16,16 @@
         android:padding="32dp"
         android:background="@drawable/alarm_card_bg">
 
-        <!-- Pulsing ring icon -->
-        <TextView
+        <!-- Bell glyph in a ring -->
+        <ImageView
             android:id="@+id/alarmIcon"
             android:layout_width="80dp"
             android:layout_height="80dp"
-            android:gravity="center"
-            android:text="🔔"
-            android:textSize="44sp"
+            android:padding="22dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_alarm_bell"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:background="@drawable/alarm_icon_ring" />
 
         <!-- ALARM label -->
@@ -34,7 +36,7 @@
             android:layout_marginTop="20dp"
             android:text="ALARM"
             android:textSize="13sp"
-            android:textColor="#80FFFFFF"
+            android:textColor="@color/tr_muted"
             android:letterSpacing="0.3"
             android:textStyle="bold" />
 
@@ -46,7 +48,7 @@
             android:layout_marginTop="4dp"
             android:text="12:00"
             android:textSize="56sp"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/tr_fg"
             android:textStyle="bold"
             android:fontFamily="sans-serif-light" />
 
@@ -55,7 +57,7 @@
             android:layout_width="48dp"
             android:layout_height="2dp"
             android:layout_marginTop="16dp"
-            android:background="#33FFFFFF" />
+            android:background="@color/tr_line" />
 
         <!-- Task Title -->
         <TextView
@@ -65,7 +67,7 @@
             android:layout_marginTop="16dp"
             android:text="Task Reminder"
             android:textSize="22sp"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/tr_fg"
             android:textAlignment="center"
             android:gravity="center"
             android:textStyle="bold"
@@ -78,12 +80,25 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="32dp"
-            android:text="✓  Mark as Complete"
+            android:text="&#x2713;  Mark as Complete"
             android:textSize="16sp"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/tr_bg"
             android:textStyle="bold"
             android:textAllCaps="false"
             android:background="@drawable/alarm_complete_btn_bg"
+            android:stateListAnimator="@null" />
+
+        <!-- Snooze button -->
+        <Button
+            android:id="@+id/snoozeButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:text="Snooze 10 min"
+            android:textSize="15sp"
+            android:textColor="@color/tr_fg"
+            android:textAllCaps="false"
+            android:background="@drawable/alarm_snooze_btn_bg"
             android:stateListAnimator="@null" />
 
         <!-- Dismiss button -->
@@ -91,10 +106,10 @@
             android:id="@+id/dismissButton"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:text="Dismiss"
             android:textSize="15sp"
-            android:textColor="#80FFFFFF"
+            android:textColor="@color/tr_muted"
             android:textAllCaps="false"
             android:background="@android:color/transparent"
             android:stateListAnimator="@null" />

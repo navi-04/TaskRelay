@@ -3,10 +3,13 @@ import { openDb } from '../lib/db';
 import { migrate } from '../lib/migrate';
 
 async function main() {
-  try {
-    process.loadEnvFile('.env.local');
-  } catch {
-    // No .env.local: fall back to variables already in the environment.
+  // .env.local wins over .env (as in Next.js); variables already in the environment win over both.
+  for (const file of ['.env.local', '.env']) {
+    try {
+      process.loadEnvFile(file);
+    } catch {
+      // file not present
+    }
   }
   const db = await openDb(process.env.TURSO_DATABASE_URL, process.env.TURSO_AUTH_TOKEN);
   const ran = await migrate(db);

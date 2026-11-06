@@ -1,6 +1,7 @@
 import type { InStatement, Row } from '@libsql/client';
 import type { Ctx } from '../ctx';
 import { badRequest, conflict, notFound } from '../errors';
+import { writeBatch } from './version';
 
 export type LabelKind = 'type' | 'priority';
 
@@ -66,11 +67,13 @@ export async function createLabel(
   input: { kind: LabelKind; label: string; color?: number },
 ): Promise<LabelDto> {
   const id = crypto.randomUUID();
-  await ctx.db.execute({
-    sql: `INSERT INTO labels (id, user_id, kind, label, color, sort_order, created_at)
-          VALUES (?, ?, ?, ?, ?, COALESCE((SELECT MAX(sort_order) + 1 FROM labels WHERE user_id = ? AND kind = ?), 0), ?)`,
-    args: [id, ctx.userId, input.kind, input.label, input.color ?? NEUTRAL, ctx.userId, input.kind, ctx.now().toISOString()],
-  });
+  await writeBatch(ctx, [
+    {
+      sql: `INSERT INTO labels (id, user_id, kind, label, color, sort_order, created_at)
+            VALUES (?, ?, ?, ?, ?, COALESCE((SELECT MAX(sort_order) + 1 FROM labels WHERE user_id = ? AND kind = ?), 0), ?)`,
+      args: [id, ctx.userId, input.kind, input.label, input.color ?? NEUTRAL, ctx.userId, input.kind, ctx.now().toISOString()],
+    },
+  ]);
   return getLabel(ctx, id);
 }
 
@@ -98,7 +101,7 @@ export async function updateLabel(
     }
   }
   if (sets.length > 0) {
-    await ctx.db.execute({ sql: `UPDATE labels SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`, args: [...args, id, ctx.userId] });
+    await writeBatch(ctx, [{ sql: `UPDATE labels SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`, args: [...args, id, ctx.userId] }]);
   }
   return getLabel(ctx, id);
 }
@@ -112,11 +115,8 @@ export async function deleteLabel(ctx: Ctx, id: string): Promise<void> {
   });
   if (Number(count.rows[0].n) <= 1) throw conflict(`At least one ${label.kind} must remain`, 'last_label');
   const column = label.kind === 'type' ? 'type_id' : 'priority_id';
-  await ctx.db.batch(
-    [
-      { sql: `UPDATE tasks SET ${column} = NULL WHERE user_id = ? AND ${column} = ?`, args: [ctx.userId, id] },
-      { sql: 'DELETE FROM labels WHERE id = ? AND user_id = ?', args: [id, ctx.userId] },
-    ],
-    'write',
-  );
+  await writeBatch(ctx, [
+    { sql: `UPDATE tasks SET ${column} = NULL WHERE user_id = ? AND ${column} = ?`, args: [ctx.userId, id] },
+    { sql: 'DELETE FROM labels WHERE id = ? AND user_id = ?', args: [id, ctx.userId] },
+  ]);
 }

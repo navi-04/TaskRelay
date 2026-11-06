@@ -7,6 +7,13 @@ export const idStr = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/, 'Must be 8-64 cha
 const instant = z.string().refine((s) => !Number.isNaN(Date.parse(s)), 'Must be an ISO-8601 timestamp');
 const timezone = z.string().refine(isValidTimezone, 'Must be an IANA timezone like Asia/Kolkata');
 
+/** Weekdays a repeating task occurs on: 1=Mon .. 7=Sun, unique. Null (every day) is expressed by omitting or nulling the field. */
+const recurDays = z
+  .array(z.number().int().min(1).max(7))
+  .min(1, 'Pick at least one weekday, or use null for every day')
+  .max(7)
+  .refine((a) => new Set(a).size === a.length, 'Weekdays must be unique');
+
 const taskFields = {
   title: z.string().trim().min(1).max(200),
   notes: z.string().max(4000).nullable(),
@@ -18,6 +25,7 @@ const taskFields = {
   reminder_kind: z.enum(['alarm', 'notification']),
   recur: z.enum(['none', 'daily']),
   recur_until: dateStr.nullable(),
+  recur_days: recurDays.nullable(),
 };
 
 export const taskCreate = z.strictObject({
@@ -32,6 +40,7 @@ export const taskCreate = z.strictObject({
   reminder_kind: taskFields.reminder_kind.default('alarm'),
   recur: taskFields.recur.default('none'),
   recur_until: taskFields.recur_until.optional(),
+  recur_days: taskFields.recur_days.optional(),
 });
 export type TaskCreate = z.infer<typeof taskCreate>;
 
@@ -47,6 +56,7 @@ export const taskPatch = z
     reminder_kind: taskFields.reminder_kind,
     recur: taskFields.recur,
     recur_until: taskFields.recur_until,
+    recur_days: taskFields.recur_days,
   })
   .partial()
   .refine((o) => Object.keys(o).length > 0, 'Provide at least one field to change');
@@ -74,6 +84,15 @@ export const login = z.strictObject({
   email: z.string().trim().toLowerCase().max(254),
   password: z.string().min(1).max(128),
 });
+
+export const topPut = z.strictObject({ task_ids: z.array(idStr).max(3) });
+
+export const passwordChange = z.strictObject({
+  current_password: z.string().min(1).max(128),
+  new_password: z.string().min(8, 'At least 8 characters').max(128),
+});
+
+export const accountDelete = z.strictObject({ password: z.string().min(1).max(128) });
 
 export const mePatch = z.strictObject({ timezone });
 export const aiAccessPatch = z.strictObject({ enabled: z.boolean() });

@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- TaskRelay is strictly black and white: light = white background / black text, night = the inverse. Greys only. -->
 <resources>
-    <color name="colorBase">#0F766E</color>
-    <color name="colorAccent">#2DD4BF</color>
-    <color name="colorBackground">#F0FDFA</color>
+    <color name="tr_bg">#FFFFFFFF</color>
+    <color name="tr_fg">#FF000000</color>
+    <color name="tr_muted">#FF666666</color>
+    <color name="tr_surface">#FFF4F4F4</color>
+    <color name="tr_line">#FFD0D0D0</color>
+    <color name="tr_ripple">#33808080</color>
+
+    <!-- Home-screen widget -->
+    <color name="widget_bg">#FFFFFFFF</color>
+    <color name="widget_fg">#FF000000</color>
+    <color name="widget_muted">#FF6E6E6E</color>
+    <color name="widget_line">#FFD0D0D0</color>
 </resources>

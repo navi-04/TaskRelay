@@ -1,4 +1,4 @@
-import { resolveBodyDates, resolveDate, resolveLabelNames, withLabelNames } from '@/lib/ai';
+import { resolveBodyDates, resolveBodyDays, resolveDate, resolveLabelNames, withLabelNames } from '@/lib/ai';
 import { aiJson, aiRoute, readBody } from '@/lib/http';
 import { deleteTask, getTask, updateTask } from '@/lib/services/tasks';
 import { deleteScope, idStr, taskPatch } from '@/lib/validation';
@@ -18,7 +18,7 @@ export const PATCH = (req: Request, { params }: Params) =>
   aiRoute(req, async (ctx) => {
     const id = idStr.parse((await params).id);
     const raw = await readBody(req, z.record(z.string(), z.unknown()));
-    const body = await resolveLabelNames(ctx, resolveBodyDates(ctx, raw));
+    const body = await resolveLabelNames(ctx, resolveBodyDays(resolveBodyDates(ctx, raw)));
     const task = await updateTask(ctx, id, taskPatch.parse(body));
     return aiJson((await withLabelNames(ctx, [task]))[0]);
   });

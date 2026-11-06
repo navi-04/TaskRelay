@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage } from '@/lib/web/api';
@@ -9,6 +10,7 @@ export default function SignIn() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,34 +34,43 @@ export default function SignIn() {
   }
 
   return (
-    <main style={{ maxWidth: 420, paddingTop: 64 }}>
-      <h1 className="brand" style={{ fontSize: '1.8rem' }}>TaskRelay</h1>
+    <main style={{ maxWidth: 420, paddingTop: 56 }}>
+      <h1 className="brand" style={{ fontSize: '1.8rem', margin: 0 }}>
+        <span className="brand-mark" aria-hidden="true">✓</span>TaskRelay
+      </h1>
       <p className="muted">Finish what you plan, one day at a time.</p>
       <form className="card" onSubmit={submit}>
         <h2>{mode === 'login' ? 'Sign in' : 'Create your account'}</h2>
         {error && <div className="banner" role="alert">{error}</div>}
         <label htmlFor="email">Email</label>
         <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <label htmlFor="password">Password {mode === 'register' && <span className="muted">(8+ characters)</span>}</label>
-        <input
-          id="password"
-          type="password"
-          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          required
-          minLength={mode === 'register' ? 8 : 1}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <label htmlFor="password">Password {mode === 'register' && <span>(8+ characters)</span>}</label>
+        <div className="row">
+          <input
+            id="password"
+            className="grow"
+            type={show ? 'text' : 'password'}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            required
+            minLength={mode === 'register' ? 8 : 1}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button type="button" className="link" aria-pressed={show} onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button>
+        </div>
         <div className="row" style={{ marginTop: 16 }}>
           <button className="primary grow" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}</button>
         </div>
-        <p className="muted" style={{ marginBottom: 0 }}>
+        <p className="muted" style={{ marginBottom: 0, marginTop: 12 }}>
           {mode === 'login' ? 'New here? ' : 'Have an account? '}
           <button type="button" className="link" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); }}>
             {mode === 'login' ? 'Create an account' : 'Sign in'}
           </button>
         </p>
       </form>
+      <p className="muted small" style={{ textAlign: 'center' }}>
+        <Link href="/privacy">Privacy policy</Link> · <Link href="/account-deletion">Delete your account</Link>
+      </p>
     </main>
   );
 }

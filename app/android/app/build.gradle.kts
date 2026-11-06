@@ -58,6 +58,11 @@ android {
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
+
+    testOptions {
+        // Pure planner/log/diff classes are tested on the JVM; android.* calls (if any slip in) return defaults.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 
@@ -68,4 +73,13 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // Periodic + one-time background sync of the alarm feed (the only networking dependency; HTTP is HttpURLConnection).
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    // ComponentActivity + OnBackPressedDispatcher for the alarm screen (already on the classpath through Flutter; declared so it is explicit).
+    implementation("androidx.activity:activity:1.9.0")
+
+    testImplementation("junit:junit:4.13.2")
+    // The android.jar stubs of org.json throw on the JVM; the real implementation is needed to parse the fixtures.
+    testImplementation("org.json:json:20240303")
 }
