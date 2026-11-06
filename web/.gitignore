@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+
+# local databases used by `next dev` / scripts
+*.db
+*.db-*
+dev.db*
+
+# secrets (only the .example template is tracked)
+.env
+.env.*
+!.env.example
