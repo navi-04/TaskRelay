@@ -79,9 +79,9 @@ async function buildFixtures(): Promise<Record<string, unknown>> {
     clock.set(BASE);
   };
 
-  await createTask(ctx, task({ id: 'fx-task-standup', title: 'Team standup', due_date: '2026-11-06', duration_min: 15, alarm_time: '09:30', priority_id: high }));
-  await createTask(ctx, task({ id: 'fx-task-report', title: 'Write quarterly report', notes: 'Include the Q3 numbers', due_date: '2026-11-06', duration_min: 90 }));
-  await createTask(ctx, task({ id: 'fx-task-gym', title: 'Gym', due_date: '2026-10-26', duration_min: 60, alarm_time: '18:00', reminder_kind: 'notification', recur: 'daily', recur_days: [1, 3, 5], priority_id: medium }));
+  await createTask(ctx, task({ id: 'fx-task-standup', title: 'Team standup', due_date: '2026-11-06', alarm_time: '09:30', start_time: '09:30', end_time: '09:45', priority_id: high }));
+  await createTask(ctx, task({ id: 'fx-task-report', title: 'Write quarterly report', notes: 'Include the Q3 numbers', due_date: '2026-11-06', duration_min: 90, start_time: '14:00' }));
+  await createTask(ctx, task({ id: 'fx-task-gym', title: 'Gym', due_date: '2026-10-26', alarm_time: '17:45', start_time: '18:00', end_time: '19:00', reminder_kind: 'notification', recur: 'daily', recur_days: [1, 3, 5], priority_id: medium }));
   await createTask(ctx, task({ id: 'fx-task-meditate', title: 'Meditate', due_date: '2026-10-30', duration_min: 10, recur: 'daily' }));
   await createTask(ctx, task({ id: 'fx-task-old', title: 'Renew passport', due_date: '2026-11-01', duration_min: 45 }));
   await at('2026-11-06T04:10:00Z', () => setDay(ctx, 'fx-task-standup', '2026-11-06', { status: 'done', note: 'Short one' }));
@@ -141,6 +141,10 @@ describe('contract fixtures', () => {
     expect(all['day-view'].top).toEqual(['fx-task-standup', 'fx-task-gym']);
     expect(all['day-view'].overdue.count).toBe(1);
     expect(all.sync.alarms.length).toBeGreaterThan(3);
+    expect(all.sync.today.blocks.map((b: { id: string }) => b.id)).toEqual(['fx-task-standup', 'fx-task-report', 'fx-task-gym']); // 09:30, 14:00, 18:00
+    expect(all.sync.today.blocks.map((b: { end_time: string | null }) => b.end_time)).toEqual(['09:45', null, '19:00']);
+    expect(all['day-view'].tasks.some((t: { start_time: string | null }) => t.start_time === '14:00')).toBe(true);
+    expect(all.sheet.columns.some((c: { start_time: string | null }) => c.start_time === '18:00')).toBe(true);
     expect(all.habits.habits.length).toBe(2);
     expect(all.sheet.columns.length).toBe(2);
     expect(all.sheet.days.length).toBe(7);

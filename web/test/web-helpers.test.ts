@@ -1,11 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { addMonths, dayKind, monthGrid, monthStart, STREAK_BADGES } from '../lib/web/calendar';
-import { fmtMin, plural, repeatLabel, shiftDate, weekdayIndex } from '../lib/web/format';
+import { fmtClock, fmtDuration, fmtMin, fmtTimeBlock, plural, repeatLabel, shiftDate, weekdayIndex } from '../lib/web/format';
 
 describe('web format helpers', () => {
   it('formats minutes and plurals', () => {
     expect([fmtMin(5), fmtMin(60), fmtMin(90), fmtMin(125)]).toEqual(['5m', '1h', '1h 30m', '2h 5m']);
     expect([plural(1, 'task'), plural(0, 'task'), plural(3, 'day')]).toEqual(['1 task', '0 tasks', '3 days']);
+  });
+
+  it('spells a length out for a sentence', () => {
+    expect([fmtDuration(1), fmtDuration(45), fmtDuration(59)]).toEqual(['1 min', '45 min', '59 min']);
+    expect([fmtDuration(60), fmtDuration(120), fmtDuration(1440)]).toEqual(['1 h', '2 h', '24 h']); // whole hours: no "0 min"
+    expect([fmtDuration(61), fmtDuration(90), fmtDuration(125), fmtDuration(1439)]).toEqual(['1 h 1 min', '1 h 30 min', '2 h 5 min', '23 h 59 min']);
+  });
+
+  it('labels a time block in the same clock as the reminder time, and is empty without one', () => {
+    const dash = '–'; // an en dash, never a hyphen
+    expect(fmtTimeBlock({ start_time: '09:00', end_time: '10:30' })).toBe(`${fmtClock('09:00')}${dash}${fmtClock('10:30')}`);
+    expect(fmtTimeBlock({ start_time: '09:00', end_time: null })).toBe(`from ${fmtClock('09:00')}`);
+    expect(fmtTimeBlock({ start_time: null, end_time: '17:00' })).toBe(`by ${fmtClock('17:00')}`); // an end alone is a deadline
+    expect(fmtTimeBlock({ start_time: null, end_time: null })).toBe('');
+    // the times come through fmtClock, so a 12h or 24h clock is the viewer's, not ours
+    expect(fmtTimeBlock({ start_time: '13:05', end_time: '23:59' })).toContain(fmtClock('13:05'));
+    expect(fmtTimeBlock({ start_time: '00:00', end_time: '00:01' })).toContain(fmtClock('00:01'));
   });
 
   it('does date math on calendar days across months, years and leap days', () => {

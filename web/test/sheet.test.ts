@@ -90,8 +90,8 @@ describe('sheet: rows and columns', () => {
     await setDay(u.ctx(), 'one-off-task-01', '2026-11-06', { status: 'done' });
     const v = await sheetView(u.ctx(), '2026-11-02', '2026-11-08');
     expect(day(v, '2026-11-06').tasks).toEqual([
-      { id: 'one-off-task-02', title: 'Call Bob', status: 'open', duration_min: 30, alarm_time: '09:00' }, // timed first
-      { id: 'one-off-task-01', title: 'Pay rent', status: 'done', duration_min: 20, alarm_time: null },
+      { id: 'one-off-task-02', title: 'Call Bob', status: 'open', duration_min: 30, alarm_time: '09:00', start_time: null, end_time: null }, // timed first
+      { id: 'one-off-task-01', title: 'Pay rent', status: 'done', duration_min: 20, alarm_time: null, start_time: null, end_time: null },
     ]);
     expect(v.days.flatMap((d) => d.tasks).map((t) => t.id)).not.toContain('one-off-task-03'); // outside the window
   });

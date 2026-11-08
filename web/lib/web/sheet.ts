@@ -2,7 +2,7 @@
 
 import type { CellState, SheetColumn, SheetDay, SheetTask, SheetView } from '../services/sheet';
 import { addMonths, monthStart } from './calendar';
-import { fmtClock, repeatLabel, shiftDate, WEEKDAYS } from './format';
+import { fmtClock, fmtTimeBlock, repeatLabel, shiftDate, WEEKDAYS } from './format';
 
 export type SheetFilter = 'all' | 'incomplete' | 'weekdays';
 
@@ -67,9 +67,20 @@ export const dayName = (day: Pick<SheetDay, 'date' | 'weekday'>): string => `${W
 export const cellLabel = (title: string, day: Pick<SheetDay, 'date' | 'weekday'>, state: CellState): string =>
   `${title}, ${dayName(day)}: ${STATUS_WORD[state]}`;
 
-/** Second header line of a habit column: "6:00 PM · Mon Wed Fri" (either part is left out when it does not apply). */
-export function habitMeta(c: Pick<SheetColumn, 'alarm_time' | 'recur_days'>): string {
-  return [c.alarm_time ? fmtClock(c.alarm_time) : '', repeatLabel({ recur: 'daily', recur_days: c.recur_days })].filter(Boolean).join(' · ');
+/** Accessible name of a one-off task's chip: like cellLabel, with the start time after the title when it has one ("Call Bob at 9:00 AM, Fri 6 Nov: not done"). */
+export const chipLabel = (t: Pick<SheetTask, 'title' | 'start_time'>, day: Pick<SheetDay, 'date' | 'weekday'>, state: CellState): string =>
+  cellLabel(t.start_time ? `${t.title} at ${fmtClock(t.start_time)}` : t.title, day, state);
+
+/** What a one-off task's chip says before its title: the start time ("9:00 AM"), or '' when it has none. */
+export const startPrefix = (t: Pick<SheetTask, 'start_time'>): string => (t.start_time ? fmtClock(t.start_time) : '');
+
+/**
+ * Second header line of a habit column: "6:00 PM–7:00 PM · Mon Wed Fri" (either part is left out when it does not apply).
+ * The time block (start and end, "from 6:00 PM" for a start alone, "by 7:00 PM" for an end alone) wins over the reminder time.
+ */
+export function habitMeta(c: Pick<SheetColumn, 'alarm_time' | 'start_time' | 'end_time' | 'recur_days'>): string {
+  const when = fmtTimeBlock(c) || (c.alarm_time ? fmtClock(c.alarm_time) : '');
+  return [when, repeatLabel({ recur: 'daily', recur_days: c.recur_days })].filter(Boolean).join(' · ');
 }
 
 // ── totals ──────────────────────────────────────────────────────────────────────────────────────

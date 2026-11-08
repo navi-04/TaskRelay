@@ -21,3 +21,9 @@
 node_modules/
 .next/
 .vercel/
+
+# Signing keys and their passwords: never commit (the Play upload key cannot be replaced casually)
+*.jks
+*.keystore
+key.properties
+**/key.properties

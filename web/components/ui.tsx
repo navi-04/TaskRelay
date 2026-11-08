@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { fmtTimeBlock } from '@/lib/web/format';
 
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
@@ -18,6 +19,12 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
       {children && <span>{children}</span>}
     </div>
   );
+}
+
+/** A task's time block as a chip ("9:00 AM–10:30 AM", "from 9:00 AM", "by 5:00 PM"); nothing when it has no start or end time. */
+export function TimeChip({ task }: { task: { start_time: string | null; end_time: string | null } }) {
+  const label = fmtTimeBlock(task);
+  return label ? <span className="chip">{label}</span> : null;
 }
 
 /** Placeholder rows while a list loads. */

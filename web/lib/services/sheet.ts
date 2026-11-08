@@ -16,6 +16,8 @@ export interface SheetColumn {
   title: string;
   duration_min: number;
   alarm_time: string | null;
+  start_time: string | null;
+  end_time: string | null;
   /** 1=Mon..7=Sun, or null = every day. */
   recur_days: number[] | null;
 }
@@ -26,6 +28,8 @@ export interface SheetTask {
   status: CellState;
   duration_min: number;
   alarm_time: string | null;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 export interface SheetDay {
@@ -82,16 +86,16 @@ export async function sheetView(ctx: Ctx, from?: string, to?: string): Promise<S
   const w = window(ctx, from, to);
 
   const cols = await ctx.db.execute({
-    sql: `SELECT id, title, duration_min, alarm_time, due_date, recur, recur_until, recur_days FROM tasks
+    sql: `SELECT id, title, duration_min, alarm_time, start_time, end_time, due_date, recur, recur_until, recur_days FROM tasks
           WHERE user_id = :uid AND deleted_at IS NULL AND recur = 'daily'
             AND due_date <= :to AND (recur_until IS NULL OR recur_until >= :from)
-          ORDER BY (alarm_time IS NULL), alarm_time, created_at, id LIMIT ${MAX_COLUMNS}`,
+          ORDER BY (COALESCE(start_time, alarm_time) IS NULL), COALESCE(start_time, alarm_time), created_at, id LIMIT ${MAX_COLUMNS}`,
     args: { uid: ctx.userId, from: w.from, to: w.to },
   });
   const oneOffs = await ctx.db.execute({
-    sql: `SELECT id, title, duration_min, alarm_time, due_date FROM tasks
+    sql: `SELECT id, title, duration_min, alarm_time, start_time, end_time, due_date FROM tasks
           WHERE user_id = :uid AND deleted_at IS NULL AND recur = 'none' AND due_date BETWEEN :from AND :to
-          ORDER BY due_date, (alarm_time IS NULL), alarm_time, created_at, id LIMIT ${MAX_ONE_OFFS}`,
+          ORDER BY due_date, (COALESCE(start_time, alarm_time) IS NULL), COALESCE(start_time, alarm_time), created_at, id LIMIT ${MAX_ONE_OFFS}`,
     args: { uid: ctx.userId, from: w.from, to: w.to },
   });
   const marks = await ctx.db.execute({
@@ -117,12 +121,16 @@ export async function sheetView(ctx: Ctx, from?: string, to?: string): Promise<S
     recur_days: r.recur_days == null ? null : Number(r.recur_days),
     duration_min: Number(r.duration_min),
     alarm_time: r.alarm_time == null ? null : String(r.alarm_time),
+    start_time: r.start_time == null ? null : String(r.start_time),
+    end_time: r.end_time == null ? null : String(r.end_time),
   }));
   const columns: SheetColumn[] = habits.map((h) => ({
     task_id: h.id,
     title: h.title,
     duration_min: h.duration_min,
     alarm_time: h.alarm_time,
+    start_time: h.start_time,
+    end_time: h.end_time,
     recur_days: maskToDays(h.recur_days),
   }));
 
@@ -141,6 +149,8 @@ export async function sheetView(ctx: Ctx, from?: string, to?: string): Promise<S
       status: stateOf(rows.get(id)?.get(date)),
       duration_min: Number(r.duration_min),
       alarm_time: r.alarm_time == null ? null : String(r.alarm_time),
+      start_time: r.start_time == null ? null : String(r.start_time),
+      end_time: r.end_time == null ? null : String(r.end_time),
     });
     byDate.set(date, list);
   }

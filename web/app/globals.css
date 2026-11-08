@@ -257,6 +257,7 @@ body:has(.sheet-page) .topbar { max-width: 1200px; }
 .sheet .c-tasks { min-width: 200px; white-space: normal; }
 .sheet-tasks { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 0; }
 .sheet button.pill { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 2px 10px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; text-align: left; }
+.sheet .pill .t-time { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; } /* start time: the chip reads "9:00 AM Call Bob" */
 .sheet .pill .t-title { overflow-wrap: anywhere; }
 .sheet .pill .t-min { font-weight: 500; }
 

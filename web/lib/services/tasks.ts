@@ -3,6 +3,7 @@ import type { Ctx } from '../ctx';
 import { badRequest, conflict, notFound, unprocessable } from '../errors';
 import { daysToMask, firstOccurrence, maskToDays, occursOn, occursSql, type Recurring } from '../recurrence';
 import { addDays, dateOf, todayFor } from '../time';
+import { minutesBetween } from '../timeblock';
 import type { DayPut, TaskCreate, TaskPatch } from '../validation';
 import { auditStatements } from './activity';
 import { assertOwnedLabel } from './labels';
@@ -17,6 +18,9 @@ export interface TaskDto {
   priority_id: string | null;
   due_date: string;
   alarm_time: string | null;
+  /** Optional time block (HH:mm, local). With both set, duration_min is their difference. */
+  start_time: string | null;
+  end_time: string | null;
   reminder_kind: 'alarm' | 'notification';
   recur: 'none' | 'daily';
   recur_until: string | null;
@@ -38,7 +42,7 @@ export interface TaskDto {
 }
 
 export const TASK_COLS =
-  't.id, t.title, t.notes, t.duration_min, t.type_id, t.priority_id, t.due_date, t.alarm_time, t.reminder_kind, t.recur, t.recur_until, t.recur_days, t.created_at, t.updated_at, t.updated_by';
+  't.id, t.title, t.notes, t.duration_min, t.type_id, t.priority_id, t.due_date, t.alarm_time, t.start_time, t.end_time, t.reminder_kind, t.recur, t.recur_until, t.recur_days, t.created_at, t.updated_at, t.updated_by';
 /** Needs `td` (task_days) and `f` (day_focus) joined for the day being viewed. */
 export const DAY_COLS =
   'td.status AS day_status, td.note AS day_note, td.completed_at AS day_completed_at, td.updated_by AS day_updated_by, f.position AS top_position';
@@ -59,6 +63,8 @@ export function toTaskDto(r: Row, date: string): TaskDto {
     priority_id: str(r.priority_id),
     due_date: String(r.due_date),
     alarm_time: str(r.alarm_time),
+    start_time: str(r.start_time),
+    end_time: str(r.end_time),
     reminder_kind: String(r.reminder_kind) as TaskDto['reminder_kind'],
     recur: String(r.recur) as TaskDto['recur'],
     recur_until: str(r.recur_until),
@@ -105,7 +111,7 @@ export async function listTasksForDate(ctx: Ctx, date: string): Promise<TaskDto[
             AND ${occursSql('t', ':d')}
             AND COALESCE(td.status, 'open') <> 'skipped'
           ORDER BY COALESCE(td.status = 'done', 0), (p.sort_order IS NULL), p.sort_order DESC,
-                   (t.alarm_time IS NULL), t.alarm_time, t.created_at, t.id`,
+                   (COALESCE(t.start_time, t.alarm_time) IS NULL), COALESCE(t.start_time, t.alarm_time), t.created_at, t.id`,
     args: { d: date, uid: ctx.userId },
   });
   return rs.rows.map((r) => toTaskDto(r, date));
@@ -203,16 +209,18 @@ export async function createTask(ctx: Ctx, input: TaskCreate): Promise<TaskDto> 
   }
 
   const now = ctx.now().toISOString();
+  // A task with a start and an end takes exactly that long; otherwise the caller's estimate (default 30 min) stands.
+  const duration = input.start_time && input.end_time ? minutesBetween(input.start_time, input.end_time) : (input.duration_min ?? 30);
   const [rs] = await writeBatch(ctx, [
     {
       sql: `INSERT INTO tasks (id, user_id, title, notes, duration_min, type_id, priority_id, due_date, alarm_time,
-                               reminder_kind, recur, recur_until, recur_days, created_at, updated_at, updated_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               start_time, end_time, reminder_kind, recur, recur_until, recur_days, created_at, updated_at, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO NOTHING`,
       args: [
-        id, ctx.userId, input.title, input.notes ?? null, input.duration_min, input.type_id ?? null,
-        input.priority_id ?? null, input.due_date, input.alarm_time ?? null, input.reminder_kind, input.recur,
-        recurring.recur_until, recurring.recur_days, now, now, ctx.actor,
+        id, ctx.userId, input.title, input.notes ?? null, duration, input.type_id ?? null,
+        input.priority_id ?? null, input.due_date, input.alarm_time ?? null, input.start_time ?? null, input.end_time ?? null,
+        input.reminder_kind, input.recur, recurring.recur_until, recurring.recur_days, now, now, ctx.actor,
       ],
     },
     ...auditStatements(ctx, 'created', { id, title: input.title }, input.due_date),
@@ -242,6 +250,20 @@ export async function updateTask(ctx: Ctx, id: string, patch: TaskPatch): Promis
     merged.recur_days = null;
   }
   assertRecurrence(merged);
+
+  // Time block: the stored value fills in whichever side the request leaves out.
+  const startTime = patch.start_time !== undefined ? patch.start_time : str(old.start_time);
+  const endTime = patch.end_time !== undefined ? patch.end_time : str(old.end_time);
+  let duration = patch.duration_min;
+  if (startTime && endTime) {
+    if (endTime <= startTime) throw unprocessable('End time must be after the start time', 'invalid_time_range');
+    const span = minutesBetween(startTime, endTime);
+    if (patch.start_time !== undefined || patch.end_time !== undefined) duration = span;
+    else if (duration !== undefined && duration !== span) {
+      throw unprocessable(`This task has a start and an end time, so it takes ${span} min. Change the times instead.`, 'duration_follows_times');
+    }
+  }
+  const changes: TaskPatch = duration === undefined ? patch : { ...patch, duration_min: duration };
   if (patch.type_id !== undefined) await assertOwnedLabel(ctx, patch.type_id, 'type');
   if (patch.priority_id !== undefined) await assertOwnedLabel(ctx, patch.priority_id, 'priority');
 
@@ -258,11 +280,11 @@ export async function updateTask(ctx: Ctx, id: string, patch: TaskPatch): Promis
 
   const sets = ['updated_at = ?', 'updated_by = ?'];
   const args: Array<string | number | null> = [ctx.now().toISOString(), ctx.actor];
-  const columns = ['title', 'notes', 'duration_min', 'type_id', 'priority_id', 'due_date', 'alarm_time', 'reminder_kind', 'recur'] as const;
+  const columns = ['title', 'notes', 'duration_min', 'type_id', 'priority_id', 'due_date', 'alarm_time', 'start_time', 'end_time', 'reminder_kind', 'recur'] as const;
   for (const c of columns) {
-    if (patch[c] !== undefined) {
+    if (changes[c] !== undefined) {
       sets.push(`${c} = ?`);
-      args.push(patch[c] as string | number | null);
+      args.push(changes[c] as string | number | null);
     }
   }
   sets.push('recur_until = ?', 'recur_days = ?');

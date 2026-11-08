@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { fmtMin, fmtMonth, WEEKDAYS } from '@/lib/web/format';
-import { cellLabel, filterDays, habitMeta, isFullDay, isMissedDay, isTogglable, pctText, shortDate, type SheetFilter } from '@/lib/web/sheet';
+import { cellLabel, chipLabel, filterDays, habitMeta, isFullDay, isMissedDay, isTogglable, pctText, shortDate, startPrefix, type SheetFilter } from '@/lib/web/sheet';
 import type { CellState, SheetView } from '@/lib/services/sheet';
 
 export interface ToggleTarget {
@@ -116,10 +116,11 @@ export default function SheetTable({ view, filter, onToggle, scrollSignal }: Pro
                         key={t.id}
                         className="pill"
                         aria-pressed={t.status === 'done'}
-                        aria-label={cellLabel(t.title, d, t.status)}
+                        aria-label={chipLabel(t, d, t.status)}
                         onClick={() => onToggle({ id: t.id, title: t.title, date: d.date, weekday: d.weekday }, t.status)}
                       >
                         <span aria-hidden="true">{PILL[t.status]}</span>
+                        {t.start_time && <span className="t-time">{startPrefix(t)}</span>}
                         <span className="t-title">{t.title}</span>
                         <span className="t-min">{fmtMin(t.duration_min)}</span>
                       </button>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import Shell from '@/components/Shell';
-import { EmptyState, ErrorBanner, Skeleton } from '@/components/ui';
+import { EmptyState, ErrorBanner, Skeleton, TimeChip } from '@/components/ui';
 import { api, errorMessage } from '@/lib/web/api';
 import { fmtDay, fmtMin, repeatLabel } from '@/lib/web/format';
 import type { TaskDto } from '@/lib/services/tasks';
@@ -89,6 +89,7 @@ function Search() {
                 <div className="title">{t.title}</div>
                 <div>
                   <span className="chip">{fmtDay(t.due_date)}</span>
+                  <TimeChip task={t} />
                   <span className="chip">{t.status === 'done' ? '✓ done' : t.status === 'skipped' ? 'skipped' : 'open'}</span>
                   <span className="chip">{fmtMin(t.duration_min)}</span>
                   {t.recur !== 'none' && <span className="chip">↻ {repeatLabel(t)}</span>}

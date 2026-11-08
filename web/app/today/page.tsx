@@ -8,7 +8,7 @@ import TaskForm from '@/components/TaskForm';
 import TaskRow from '@/components/TaskRow';
 import { EmptyState, ErrorBanner, ProgressRing, Skeleton } from '@/components/ui';
 import { api, errorMessage } from '@/lib/web/api';
-import { fmtDay, fmtMin, plural, shiftDate } from '@/lib/web/format';
+import { fmtDay, fmtMin, fmtTimeBlock, plural, shiftDate } from '@/lib/web/format';
 import { useApi } from '@/lib/web/hooks';
 import type { HabitDto } from '@/lib/services/habits';
 import type { LabelDto } from '@/lib/services/labels';
@@ -208,7 +208,7 @@ function Today() {
             <div className="task" key={t.id}>
               <div className="body">
                 <div className="title">{t.title}</div>
-                <div className="muted small">was due {fmtDay(t.due_date)} · {fmtMin(t.duration_min)}</div>
+                <div className="muted small">{[`was due ${fmtDay(t.due_date)}`, fmtTimeBlock(t), fmtMin(t.duration_min)].filter(Boolean).join(' · ')}</div>
               </div>
               <button className="icon" aria-label={`Edit: ${t.title}`} disabled={busy} onClick={() => setForm({ task: t })}>✎</button>
               <button className="icon" aria-label={`Delete: ${t.title}`} disabled={busy} onClick={() => remove(t)}>✕</button>

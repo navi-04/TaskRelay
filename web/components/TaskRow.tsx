@@ -5,6 +5,7 @@ import type { LabelDto } from '@/lib/services/labels';
 import type { TaskDto } from '@/lib/services/tasks';
 import { fmtClock, fmtMin, repeatLabel } from '@/lib/web/format';
 import HabitDots from './HabitDots';
+import { TimeChip } from './ui';
 
 const RECENT_MS = 48 * 3_600_000;
 
@@ -43,6 +44,7 @@ export default function TaskRow({ task: t, priority, habit, busy, canStar, onTog
       <div className="body">
         <div className="title">{t.title}</div>
         <div>
+          <TimeChip task={t} />
           <span className="chip">{fmtMin(t.duration_min)}</span>
           {t.alarm_time && <span className="chip">{t.reminder_kind === 'alarm' ? 'Alarm' : 'Reminder'} {fmtClock(t.alarm_time)}</span>}
           {t.recur !== 'none' && <span className="chip">↻ {repeatLabel(t)}</span>}

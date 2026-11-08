@@ -38,6 +38,26 @@ export function fmtClock(hhmm: string): string {
   return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+/**
+ * A task's time block as one compact label, in the same clock as its reminder time:
+ * "9:00 AM–10:30 AM" (start and end), "from 9:00 AM" (a start alone), "by 5:00 PM" (an end alone is a deadline).
+ * '' when the task has neither.
+ */
+export function fmtTimeBlock(t: { start_time: string | null; end_time: string | null }): string {
+  if (t.start_time && t.end_time) return `${fmtClock(t.start_time)}–${fmtClock(t.end_time)}`;
+  if (t.start_time) return `from ${fmtClock(t.start_time)}`;
+  if (t.end_time) return `by ${fmtClock(t.end_time)}`;
+  return '';
+}
+
+/** "45 min", "2 h" or "1 h 30 min": a length spelled out for a sentence (fmtMin is the compact form used on chips). */
+export function fmtDuration(m: number): string {
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  if (h === 0) return `${rest} min`;
+  return rest === 0 ? `${h} h` : `${h} h ${rest} min`;
+}
+
 /** Pluralise: plural(1, 'task') -> "1 task"; plural(3, 'task') -> "3 tasks". */
 export const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 

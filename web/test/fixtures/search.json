@@ -9,6 +9,8 @@
       "priority_id": null,
       "due_date": "2026-11-06",
       "alarm_time": null,
+      "start_time": "14:00",
+      "end_time": null,
       "reminder_kind": "alarm",
       "recur": "none",
       "recur_until": null,

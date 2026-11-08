@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { SheetView } from '../lib/services/sheet';
+import { fmtClock } from '../lib/web/format';
 import {
   cellLabel,
+  chipLabel,
   dayName,
   dayTotals,
   filterDays,
@@ -19,6 +21,7 @@ import {
   prevMonth,
   sheetPath,
   shortDate,
+  startPrefix,
   withStatus,
 } from '../lib/web/sheet';
 
@@ -141,8 +144,45 @@ describe('sheet text', () => {
     const [gym, meditate] = sheet.columns;
     expect(habitMeta(gym)).toContain('Mon Wed Fri');
     expect(habitMeta(gym).split(' · ')).toHaveLength(2); // a time and the days
-    expect(habitMeta(meditate)).toBe('Every day'); // no alarm time: just the days
-    expect(habitMeta({ alarm_time: null, recur_days: [1, 2, 3, 4, 5] })).toBe('Weekdays');
+    expect(habitMeta(meditate)).toBe('Every day'); // no times at all: just the days
+    expect(habitMeta({ alarm_time: null, start_time: null, end_time: null, recur_days: [1, 2, 3, 4, 5] })).toBe('Weekdays');
+  });
+
+  it('shows a habit column\'s time block in its header, in preference to the reminder time', () => {
+    const [gym] = sheet.columns; // reminder 17:45, block 18:00 to 19:00, Mon Wed Fri
+    expect([gym.alarm_time, gym.start_time, gym.end_time]).toEqual(['17:45', '18:00', '19:00']);
+    expect(habitMeta(gym)).toBe(`${fmtClock('18:00')}–${fmtClock('19:00')} · Mon Wed Fri`); // an en dash
+    expect(habitMeta(gym)).not.toContain(fmtClock('17:45')); // the reminder is not shown next to a block
+  });
+
+  it('covers every way a header can be timed: block, start only, end only (a deadline), reminder only, nothing', () => {
+    const col = (alarm_time: string | null, start_time: string | null, end_time: string | null) => ({ alarm_time, start_time, end_time, recur_days: null });
+    expect(habitMeta(col(null, '09:00', '10:30'))).toBe(`${fmtClock('09:00')}–${fmtClock('10:30')} · Every day`);
+    expect(habitMeta(col('08:45', '09:00', '10:30'))).toBe(`${fmtClock('09:00')}–${fmtClock('10:30')} · Every day`); // block beats the reminder
+    expect(habitMeta(col('08:45', '09:00', null))).toBe(`from ${fmtClock('09:00')} · Every day`); // a start alone also beats it
+    expect(habitMeta(col('16:30', null, '17:00'))).toBe(`by ${fmtClock('17:00')} · Every day`); // so does an end alone
+    expect(habitMeta(col('06:00', null, null))).toBe(`${fmtClock('06:00')} · Every day`); // no block: the reminder time, as before
+    expect(habitMeta(col(null, null, null))).toBe('Every day'); // nothing: just the days
+    expect(habitMeta({ ...col(null, '07:00', '07:30'), recur_days: [6, 7] })).toBe(`${fmtClock('07:00')}–${fmtClock('07:30')} · Weekends`);
+  });
+
+  it('prefixes a one-off task\'s chip with its start time, and says so to a screen reader', () => {
+    const fri = day('2026-11-06');
+    const sat = day('2026-11-07');
+    const standup = fri.tasks.find((t) => t.id === 'fx-task-standup')!; // 09:30 to 09:45
+    const report = fri.tasks.find((t) => t.id === 'fx-task-report')!; // from 14:00, no end
+    const bug = sat.tasks[0]; // no times
+    expect([standup.start_time, report.start_time, report.end_time, bug.start_time]).toEqual(['09:30', '14:00', null, null]);
+
+    expect(startPrefix(standup)).toBe(fmtClock('09:30'));
+    expect(startPrefix(report)).toBe(fmtClock('14:00'));
+    expect(startPrefix(bug)).toBe(''); // no start time: nothing before the title
+    expect(startPrefix({ start_time: null })).toBe('');
+
+    expect(chipLabel(standup, fri, 'open')).toBe(`Team standup at ${fmtClock('09:30')}, Fri 6 Nov: not done`);
+    expect(chipLabel(report, fri, 'done')).toBe(`Write quarterly report at ${fmtClock('14:00')}, Fri 6 Nov: done`);
+    expect(chipLabel(bug, sat, 'skipped')).toBe('Fix login bug, Sat 7 Nov: skipped'); // unchanged without a start
+    expect(chipLabel(bug, sat, 'open')).toBe(cellLabel(bug.title, sat, 'open'));
   });
 });
 
@@ -171,7 +211,7 @@ describe('sheet totals', () => {
     expect(dayTotals({}, [])).toEqual({ planned: 0, done: 0, pct: null });
     expect(dayTotals({ a: 'done', b: 'open', c: 'skipped' }, [])).toEqual({ planned: 2, done: 1, pct: 50 });
     expect(dayTotals({ a: 'skipped' }, [])).toEqual({ planned: 0, done: 0, pct: null });
-    expect(dayTotals({ a: 'done' }, [{ id: 't', title: 'T', status: 'open', duration_min: 5, alarm_time: null }])).toEqual({ planned: 2, done: 1, pct: 50 });
+    expect(dayTotals({ a: 'done' }, [{ id: 't', title: 'T', status: 'open', duration_min: 5, alarm_time: null, start_time: null, end_time: null }])).toEqual({ planned: 2, done: 1, pct: 50 });
     expect(dayTotals({ a: 'done', b: 'done', c: 'open' }, [])).toEqual({ planned: 3, done: 2, pct: 67 });
   });
 

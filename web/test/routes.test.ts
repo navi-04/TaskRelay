@@ -76,19 +76,19 @@ describe('task lifecycle through the API', () => {
     const created = await newTask(token, { id: 'task-route-0001', recur: 'daily' });
     expect(created.status).toBe(201);
 
-    const day = await call(tasks.GET, 'GET', '/api/v1/tasks?date=2026-11-08', { token });
+    const day = await call(tasks.GET, 'GET', '/api/v1/tasks?date=2031-03-10', { token });
     expect(day.status).toBe(200);
     expect(day.body.tasks.map((t: { id: string }) => t.id)).toEqual(['task-route-0001']);
-    expect(day.body).toMatchObject({ date: '2026-11-08', summary: { planned: 1, done: 0 } });
+    expect(day.body).toMatchObject({ date: '2031-03-10', summary: { planned: 1, done: 0 } });
     expect(day.body.overdue).toBeUndefined(); // only for today
 
-    const done = await call(taskDay.PUT, 'PUT', '/api/v1/tasks/task-route-0001/days/2026-11-08', { token, body: { status: 'done' } }, { id: 'task-route-0001', date: '2026-11-08' });
+    const done = await call(taskDay.PUT, 'PUT', '/api/v1/tasks/task-route-0001/days/2031-03-10', { token, body: { status: 'done' } }, { id: 'task-route-0001', date: '2031-03-10' });
     expect(done.body.status).toBe('done');
 
-    const s = await call(stats.GET, 'GET', '/api/v1/stats?from=2026-11-06&to=2026-11-09', { token });
+    const s = await call(stats.GET, 'GET', '/api/v1/stats?from=2031-03-07&to=2031-03-10', { token });
     expect(s.status).toBe(200);
     expect(s.body.days).toHaveLength(4);
-    expect(s.body.days.find((d: { date: string }) => d.date === '2026-11-08')).toMatchObject({ planned: 1, done: 1 });
+    expect(s.body.days.find((d: { date: string }) => d.date === '2031-03-10')).toMatchObject({ planned: 1, done: 1 });
   });
 
   it('posting the same id twice is safe', async () => {

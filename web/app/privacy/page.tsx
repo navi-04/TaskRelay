@@ -9,7 +9,7 @@ export default function Privacy() {
     <main style={{ maxWidth: 720, paddingTop: 24 }}>
       <p><Link href="/">← TaskRelay</Link></p>
       <h1>Privacy policy</h1>
-      <p className="muted">Last updated: November 2026</p>
+      <p className="muted">Last updated: <time dateTime="2026-11-08">8 November 2026</time></p>
 
       <p>
         TaskRelay is a personal task and habit tracker (Android app and website) made by an independent developer. This page explains, in plain
@@ -19,13 +19,15 @@ export default function Privacy() {
       <h2>What we store</h2>
       <ul>
         <li><strong>Account:</strong> your email address and your password. The password is never stored as text, only as a salted hash that cannot be turned back into the password.</li>
-        <li><strong>Your content:</strong> the tasks, notes, repeat settings, reminder times, types, priorities and daily-limit settings you create, plus whether each task was done and when.</li>
+        <li><strong>Your content:</strong> the tasks, notes, repeat settings, reminder times, start and end times, types, priorities and daily-limit settings you create, plus whether each task was done and when.</li>
         <li><strong>Technical data:</strong> your timezone (so “today” is right), sign-in sessions, and a private access ID if you use the Claude feature.</li>
         <li><strong>AI change log:</strong> if you let an AI assistant change your tasks, the last 200 of those changes (what changed and when), so you can see and undo them.</li>
+        <li><strong>Only on your phone (optional app blocker):</strong> if you turn on the Android app blocker, the list of apps you chose to block and your blocking rules. These stay on your phone and are never sent to us.</li>
       </ul>
       <p>
         We do <strong>not</strong> collect your location, contacts, photos or advertising identifiers, and the app has no ads and no analytics or
-        tracking SDKs. The Android app asks for notification and alarm permissions only to ring your reminders.
+        tracking SDKs. The Android app asks for notification and alarm permissions only to ring your reminders. The optional app blocker also needs
+        Android’s Accessibility Service, which only you can switch on (see “App blocker (Android)” below).
       </p>
 
       <h2>Where it is stored</h2>
@@ -41,6 +43,18 @@ export default function Privacy() {
         change your tasks, and then that assistant’s own privacy policy applies. Treat the link like a password: you can switch it off or replace it at any time in
         Profile, and the old link stops working immediately.
       </p>
+
+      <h2>App blocker (Android)</h2>
+      <p>
+        The Android app has an optional app blocker. It is <strong>off by default</strong>: nothing happens unless you turn it on and switch on TaskRelay in
+        Android’s Accessibility settings yourself.
+      </p>
+      <ul>
+        <li>It uses Android’s <strong>Accessibility Service</strong> solely to detect which app you open, so TaskRelay can show a block screen for the apps <em>you</em> chose.</li>
+        <li>It does <strong>not</strong> read the content of any screen, your keystrokes, passwords or messages.</li>
+        <li>The list of blocked apps and your blocking rules are stored <strong>only on your phone</strong>. They are never sent to TaskRelay’s servers or to anyone else.</li>
+        <li>You can turn it off at any time, in TaskRelay or in Android Settings → Accessibility.</li>
+      </ul>
 
       <h2>How long we keep it, and deleting it</h2>
       <ul>

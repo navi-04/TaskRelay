@@ -8,9 +8,13 @@ export const SYNC_DEFAULT_DAYS = 14;
 export const SYNC_MAX_DAYS = 14;
 const ALARM_CAP = 200;
 const TODAY_TASKS_CAP = 25;
+const TODAY_BLOCKS_CAP = 50;
 
-/** Changes only when something the phone can see changes (see data_version), the day rolls over, or the window changes. */
-export const syncEtag = (dataVersion: number, today: string, days: number) => `W/"${dataVersion}.${today}.${days}"`;
+/** Bump when the feed gains or changes fields: a phone holding an ETag from the old shape must refetch instead of getting a 304. */
+const FEED_SHAPE = 2;
+
+/** Changes only when something the phone can see changes (see data_version), the day rolls over, the window changes, or the feed shape does. */
+export const syncEtag = (dataVersion: number, today: string, days: number) => `W/"${dataVersion}.${today}.${days}.${FEED_SHAPE}"`;
 
 export interface SyncFeed {
   version: string;
@@ -25,6 +29,8 @@ export interface SyncFeed {
     top: string[];
     /** Up to 25 tasks, Top 3 first, for the home-screen widget. */
     tasks: Array<{ id: string; title: string; status: 'open' | 'done'; is_top: boolean; duration_min: number }>;
+    /** Today's tasks that have a start time, earliest first (up to 50): the slots the app blocker keeps free of distractions. */
+    blocks: Array<{ id: string; title: string; start_time: string; end_time: string | null; duration_min: number; status: 'open' | 'done' }>;
   };
   window: { from: string; to: string; /** Alarms after this date are not authoritative (the list was capped). */ covered_until: string; truncated: boolean };
   alarms: Array<{ task_id: string; date: string; time: string; title: string; kind: 'alarm' | 'notification'; duration_min: number }>;
@@ -80,6 +86,18 @@ export async function buildSync(ctx: Ctx, days: number, version: string): Promis
         is_top: t.top_position != null,
         duration_min: t.duration_min,
       })),
+      blocks: todayTasks
+        .filter((t) => t.start_time != null)
+        .sort((a, b) => a.start_time!.localeCompare(b.start_time!) || a.id.localeCompare(b.id))
+        .slice(0, TODAY_BLOCKS_CAP)
+        .map((t) => ({
+          id: t.id,
+          title: t.title,
+          start_time: t.start_time!,
+          end_time: t.end_time,
+          duration_min: t.duration_min,
+          status: t.status === 'done' ? 'done' : 'open',
+        })),
     },
     window: { from: today, to, covered_until: truncated ? alarms[alarms.length - 1].date : to, truncated },
     alarms,

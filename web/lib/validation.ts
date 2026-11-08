@@ -22,26 +22,39 @@ const taskFields = {
   priority_id: idStr.nullable(),
   due_date: dateStr,
   alarm_time: timeStr.nullable(),
+  /** Optional time block: when the task starts and ends (HH:mm, local). With both set, duration_min follows them. */
+  start_time: timeStr.nullable(),
+  end_time: timeStr.nullable(),
   reminder_kind: z.enum(['alarm', 'notification']),
   recur: z.enum(['none', 'daily']),
   recur_until: dateStr.nullable(),
   recur_days: recurDays.nullable(),
 };
 
-export const taskCreate = z.strictObject({
-  id: idStr.optional(),
-  title: taskFields.title,
-  notes: taskFields.notes.optional(),
-  duration_min: taskFields.duration_min.default(30),
-  type_id: taskFields.type_id.optional(),
-  priority_id: taskFields.priority_id.optional(),
-  due_date: taskFields.due_date,
-  alarm_time: taskFields.alarm_time.optional(),
-  reminder_kind: taskFields.reminder_kind.default('alarm'),
-  recur: taskFields.recur.default('none'),
-  recur_until: taskFields.recur_until.optional(),
-  recur_days: taskFields.recur_days.optional(),
-});
+/** A block never crosses midnight: when both times are given the end must be after the start. */
+export const endAfterStart = (o: { start_time?: string | null; end_time?: string | null }) =>
+  !o.start_time || !o.end_time || o.end_time > o.start_time;
+const END_AFTER_START = { message: 'End time must be after the start time', path: ['end_time'] };
+
+export const taskCreate = z
+  .strictObject({
+    id: idStr.optional(),
+    title: taskFields.title,
+    notes: taskFields.notes.optional(),
+    // No default here: the service needs to know whether the caller chose a duration (it is derived from start/end when both are set).
+    duration_min: taskFields.duration_min.optional(),
+    type_id: taskFields.type_id.optional(),
+    priority_id: taskFields.priority_id.optional(),
+    due_date: taskFields.due_date,
+    alarm_time: taskFields.alarm_time.optional(),
+    start_time: taskFields.start_time.optional(),
+    end_time: taskFields.end_time.optional(),
+    reminder_kind: taskFields.reminder_kind.default('alarm'),
+    recur: taskFields.recur.default('none'),
+    recur_until: taskFields.recur_until.optional(),
+    recur_days: taskFields.recur_days.optional(),
+  })
+  .refine(endAfterStart, END_AFTER_START);
 export type TaskCreate = z.infer<typeof taskCreate>;
 
 export const taskPatch = z
@@ -53,13 +66,17 @@ export const taskPatch = z
     priority_id: taskFields.priority_id,
     due_date: taskFields.due_date,
     alarm_time: taskFields.alarm_time,
+    start_time: taskFields.start_time,
+    end_time: taskFields.end_time,
     reminder_kind: taskFields.reminder_kind,
     recur: taskFields.recur,
     recur_until: taskFields.recur_until,
     recur_days: taskFields.recur_days,
   })
   .partial()
-  .refine((o) => Object.keys(o).length > 0, 'Provide at least one field to change');
+  .refine((o) => Object.keys(o).length > 0, 'Provide at least one field to change')
+  // Only checkable here when the request carries both; the service re-checks against the stored value for a one-sided change.
+  .refine(endAfterStart, END_AFTER_START);
 export type TaskPatch = z.infer<typeof taskPatch>;
 
 export const dayPut = z.strictObject({

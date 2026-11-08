@@ -123,7 +123,7 @@ describe('sync feed', () => {
   });
 
   it('the ETag depends on version, day and window only', () => {
-    expect(syncEtag(7, '2026-11-06', 14)).toBe('W/"7.2026-11-06.14"');
+    expect(syncEtag(7, '2026-11-06', 14)).toBe('W/"7.2026-11-06.14.2"');
     expect(syncEtag(8, '2026-11-06', 14)).not.toBe(syncEtag(7, '2026-11-06', 14));
     expect(syncEtag(7, '2026-11-07', 14)).not.toBe(syncEtag(7, '2026-11-06', 14));
   });

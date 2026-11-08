@@ -140,7 +140,7 @@ describe('the phone feed (/sync)', () => {
     const first = await v1(a, sync.GET, 'GET', '/api/v1/sync?days=14');
     expect(first.status).toBe(200);
     const etag = first.headers.get('etag')!;
-    expect(etag).toMatch(/^W\/"\d+\.\d{4}-\d{2}-\d{2}\.14"$/);
+    expect(etag).toMatch(/^W\/"\d+\.\d{4}-\d{2}-\d{2}\.14\.\d+"$/);
     expect(first.body).toMatchObject({ version: etag, window: { truncated: false }, today: { planned: 1 } });
     expect(first.body.alarms.map((x: { task_id: string }) => x.task_id)).toEqual(['sync-task-0001']);
 
