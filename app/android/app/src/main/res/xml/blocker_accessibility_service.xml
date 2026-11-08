@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App blocker. As little access as the feature can work with:
+       - one event type: a window came to the front (only its package name is used);
+       - no window content, no gestures, no interactive-window list, no view ids, no key events;
+       - not declared as an accessibility tool (it is not one: it is a focus aid the user chooses to switch on). -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/blocker_service_description"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canRetrieveWindowContent="false"
+    android:canPerformGestures="false"
+    android:notificationTimeout="100" />

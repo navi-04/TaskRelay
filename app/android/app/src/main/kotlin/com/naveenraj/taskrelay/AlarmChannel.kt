@@ -23,12 +23,14 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Dart -> native: getSession, setSession, clearSession, syncNow, requestSync, getSyncStatus, getPermissionStatus,
  *   requestNotificationPermission, openExactAlarmSettings, openFullScreenIntentSettings, openNotificationSettings, getTimeZone,
- *   getAppVersion, getInitialShare, getLaunchAction, refreshWidget.
+ *   getAppVersion, getInitialShare, getLaunchAction, refreshWidget, and the app blocker's blockerGetConfig, blockerSetConfig,
+ *   blockerStatus, blockerListApps, blockerAppIcon, blockerOpenAccessibilitySettings (implemented by [BlockerChannel]).
  * native -> Dart (via [DartBridge], only while the engine exists): onShare, onActionsChanged, onSyncFinished.
  */
 class AlarmChannel(private val activity: Activity, messenger: BinaryMessenger) : MethodChannel.MethodCallHandler {
     private val app = activity.applicationContext
     private val channel = MethodChannel(messenger, NAME)
+    private val blocker = BlockerChannel(app)
     private val syncExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "taskrelay-sync").apply { isDaemon = true } }
     private val notificationWaiters = mutableListOf<MethodChannel.Result>()
 
@@ -130,6 +132,36 @@ class AlarmChannel(private val activity: Activity, messenger: BinaryMessenger) :
                     result.success(true)
                 }
 
+                // ── app blocker (device-local settings; see BlockerChannel) ──
+                "blockerGetConfig" -> async(result) { blocker.getConfig() }
+
+                "blockerSetConfig" -> {
+                    val args = call.arguments as? Map<*, *>
+                    if (args == null) {
+                        result.error("invalid_argument", "a blocker config map is required", null)
+                        return
+                    }
+                    async(result) { blocker.setConfig(args) }
+                }
+
+                "blockerStatus" -> async(result) { blocker.status() }
+
+                "blockerListApps" -> async(result) { blocker.listApps() }
+
+                "blockerAppIcon" -> {
+                    val pkg = (call.arguments as? String) ?: call.argument<String>("package") // a bare string or {package}
+                    if (pkg.isNullOrBlank()) {
+                        result.error("invalid_argument", "a package name is required", null)
+                        return
+                    }
+                    async(result) { blocker.appIcon(pkg) }
+                }
+
+                "blockerOpenAccessibilitySettings" -> {
+                    open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS), appDetails())
+                    result.success(true)
+                }
+
                 else -> result.notImplemented()
             }
         } catch (t: Throwable) {
@@ -196,7 +228,7 @@ class AlarmChannel(private val activity: Activity, messenger: BinaryMessenger) :
     }
 
     /**
-     * Sign-out: no work, alarm, reminder, snooze, notification, log line or cached task may survive. Waits (briefly) for an
+     * Sign-out: no work, alarm, reminder, snooze, notification, log line, cached task or blocker setting may survive. Waits (briefly) for an
      * in-flight sync so it cannot re-arm alarms after they were wiped; the session goes first, so a later run does nothing.
      */
     private fun clearSession() {
@@ -212,6 +244,8 @@ class AlarmChannel(private val activity: Activity, messenger: BinaryMessenger) :
             AlarmScheduler.cancelAll(app) // every armed alarm / reminder / snooze, and the AlarmStore
             Stores.actionLog(app).clear()
             Stores.todayCache(app).clear()
+            Stores.blockerStore(app).clear() // the blocked-app list and modes are the user's data too
+            BlockerAccessibilityService.reevaluate(app) // the blocker is off now: take a block screen down if one is up
             Notifications.cancelAll(app)
             TodayWidgetProvider.refreshAll(app) // signed-out state
         } finally {

@@ -18,8 +18,9 @@ object AlarmActions {
      *  2. stop the ring / remove the notification for that key
      *  3. mark done in TodayCache (+ pending overlay) and cancel the task's other armed alarms for that day
      *  4. refresh the widget
-     *  5. enqueue a one-time sync
-     *  6. ping Dart (`onActionsChanged`) if the engine is alive
+     *  5. re-check the app blocker (it reads the cache that step 3 just updated)
+     *  6. enqueue a one-time sync
+     *  7. ping Dart (`onActionsChanged`) if the engine is alive
      * [key] is the ringing entry's key, or null when the tap came from the widget.
      */
     fun complete(ctx: Context, key: String?, taskId: String, date: String, tapMs: Long = System.currentTimeMillis()) {
@@ -45,6 +46,7 @@ object AlarmActions {
         step("today cache") { Stores.todayCache(app).markDone(taskId, date) }
         step("cancel task alarms") { AlarmScheduler.removeTaskDay(app, taskId, date) }
         step("widget") { TodayWidgetProvider.refreshAll(app) }
+        step("app blocker") { BlockerAccessibilityService.reevaluate(app) } // the last task may just have been done: unblock at once
         step("enqueue sync") { SyncWorker.enqueueOnce(app) }
         DartBridge.actionsChanged()
     }

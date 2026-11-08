@@ -57,6 +57,8 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   String? _typeId;
   late String _due;
   TimeOfDay? _alarm;
+  TimeOfDay? _start;
+  TimeOfDay? _end;
   String _kind = 'alarm';
   _Repeat _repeat = _Repeat.none;
   final Set<int> _days = {};
@@ -77,6 +79,8 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     _typeId = t?.typeId;
     _due = t?.dueDate ?? widget.date;
     _alarm = t?.alarmTime == null ? null : fromHhmm(t!.alarmTime!);
+    _start = t?.startTime == null ? null : fromHhmm(t!.startTime!);
+    _end = t?.endTime == null ? null : fromHhmm(t!.endTime!);
     _kind = t?.reminderKind ?? 'alarm';
     if (t != null && t.isRepeating) {
       _repeat = t.recurDays == null ? _Repeat.daily : _Repeat.days;
@@ -98,10 +102,19 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     return n != null && n >= 1 && n <= 1440 ? n : null;
   }
 
+  static int _minute(TimeOfDay t) => t.hour * 60 + t.minute;
+
+  /// A block never crosses midnight: with both times set the end must come after the start.
+  bool get _timesOk => _start == null || _end == null || _minute(_end!) > _minute(_start!);
+
+  /// With a valid start AND end the task takes exactly that long (the server derives it too); otherwise the typed estimate stands.
+  int? get _span => _start != null && _end != null && _timesOk ? _minute(_end!) - _minute(_start!) : null;
+  int? get _duration => _span ?? _mins;
+
   bool get _titleOk => _title.text.trim().isNotEmpty && _title.text.length <= 200;
   bool get _daysOk => _repeat != _Repeat.days || _days.isNotEmpty;
   bool get _untilOk => _until == null || _until!.compareTo(_due) >= 0;
-  bool get _valid => _titleOk && _mins != null && _daysOk && _untilOk && _notes.text.length <= 4000;
+  bool get _valid => _titleOk && _timesOk && _duration != null && _daysOk && _untilOk && _notes.text.length <= 4000;
 
   bool get _wontRingToday {
     final a = _alarm;
@@ -121,6 +134,22 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     if (picked != null) setState(() => _alarm = picked);
   }
 
+  Future<void> _pickBlock({required bool start}) async {
+    final current = start ? _start : _end;
+    final fallback = start ? const TimeOfDay(hour: 9, minute: 0) : (_start == null ? const TimeOfDay(hour: 10, minute: 0) : TimeOfDay(hour: (_start!.hour + 1) % 24, minute: _start!.minute));
+    final picked = await showTimePicker(context: context, initialTime: current ?? fallback, helpText: start ? 'Start time' : 'End time');
+    if (picked == null) return;
+    setState(() {
+      if (start) {
+        _start = picked;
+      } else {
+        _end = picked;
+      }
+      // Clearing a side later keeps this length, as the server does.
+      if (_span != null) _minutes.text = '$_span';
+    });
+  }
+
   Future<void> _save() async {
     if (!_valid || _busy) return;
     setState(() {
@@ -132,11 +161,13 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     final fields = <String, dynamic>{
       'title': _title.text.trim(),
       'notes': _notes.text.trim().isEmpty ? null : _notes.text,
-      'duration_min': _mins,
+      'duration_min': _duration,
       'type_id': _typeId,
       'priority_id': _priorityId,
       'due_date': _due,
       'alarm_time': _alarm == null ? null : toHhmm(_alarm!),
+      'start_time': _start == null ? null : toHhmm(_start!),
+      'end_time': _end == null ? null : toHhmm(_end!),
       'reminder_kind': _kind,
       'recur': repeating ? 'daily' : 'none',
       'recur_days': _repeat == _Repeat.days ? (_days.toList()..sort()) : null,
@@ -188,19 +219,30 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             OutlinedButton.icon(onPressed: () => _pickDate(null, (d) => _due = d), icon: const Icon(Icons.event), label: Text(fmtDayLong(_due))),
             if (_fieldErrors['due_date'] != null) _Err(_fieldErrors['due_date']!),
             const SizedBox(height: 12),
-            const _Label('Time needed (minutes)'),
-            Wrap(spacing: 8, runSpacing: 4, children: [
-              for (final d in _durations)
-                ChoiceChip(label: Text('$d'), labelStyle: chipLabel(context, selected: _mins == d), selected: _mins == d, onSelected: (_) => setState(() => _minutes.text = '$d')),
-            ]),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _minutes,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: 'Minutes (1–1440)', errorText: _mins == null ? 'Enter a whole number from 1 to 1440' : _fieldErrors['duration_min']),
-              onChanged: (_) => setState(() {}),
-            ),
+            const _Label('Start and end time (optional)'),
+            ClockRow(icon: Icons.play_arrow_outlined, label: 'Start time', value: _start, onPick: () => _pickBlock(start: true), onClear: () => setState(() => _start = null)),
+            const SizedBox(height: 6),
+            ClockRow(icon: Icons.stop_outlined, label: 'End time', value: _end, onPick: () => _pickBlock(start: false), onClear: () => setState(() => _end = null)),
+            if (!_timesOk) const _Err('End time must be after the start time.'),
+            if (_fieldErrors['start_time'] != null) _Err(_fieldErrors['start_time']!),
+            if (_fieldErrors['end_time'] != null) _Err(_fieldErrors['end_time']!),
+            if (_span != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Takes ${fmtMinutes(_span!)}, from the start and end time.', style: TextStyle(color: t.muted))),
             const SizedBox(height: 12),
+            if (_span == null) ...[
+              const _Label('Time needed (minutes)'),
+              Wrap(spacing: 8, runSpacing: 4, children: [
+                for (final d in _durations)
+                  ChoiceChip(label: Text('$d'), labelStyle: chipLabel(context, selected: _mins == d), selected: _mins == d, onSelected: (_) => setState(() => _minutes.text = '$d')),
+              ]),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _minutes,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: 'Minutes (1–1440)', errorText: _mins == null ? 'Enter a whole number from 1 to 1440' : _fieldErrors['duration_min']),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+            ],
             const _Label('Priority'),
             Wrap(spacing: 8, runSpacing: 4, children: [
               ChoiceChip(label: const Text('None'), labelStyle: chipLabel(context, selected: _priorityId == null), selected: _priorityId == null, onSelected: (_) => setState(() => _priorityId = null)),
@@ -218,6 +260,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
               Expanded(child: OutlinedButton.icon(onPressed: _pickTime, icon: const Icon(Icons.alarm), label: Text(_alarm == null ? 'Add a time' : _alarm!.format(context)))),
               if (_alarm != null) IconButton(tooltip: 'Remove reminder', icon: const Icon(Icons.close), onPressed: () => setState(() => _alarm = null)),
             ]),
+            if (_start != null && _alarm != _start) Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: () => setState(() => _alarm = _start), child: const Text('Remind me at the start time'))),
             if (_alarm != null) ...[
               const SizedBox(height: 8),
               SegmentedButton<String>(
@@ -249,7 +292,8 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                     onSelected: (on) => setState(() => on ? _days.add(i + 1) : _days.remove(i + 1)),
                   ),
               ]),
-              Row(children: [
+              // a Wrap: two buttons side by side overflow a small phone at the largest text size
+              Wrap(children: [
                 TextButton(onPressed: () => setState(() => _days..clear()..addAll([1, 2, 3, 4, 5])), child: const Text('Weekdays')),
                 TextButton(onPressed: () => setState(() => _days..clear()..addAll([6, 7])), child: const Text('Weekends')),
               ]),

@@ -1,4 +1,4 @@
-# Play Store Listing — TaskRelay 2.0
+# Play Store Listing — TaskRelay 2.1
 
 Everything here must stay true to the live privacy policy (`/privacy`) and to the app. Change them together.
 
@@ -28,6 +28,14 @@ TaskRelay is a calm, black-and-white task planner. Decide what matters today, ge
 • Anything unfinished shows up as Overdue, with one tap to move it to today.
 • Undo a delete, and search all your tasks and notes.
 • Organise with your own types and priorities.
+
+───────────────────────────────────────
+ GIVE TASKS A TIME, KEEP DISTRACTIONS OUT
+───────────────────────────────────────
+• Give any task a start time and an end time. With both, TaskRelay works out how long it takes.
+• Optional: block the apps that pull you away (social media, video, games) until all of today's tasks are done, only while a task is running, or except at the times you choose.
+• Your list of blocked apps and your rules stay on your phone. Settings and Phone can never be blocked.
+• App blocking uses Android's Accessibility Service, and only to notice which app you open. It never reads what is on your screen, and it is off until you turn it on.
 
 ───────────────────────────────────────
  ALARMS YOU CAN TRUST
@@ -86,8 +94,20 @@ Start each day knowing exactly what needs to get done.
 
 ---
 
-## What's New (2.0.0)
+## What's New (2.1.0)
 *(Shown on the "What's new" section of the store page)*
+
+```
+New in 2.1
+• Start and end times: give any task a time block
+• Block distracting apps until your tasks are done, while a task is running, or except at set times (optional, off by default)
+• A spreadsheet view of all your tasks, day by day
+• Fixes and a cleaner black-and-white look
+
+Coming from 1.x? Tasks saved in 1.x are not carried over. Start fresh.
+```
+
+*(2.0.0 notes, for reference)*
 
 ```
 TaskRelay 2.0 keeps your tasks in your own account, so they follow you to the web.
@@ -116,6 +136,11 @@ Declare these under *Data safety*. TaskRelay has no ads, no analytics SDK and no
 | AI change log (last 200 changes, only if the AI link is used) | Yes | No | No | App functionality |
 | Sign-in sessions | Yes | No | Yes | App functionality / security |
 
+**App blocker (new in 2.1):** the apps the user chooses, the rules and the use times are stored only on the phone and never leave it, so they are **not collected**. The
+app reads the list of launchable apps on the device only to show the picker, and never transmits it, so *App info and performance → Installed apps* is not collected
+either. The accessibility service reads only the package name of the front window, on the device. Say this under *Data safety* if the form asks, and in the
+Accessibility declaration (see [PERMISSIONS.md](PERMISSIONS.md)).
+
 Answers to the general questions:
 
 - **Data encrypted in transit:** Yes (HTTPS everywhere).
@@ -130,8 +155,8 @@ Open point to decide before submitting: Vercel keeps standard request logs (IP a
 ## Play Console checklist (developer actions — not done by the build)
 
 1. **App access:** the app needs a sign-in, so create a demo account and give the reviewers its email and password under *App access*.
-2. **Permissions declarations:** paste the texts from [PERMISSIONS.md](PERMISSIONS.md) into *Full-screen intent*, *Foreground service (media playback)* and *Exact alarms*.
+2. **Permissions declarations:** paste the texts from [PERMISSIONS.md](PERMISSIONS.md) into *Full-screen intent*, *Foreground service (media playback)*, *Exact alarms* and, new in 2.1, the **Accessibility API declaration** (it needs a short demo video, see the notes there). Answer the *Accessibility* questions honestly: TaskRelay is **not** an accessibility tool.
 3. **Data safety, privacy policy URL, account deletion URL:** use the tables above.
 4. **Target audience:** 13+; not a Families app.
 5. **Release notes:** use *What's new*, including the line that 1.x data is not carried over.
-6. **Bundle:** `flutter build appbundle` with the upload keystore (`version: 2.0.0+4`).
+6. **Bundle:** `flutter build appbundle --release` with the upload keystore (`version: 2.1.0+5`; the build number after `+` must be higher than every build already uploaded).

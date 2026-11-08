@@ -3,7 +3,7 @@ description: "TaskRelay: finish what you plan, one day at a time."
 publish_to: 'none'
 
 # versionName.versionCode (the build number after + is the Play Store versionCode and must increase with every upload)
-version: 2.0.0+4
+version: 2.1.0+5
 
 environment:
   sdk: ^3.10.7

@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -125,6 +128,42 @@ class FakeBridge extends PlatformBridge {
   Future<Permissions> permissions() async => const Permissions();
   @override
   Future<SyncResult> syncNow() async => const SyncResult(ok: true);
+
+  // ── the app blocker: an in-memory native side ──
+  BlockerConfig blocker = const BlockerConfig();
+  bool serviceEnabled = false;
+  BlockerDecision decision = const BlockerDecision(blocked: true, code: 'tasks_left', left: 3, overdue: 2);
+  List<InstalledApp> apps = const [
+    InstalledApp(package: 'com.android.calculator2', label: 'Calculator'),
+    InstalledApp(package: 'com.google.android.youtube', label: 'YouTube'),
+    InstalledApp(package: 'com.instagram.android', label: 'Instagram'),
+    InstalledApp(package: 'com.android.chrome', label: 'Chrome'),
+  ];
+  int accessibilityOpened = 0;
+  final List<BlockerConfig> savedConfigs = [];
+
+  @override
+  Future<BlockerConfig> blockerConfig() async => blocker;
+  @override
+  Future<BlockerConfig> setBlockerConfig(BlockerConfig c) async {
+    savedConfigs.add(c);
+    return blocker = c;
+  }
+
+  @override
+  Future<BlockerStatus> blockerStatus() async => BlockerStatus(
+        serviceEnabled: serviceEnabled,
+        enabled: blocker.enabled,
+        hasData: true,
+        snapshotDate: '2026-11-06',
+        decision: blocker.enabled ? decision : const BlockerDecision(),
+      );
+  @override
+  Future<List<InstalledApp>> blockerApps() async => apps;
+  @override
+  Future<Uint8List?> blockerAppIcon(String package) async => null;
+  @override
+  Future<void> openAccessibilitySettings() async => accessibilityOpened++;
 }
 
 class SignedInSession extends SessionNotifier {
@@ -139,6 +178,8 @@ Future<ProviderContainer> pumpWith(
   required FakeServer server,
   ThemeMode mode = ThemeMode.light,
   FakeBridge? bridge,
+  List<Override> overrides = const [],
+  GlobalKey? boundary,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -147,11 +188,31 @@ Future<ProviderContainer> pumpWith(
     httpClientProvider.overrideWithValue(server.client),
     bridgeProvider.overrideWithValue(bridge ?? FakeBridge()),
     sessionProvider.overrideWith(SignedInSession.new),
+    ...overrides,
   ]);
   addTearDown(container.dispose);
+  final app = MaterialApp(debugShowCheckedModeBanner: false, theme: AppTheme.light(), darkTheme: AppTheme.dark(), themeMode: mode, home: home);
   await tester.pumpWidget(UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(theme: AppTheme.light(), darkTheme: AppTheme.dark(), themeMode: mode, home: home),
+    // a boundary around the whole app, so dialogs and bottom sheets (which live above `home`) can be captured too
+    child: boundary == null ? app : RepaintBoundary(key: boundary, child: app),
   ));
   return container;
+}
+
+/// How many pixels of the boundary's picture are not grey (this app is strictly black and white).
+Future<({int coloured, int worst})> colouredPixels(WidgetTester tester, GlobalKey boundary) async {
+  final render = tester.renderObject<RenderRepaintBoundary>(find.byKey(boundary));
+  final bytes = await tester.runAsync(() async {
+    final image = await render.toImage(pixelRatio: 0.5);
+    return (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+  });
+  var worst = 0, coloured = 0;
+  for (var i = 0; i < bytes!.lengthInBytes; i += 4) {
+    final r = bytes.getUint8(i), g = bytes.getUint8(i + 1), b = bytes.getUint8(i + 2);
+    final int chroma = math.max<int>(r, math.max<int>(g, b)) - math.min<int>(r, math.min<int>(g, b));
+    if (chroma > 2) coloured++;
+    if (chroma > worst) worst = chroma;
+  }
+  return (coloured: coloured, worst: worst);
 }

@@ -1,6 +1,6 @@
 # TaskRelay
 
-A task-completion tracker: a daily task list with durations and limits, recurring tasks, lock-screen alarms, streaks and a calendar.
+A task-completion tracker: a daily task list with durations, start and end times and limits, recurring tasks, lock-screen alarms, streaks, a calendar and a day-by-day sheet. On Android it can also keep distracting apps closed until your tasks are done (an optional app blocker; its settings stay on the phone).
 
 | Folder | What it is |
 |---|---|
@@ -18,6 +18,12 @@ cd app && flutter pub get && flutter run
 cd web && cp .env.example .env.local   # fill in TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
 npm install && npm run dev
 ```
+
+## Releasing the Android app
+
+1. Copy `app/android/key.properties.example` to `app/android/key.properties` and fill in the two passwords of the upload keystore (`app/upload-keystore.jks`, key alias `upload`). Both files are git-ignored (`*.jks`, `key.properties`); never commit them.
+2. `cd app && flutter build appbundle --release` (a release bundle refuses to build without `key.properties`, so it can never be signed with the debug key by mistake). Raise the number after `+` in `app/pubspec.yaml` for every upload.
+3. Play Console texts (listing, permission and Accessibility declarations, data safety) are in [`docs/`](docs).
 
 ## Database & deploys
 

@@ -15,6 +15,18 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// A Play bundle signed with the debug key is refused by Google (or uploaded under the wrong key), so a release BUNDLE refuses to
+// build without key.properties. Debug builds, `flutter run` and release APKs for local testing do not need it.
+gradle.taskGraph.whenReady {
+    // the exact task of `flutter build appbundle`; an APK build has other tasks whose names merely contain it (bundleReleaseResources ...)
+    if (allTasks.any { it.name == "bundleRelease" } && !keystorePropertiesFile.exists()) {
+        throw GradleException(
+            "app/android/key.properties is missing. Copy key.properties.example to key.properties, fill in the upload keystore " +
+                "passwords, and build again. A release bundle is never signed with the debug key.",
+        )
+    }
+}
+
 
 android {
 

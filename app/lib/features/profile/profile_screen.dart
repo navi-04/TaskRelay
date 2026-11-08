@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/api_exception.dart';
 import '../../shared/widgets.dart';
 import '../../state/providers.dart';
+import '../blocker/blocker_card.dart';
 import 'ai_access_card.dart';
 import 'settings_cards.dart';
 
@@ -37,6 +38,7 @@ class ProfileScreen extends ConsumerWidget {
             const _AppearanceCard(),
             const AiAccessCard(),
             const RemindersCard(),
+            const BlockerCard(),
             const LabelsCard(),
             const AlarmHealthCard(),
             const _AccountCard(),

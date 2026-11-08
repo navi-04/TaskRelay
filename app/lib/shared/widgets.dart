@@ -43,6 +43,22 @@ TextStyle chipLabel(BuildContext context, {required bool selected}) => TextStyle
       fontSize: 13,
     );
 
+/// A clock time: one button that opens the time picker. With [onClear] the time is optional and gets a way to remove it.
+class ClockRow extends StatelessWidget {
+  const ClockRow({super.key, required this.icon, required this.label, required this.value, required this.onPick, this.onClear});
+  final IconData icon;
+  final String label;
+  final TimeOfDay? value;
+  final VoidCallback onPick;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(child: OutlinedButton.icon(onPressed: onPick, icon: Icon(icon), label: Text(value == null ? 'Add ${label.toLowerCase()}' : '$label: ${value!.format(context)}'))),
+        if (value != null && onClear != null) IconButton(tooltip: 'Remove ${label.toLowerCase()}', icon: const Icon(Icons.close), onPressed: onClear),
+      ]);
+}
+
 /// Text with a leading Material icon. Use this instead of an emoji: Android draws emoji in full colour,
 /// and this app is strictly black and white (test/monochrome_test.dart fails the build if one slips in).
 class IconText extends StatelessWidget {

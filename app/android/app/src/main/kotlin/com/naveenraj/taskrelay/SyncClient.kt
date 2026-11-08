@@ -61,6 +61,7 @@ class SyncClient(context: Context, private val http: HttpTransport = UrlConnecti
             }
         }
         DartBridge.syncFinished(result.ok, result.errorCode)
+        BlockerAccessibilityService.reevaluate(app) // fresh numbers (or a failed sync): the app blocker re-checks what is in front
         return result
     }
 

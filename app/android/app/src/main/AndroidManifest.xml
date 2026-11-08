@@ -122,6 +122,23 @@
             android:enabled="true"
             android:exported="false" />
 
+        <!-- App blocker: an accessibility service the user switches on in system settings. It receives only
+             "a window came to the front" events (canRetrieveWindowContent=false: it cannot read the screen), and when an app
+             from the user's own blocked list opens it shows a block screen and sends the user Home. Exported so the system
+             can bind it; the BIND permission keeps every other app out. See res/xml/blocker_accessibility_service.xml. -->
+        <service
+            android:name=".BlockerAccessibilityService"
+            android:exported="true"
+            android:label="@string/blocker_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/blocker_accessibility_service" />
+        </service>
+
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -132,6 +149,16 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- App blocker: list the launchable apps so the user can pick the distractions (instead of QUERY_ALL_PACKAGES, which
+             Play restricts), and find the launcher apps, which can never be blocked. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.HOME"/>
         </intent>
     </queries>
 </manifest>

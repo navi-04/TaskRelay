@@ -13,6 +13,7 @@ object Stores {
     fun actionLog(ctx: Context) = ActionLog(File(ctx.applicationContext.filesDir, "alarm_actions.log"))
     fun alarmStore(ctx: Context) = AlarmStore(File(ctx.applicationContext.filesDir, "alarm_store.json"))
     fun todayCache(ctx: Context) = TodayCache(File(ctx.applicationContext.filesDir, "today_cache.json"))
+    fun blockerStore(ctx: Context) = BlockerStore(ctx.applicationContext.getSharedPreferences(BlockerStore.PREFS, Context.MODE_PRIVATE))
 }
 
 /** Shared background executor (file I/O, keystore, HTTP) and the main-thread handler. */

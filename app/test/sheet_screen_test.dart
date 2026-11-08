@@ -30,13 +30,15 @@ void main() {
     expect([v.from, v.to, v.today], ['2026-11-02', '2026-11-08', '2026-11-06']);
     expect(v.columns.map((c) => c.title), ['Gym', 'Meditate']);
     expect(v.columns.first.recurDays, [1, 3, 5]);
-    expect(v.columns.first.alarmTime, '18:00');
+    expect(v.columns.first.alarmTime, '17:45');
+    expect([v.columns.first.startTime, v.columns.first.endTime], ['18:00', '19:00']); // the block, apart from the reminder
     expect(v.days.length, 7);
 
     final fri = v.days.firstWhere((d) => d.isToday);
     expect([fri.date, fri.weekday, fri.isWeekend, fri.planned, fri.done, fri.pct], ['2026-11-06', 5, false, 4, 1, 25]);
     expect(fri.cells['fx-task-gym'], CellState.open);
     expect(fri.tasks.map((t) => '${t.title}:${t.status.name}'), ['Team standup:done', 'Write quarterly report:open']);
+    expect(fri.tasks.map((t) => [t.startTime, t.endTime]), [['09:30', '09:45'], ['14:00', null]]);
     expect(fri.notes, ['Team standup: Short one']);
     expect(fri.isIncomplete, isTrue);
 
@@ -57,8 +59,8 @@ void main() {
     }
     expect(find.text('25%'), findsOneWidget); // today: 1 of 4
     expect(find.text('100%'), findsNWidgets(2)); // 4 Nov and 5 Nov
-    expect(find.text('Team standup'), findsOneWidget);
-    expect(find.text('Write quarterly report'), findsOneWidget);
+    expect(_timedTitle('Team standup'), findsOneWidget); // a timed task reads "9:30 AM Team standup"
+    expect(_timedTitle('Write quarterly report'), findsOneWidget);
     expect(find.text('Team standup: Short one'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -151,7 +153,7 @@ void main() {
     offline = false;
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
-    expect(find.text('Team standup'), findsOneWidget);
+    expect(_timedTitle('Team standup'), findsOneWidget); // a timed task reads "9:30 AM Team standup"
   });
 
   testWidgets('an empty month says so', (tester) async {
@@ -248,3 +250,6 @@ void main() {
     }
   });
 }
+
+/// A task chip whose title follows its start time ("9:30 AM Team standup"); the 12/24h style depends on the test locale.
+Finder _timedTitle(String title) => find.byWidgetPredicate((w) => w is Text && (w.data ?? '').endsWith(' $title'));

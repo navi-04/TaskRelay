@@ -1,0 +1,7 @@
+# Copy this file to key.properties (same folder) and fill in the two passwords. key.properties is git-ignored; never commit it.
+# The upload keystore is app/upload-keystore.jks and its key alias is "upload".
+# storeFile is relative to app/android/app/, so ../../upload-keystore.jks is app/upload-keystore.jks.
+storePassword=REPLACE_WITH_THE_KEYSTORE_PASSWORD
+keyPassword=REPLACE_WITH_THE_KEY_PASSWORD
+keyAlias=upload
+storeFile=../../upload-keystore.jks

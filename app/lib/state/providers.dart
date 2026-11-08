@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -20,6 +21,10 @@ final httpClientProvider = Provider<http.Client>((ref) {
 
 /// Overridden in main() so the first request already carries the right `X-App-Version`.
 final appVersionProvider = Provider<String>((ref) => '2.0.0');
+
+/// The clock. Screens CALL it when they build (so the time is current, not the time the app started); tests pin it by overriding
+/// the provider with a fixed value.
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final bridgeProvider = Provider<PlatformBridge>((ref) => PlatformBridge());
 
@@ -160,6 +165,34 @@ final reviewProvider = FutureProvider.autoDispose.family<Review, String?>((ref, 
 final activityProvider = FutureProvider.autoDispose<List<ActivityItem>>((ref) => ref.watch(apiProvider).activity());
 
 final syncStatusProvider = FutureProvider.autoDispose<SyncStatus>((ref) => ref.watch(bridgeProvider).syncStatus());
+
+// ── the app blocker: its settings live in the native layer (it enforces them), so these only mirror it ──
+
+class BlockerController extends AsyncNotifier<BlockerConfig> {
+  @override
+  Future<BlockerConfig> build() {
+    ref.watch(sessionProvider); // signing out wipes the native copy, so start over on the next sign-in
+    return ref.read(bridgeProvider).blockerConfig();
+  }
+
+  /// Shows the change at once, then keeps whatever the native side stored (it drops protected apps and bad windows).
+  Future<void> save(BlockerConfig next) async {
+    state = AsyncData(next);
+    final stored = await ref.read(bridgeProvider).setBlockerConfig(next);
+    state = AsyncData(stored);
+    ref.invalidate(blockerStatusProvider);
+  }
+}
+
+final blockerConfigProvider = AsyncNotifierProvider<BlockerController, BlockerConfig>(BlockerController.new);
+
+/// Is the accessibility service on, and is the blocker holding apps back right now? Re-read after changes and on resume.
+final blockerStatusProvider = FutureProvider.autoDispose<BlockerStatus>((ref) => ref.watch(bridgeProvider).blockerStatus());
+
+final installedAppsProvider = FutureProvider<List<InstalledApp>>((ref) => ref.watch(bridgeProvider).blockerApps());
+
+/// One app's icon, loaded once and kept for the session.
+final appIconProvider = FutureProvider.family<Uint8List?, String>((ref, package) => ref.watch(bridgeProvider).blockerAppIcon(package));
 
 // ── actions ──────────────────────────────────────────────────────────────────────────────────────
 

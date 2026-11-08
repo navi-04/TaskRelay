@@ -71,3 +71,40 @@ DayKind dayKind({required int planned, required int done, required String date, 
   if (date.compareTo(today) >= 0) return DayKind.planned;
   return done > 0 ? DayKind.partial : DayKind.missed;
 }
+
+/// Minutes since midnight for an 'HH:mm' string.
+int hhmmToMinutes(String hhmm) => int.parse(hhmm.substring(0, 2)) * 60 + int.parse(hhmm.substring(3, 5));
+
+/// 'HH:mm' for minutes since midnight (1440, the end of the day, reads as '00:00').
+String minutesToHhmm(int minutes) {
+  final m = minutes % 1440;
+  return '${_two(m ~/ 60)}:${_two(m % 60)}';
+}
+
+/// The stretch of a day a task occupies, in minutes since midnight ([end] is exclusive).
+class TimeBlock {
+  const TimeBlock(this.start, this.end);
+  final int start;
+  final int end;
+
+  int get minutes => end - start;
+  bool contains(int minute) => minute >= start && minute < end;
+
+  @override
+  bool operator ==(Object other) => other is TimeBlock && other.start == start && other.end == end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
+
+  @override
+  String toString() => 'TimeBlock($start-$end)';
+}
+
+/// The same rule as the server (web/lib/timeblock.ts) and the phone's blocker:
+/// start + end -> [start, end]; start only -> [start, start + duration] cut at midnight; an end alone (a deadline) or nothing -> no block.
+TimeBlock? taskBlock({String? startTime, String? endTime, required int durationMin}) {
+  if (startTime == null) return null;
+  final start = hhmmToMinutes(startTime);
+  final end = endTime != null ? hhmmToMinutes(endTime) : (start + durationMin).clamp(0, 1440);
+  return end > start ? TimeBlock(start, end) : null;
+}

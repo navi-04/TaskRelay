@@ -36,7 +36,7 @@ class FeedPlannerTest {
         assertFalse(f.window.truncated)
         assertEquals(6, f.alarms.size)
         assertEquals("fx-task-gym", f.alarms[0].taskId)
-        assertEquals("18:00", f.alarms[0].time)
+        assertEquals("17:45", f.alarms[0].time) // regenerated fixture: the Gym block starts 18:00 and its reminder is 15 minutes earlier
         assertEquals(Kind.NOTIFICATION, f.alarms[0].kind)
         assertTrue(f.settings.dailyReminderOn)
         assertEquals(9, f.settings.dailyReminderHour)
@@ -63,8 +63,8 @@ class FeedPlannerTest {
         assertTrue(plan.zipWithNext().all { (a, b) -> a.triggerMs <= b.triggerMs })
         val first = plan.first { it.kind == Kind.NOTIFICATION }
         assertEquals("notification/fx-task-gym/2026-11-06", first.key)
-        assertEquals(ms("2026-11-06T18:00:00Z"), first.triggerMs)
-        assertEquals("18:00", first.localTime)
+        assertEquals(ms("2026-11-06T17:45:00Z"), first.triggerMs)
+        assertEquals("17:45", first.localTime)
         assertEquals("Gym", first.title)
         assertTrue(plan.all { it.triggerMs > now })
     }

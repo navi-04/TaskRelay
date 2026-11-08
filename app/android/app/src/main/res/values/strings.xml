@@ -2,4 +2,8 @@
 <resources>
     <string name="widget_description">Today\'s tasks at a glance. Tap a task to complete it.</string>
     <string name="widget_label">Today</string>
+
+    <!-- App blocker accessibility service: the name and the sentence the user reads in system Accessibility settings. -->
+    <string name="blocker_service_label">TaskRelay App Blocker</string>
+    <string name="blocker_service_description">TaskRelay uses this only to notice when you open an app you chose to block, then shows a block screen. It does not read what is on your screen.</string>
 </resources>

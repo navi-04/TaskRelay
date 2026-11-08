@@ -52,7 +52,9 @@ class TaskCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Wrap(spacing: 6, runSpacing: 4, children: [
-                _Chip(fmtMinutes(task.durationMin)),
+                if (fmtBlock(context, start: task.startTime, end: task.endTime) case final block?) _Chip(block, icon: Icons.schedule),
+                // with both times set the block already says how long it takes
+                if (task.startTime == null || task.endTime == null) _Chip(fmtMinutes(task.durationMin)),
                 if (task.alarmTime != null) _Chip(fmtClock(context, task.alarmTime!), icon: task.reminderKind == 'alarm' ? Icons.alarm : Icons.notifications_none),
                 if (task.isRepeating) _Chip('↻ ${repeatLabel(repeating: true, days: task.recurDays)}'),
                 if (priority != null) _Chip(priority!.label),

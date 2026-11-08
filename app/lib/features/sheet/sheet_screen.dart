@@ -460,7 +460,8 @@ class _HabitHead extends StatelessWidget {
   Widget build(BuildContext context) {
     final days = column.recurDays;
     final sub = [
-      if (column.alarmTime != null) fmtClock(context, column.alarmTime!),
+      // the start of its time block, else the reminder time
+      if (column.startTime ?? column.alarmTime case final time?) fmtClock(context, time),
       if (days != null) repeatLabel(repeating: true, days: days),
     ].join(' · ');
     return _HeadCell(
@@ -701,7 +702,9 @@ class _TasksCell extends StatelessWidget {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            task.title,
+                            task.startTime == null
+                                ? task.title
+                                : '${fmtClock(context, task.startTime!)} ${task.title}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

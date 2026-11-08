@@ -25,9 +25,14 @@ data class FeedToday(
     val overdueCount: Int,
     val top: List<String>,
     val tasks: List<FeedTask>,
+    /** Today's tasks that have a start time, earliest first (an older server sends none). */
+    val blocks: List<FeedBlock> = emptyList(),
 )
 
 data class FeedTask(val id: String, val title: String, val done: Boolean, val isTop: Boolean, val durationMin: Int)
+
+/** One of today's timed tasks: `start_time` always, `end_time` when set. Turn it into minutes with [TimeBlock.of]. */
+data class FeedBlock(val id: String, val title: String, val startTime: String, val endTime: String?, val durationMin: Int, val done: Boolean)
 
 data class FeedWindow(val from: String, val to: String, val coveredUntil: String, val truncated: Boolean)
 
@@ -117,6 +122,18 @@ object FeedParser {
                     done = t.optString("status", "open") == "done",
                     isTop = t.optBoolean("is_top", false),
                     durationMin = t.optInt("duration_min", 0),
+                )
+            },
+            blocks = Json.objects(todayO?.optJSONArray("blocks")).mapNotNull { b ->
+                val id = Json.str(b, "id") ?: return@mapNotNull null
+                val start = Json.str(b, "start_time") ?: return@mapNotNull null
+                FeedBlock(
+                    id = id,
+                    title = b.optString("title", ""),
+                    startTime = start, // kept as sent: TimeBlock.of treats anything but "HH:mm" as "no block", i.e. fails open
+                    endTime = Json.str(b, "end_time"),
+                    durationMin = b.optInt("duration_min", 0),
+                    done = b.optString("status", "open") == "done",
                 )
             },
         )

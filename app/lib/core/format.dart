@@ -25,6 +25,14 @@ String fmtClock(BuildContext context, String hhmm) {
   return TimeOfDay(hour: p[0], minute: p[1]).format(context);
 }
 
+/// A task's time block as one label: "9:00 AM – 10:30 AM", "from 9:00 AM" (start only) or "by 5:00 PM" (end only). Null when it has neither.
+String? fmtBlock(BuildContext context, {String? start, String? end}) {
+  if (start != null && end != null) return '${fmtClock(context, start)} – ${fmtClock(context, end)}';
+  if (start != null) return 'from ${fmtClock(context, start)}';
+  if (end != null) return 'by ${fmtClock(context, end)}';
+  return null;
+}
+
 /// 24h "HH:mm" from a TimeOfDay (what the API stores).
 String toHhmm(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 

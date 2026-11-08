@@ -1,6 +1,8 @@
 // Plain immutable models that mirror the API's JSON (snake_case). They are parsed against the real fixtures in
 // web/test/fixtures by test/models_test.dart, so a change to the API contract fails a test on both sides.
 
+import '../core/time.dart';
+
 typedef Json = Map<String, dynamic>;
 
 int _int(Object? v) => (v as num).toInt();
@@ -17,6 +19,8 @@ class Task {
     required this.priorityId,
     required this.dueDate,
     required this.alarmTime,
+    this.startTime,
+    this.endTime,
     required this.reminderKind,
     required this.recur,
     required this.recurUntil,
@@ -42,6 +46,10 @@ class Task {
 
   /// 'HH:mm' (24h, local) or null.
   final String? alarmTime;
+
+  /// The optional time block, 'HH:mm' (24h, local). With both set, [durationMin] is their difference (the server derives it).
+  final String? startTime;
+  final String? endTime;
 
   /// 'alarm' (full-screen) or 'notification'.
   final String reminderKind;
@@ -71,6 +79,9 @@ class Task {
   final int? topPosition;
 
   bool get isDone => status == 'done';
+
+  /// The stretch of the day this task occupies, or null (see [taskBlock]).
+  TimeBlock? get block => taskBlock(startTime: startTime, endTime: endTime, durationMin: durationMin);
   bool get isRepeating => recur != 'none';
   bool get isTop => topPosition != null;
 
@@ -91,6 +102,8 @@ class Task {
         priorityId: _str(j['priority_id']),
         dueDate: j['due_date'] as String,
         alarmTime: _str(j['alarm_time']),
+        startTime: _str(j['start_time']),
+        endTime: _str(j['end_time']),
         reminderKind: j['reminder_kind'] as String,
         recur: j['recur'] as String,
         recurUntil: _str(j['recur_until']),
@@ -472,11 +485,13 @@ CellState _cell(Object? v) => switch (v) {
 
 /// A repeating task: it gets its own tick column.
 class SheetColumn {
-  const SheetColumn({required this.taskId, required this.title, required this.durationMin, required this.alarmTime, required this.recurDays});
+  const SheetColumn({required this.taskId, required this.title, required this.durationMin, required this.alarmTime, this.startTime, this.endTime, required this.recurDays});
   final String taskId;
   final String title;
   final int durationMin;
   final String? alarmTime;
+  final String? startTime;
+  final String? endTime;
 
   /// 1=Mon..7=Sun, or null for every day.
   final List<int>? recurDays;
@@ -486,22 +501,26 @@ class SheetColumn {
         title: j['title'] as String,
         durationMin: _int(j['duration_min']),
         alarmTime: _str(j['alarm_time']),
+        startTime: _str(j['start_time']),
+        endTime: _str(j['end_time']),
         recurDays: (j['recur_days'] as List?)?.map((e) => _int(e)).toList(),
       );
 }
 
 /// A one-off task on its day.
 class SheetTask {
-  const SheetTask({required this.id, required this.title, required this.status, required this.durationMin, required this.alarmTime});
+  const SheetTask({required this.id, required this.title, required this.status, required this.durationMin, required this.alarmTime, this.startTime, this.endTime});
   final String id;
   final String title;
   final CellState status;
   final int durationMin;
   final String? alarmTime;
+  final String? startTime;
+  final String? endTime;
 
   bool get isDone => status == CellState.done;
 
-  factory SheetTask.fromJson(Json j) => SheetTask(id: j['id'] as String, title: j['title'] as String, status: _cell(j['status']), durationMin: _int(j['duration_min']), alarmTime: _str(j['alarm_time']));
+  factory SheetTask.fromJson(Json j) => SheetTask(id: j['id'] as String, title: j['title'] as String, status: _cell(j['status']), durationMin: _int(j['duration_min']), alarmTime: _str(j['alarm_time']), startTime: _str(j['start_time']), endTime: _str(j['end_time']));
 }
 
 class SheetDay {
